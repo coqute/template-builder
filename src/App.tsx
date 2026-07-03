@@ -137,6 +137,11 @@ export function App() {
 
   const dirty = filePath != null && savedSnapshot != null && md !== savedSnapshot;
 
+  // main 프로세스에 dirty 통지 — 창 닫기 전 확인 다이얼로그용
+  useEffect(() => {
+    window.reportApi?.setDirty?.(dirty);
+  }, [dirty]);
+
   const handleSplitChange = useCallback((sizes: number[]) => {
     if (typeof localStorage === 'undefined') return;
     if (sizes.length !== 2) return;

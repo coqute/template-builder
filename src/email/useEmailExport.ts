@@ -42,6 +42,8 @@ export function useEmailExport(
   // 세션 내 마지막 생성 draft 추적 — 같은 템플릿 문서에서 반복 클릭 시 update(중복 생성 방지).
   // 템플릿 전환 시 templateId 불일치로 자동 무효화, 문서 로드(openEmail) 시 명시 리셋.
   const draftRef = useRef<{ draftId: string; templateId: string } | null>(null);
+  // toast "다시 시도" 액션에서 최신 createDraft를 부르기 위한 자기 참조
+  const createDraftRef = useRef<(() => Promise<void>) | null>(null);
 
   const copyEmailHtml = useCallback(async () => {
     if (!rendered) {
@@ -120,9 +122,20 @@ export function useEmailExport(
       );
     } else {
       await fallbackCopy();
-      toast.error(DRAFT_ERROR_MSG[result.code] ?? `임시보관함 생성 실패: ${result.message}. HTML을 클립보드에 복사했습니다.`);
+      const msg =
+        DRAFT_ERROR_MSG[result.code] ??
+        `임시보관함 생성 실패: ${result.message}. HTML을 클립보드에 복사했습니다.`;
+      // 일시적 실패(인증 만료/네트워크)는 재시도 액션 제공
+      if (result.code === 'refresh-failed' || result.code === 'network') {
+        toast.error(msg, {
+          action: { label: '다시 시도', onClick: () => void createDraftRef.current?.() },
+        });
+      } else {
+        toast.error(msg);
+      }
     }
   }, [doc.templateId, rendered]);
+  createDraftRef.current = createDraft;
 
   const saveEmail = useCallback(async () => {
     if (!window.reportApi?.save) {

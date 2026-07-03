@@ -16,6 +16,12 @@ const VITE_DEV_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
 
+// renderer가 통지하는 "파일 미저장 변경" 상태 — 창 닫기 전 확인용
+let rendererDirty = false;
+ipcMain.on('app:set-dirty', (_evt, v: unknown) => {
+  rendererDirty = Boolean(v);
+});
+
 function resolveIconPath(): string {
   const file = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
   if (isDev) {
@@ -59,6 +65,25 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // 열려 있는 .md에 저장되지 않은 변경이 있으면 닫기 전 확인 (초안 자체는 localStorage에 보관됨)
+  mainWindow.on('close', (e) => {
+    if (!rendererDirty || !mainWindow) return;
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'warning',
+      buttons: ['닫기', '취소'],
+      defaultId: 1,
+      cancelId: 1,
+      title: '저장되지 않은 변경',
+      message: '열려 있는 파일에 저장되지 않은 변경이 있습니다. 그래도 닫을까요?',
+      detail: '초안은 앱에 자동 보관되지만, .md 파일에는 저장되지 않았습니다. (Ctrl+S로 저장)',
+    });
+    if (choice === 1) {
+      e.preventDefault();
+      return;
+    }
+    rendererDirty = false; // 확인됨 — 기본 close 진행 (재확인 루프 방지)
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

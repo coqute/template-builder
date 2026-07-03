@@ -26,6 +26,9 @@ const api = {
     ipcRenderer.invoke('file:read-path', filePath) as Promise<
       { ok: true; content: string } | { ok: false; error: string }
     >,
+  setDirty: (dirty: boolean) => {
+    ipcRenderer.send('app:set-dirty', dirty);
+  },
   openExternal: (url: string) =>
     ipcRenderer.invoke('shell:open-external', url) as Promise<{ ok: boolean }>,
   createGmailDraft: (payload: DraftPayload) =>
