@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { copyHtmlToClipboard } from '../hooks/useClipboard';
 import { getTemplate } from './templates';
@@ -39,6 +39,10 @@ export function useEmailExport(
   rendered: EmailRenderResult | undefined,
   loadDoc: (next: EmailDocState) => void,
 ): ExportApi {
+  // 세션 내 마지막 생성 draft 추적 — 같은 템플릿 문서에서 반복 클릭 시 update(중복 생성 방지).
+  // 템플릿 전환 시 templateId 불일치로 자동 무효화, 문서 로드(openEmail) 시 명시 리셋.
+  const draftRef = useRef<{ draftId: string; templateId: string } | null>(null);
+
   const copyEmailHtml = useCallback(async () => {
     if (!rendered) {
       toast.error('복사할 내용이 없습니다.');
@@ -94,17 +98,25 @@ export function useEmailExport(
     }
     const template = getTemplate(doc.templateId);
     const { html, images } = extractInlineImages(rendered.html);
+    const prevDraftId =
+      draftRef.current && draftRef.current.templateId === doc.templateId
+        ? draftRef.current.draftId
+        : undefined;
     const result = await api.createGmailDraft({
       to: template?.recipientHint ?? '',
       cc: template?.recipientCc?.join(', ') ?? '',
       subject: rendered.subject,
       html,
       images,
+      draftId: prevDraftId,
     });
     if (result.ok) {
+      draftRef.current = { draftId: result.draftId, templateId: doc.templateId };
       if (api.openExternal) await api.openExternal('https://mail.google.com/mail/u/0/#drafts');
       toast.success(
-        `임시보관함에 생성됨 (이미지 ${images.length}개 인라인 포함) — Gmail에서 검토 후 발송하세요.`,
+        result.updated
+          ? `기존 임시보관함 초안을 업데이트했습니다 (이미지 ${images.length}개 인라인) — Gmail에서 검토 후 발송하세요.`
+          : `임시보관함에 생성됨 (이미지 ${images.length}개 인라인 포함) — Gmail에서 검토 후 발송하세요.`,
       );
     } else {
       await fallbackCopy();
@@ -144,6 +156,7 @@ export function useEmailExport(
         fieldValues: parsed.fieldValues ?? {},
         bodyHtml: parsed.bodyHtml ?? '',
       });
+      draftRef.current = null; // 다른 문서 — 이전 draft에 덮어쓰지 않도록 리셋
       toast.success(`불러옴: ${result.filePath}`);
     } catch {
       toast.error('JSON 파싱 실패 — 올바른 템플릿 파일인지 확인하세요.');

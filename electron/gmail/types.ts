@@ -10,6 +10,7 @@ export interface DraftPayload {
   subject: string;
   html: string; // <img src="cid:imgN"> 로 치환된 html
   images: DraftInlineImage[];
+  draftId?: string; // 있으면 기존 draft 업데이트 (drafts.update), 404/400 시 create 폴백
 }
 
 export type GmailDraftErrorCode =
@@ -21,5 +22,5 @@ export type GmailDraftErrorCode =
   | 'unknown';
 
 export type GmailDraftResult =
-  | { ok: true; draftId: string; messageId?: string }
+  | { ok: true; draftId: string; messageId?: string; updated?: boolean }
   | { ok: false; code: GmailDraftErrorCode; message: string };

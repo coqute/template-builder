@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadGmailCreds, hasGmailDraftScope, CredError } from './gmail/credentials';
 import { getAccessToken, OAuthError } from './gmail/oauth';
 import { buildMimeMessage, toBase64Url } from './gmail/mime';
+import { upsertDraft } from './gmail/upsert';
 import type { DraftPayload, GmailDraftResult } from './gmail/types';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -211,7 +212,7 @@ ipcMain.handle('shell:open-external', async (_evt, url: string) => {
   return { ok: false };
 });
 
-// Gmail API 임시보관함(draft) 생성 — multipart/related + CID 인라인 이미지 (발송 안 함)
+// Gmail API 임시보관함(draft) upsert — draftId 있으면 update(404/400 시 create 폴백), 없으면 create (발송 안 함)
 ipcMain.handle(
   'gmail:create-draft',
   async (_evt, payload: DraftPayload): Promise<GmailDraftResult> => {
@@ -221,25 +222,9 @@ ipcMain.handle(
         return { ok: false, code: 'scope-missing', message: 'Gmail 권한(스코프)이 부족합니다.' };
       }
       const raw = toBase64Url(buildMimeMessage(payload));
-      const send = (token: string) =>
-        fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: { raw } }),
-        });
-
-      let token = await getAccessToken(creds);
-      let res = await send(token);
-      if (res.status === 401) {
-        token = await getAccessToken(creds, true); // 강제 갱신 후 1회 재시도
-        res = await send(token);
-      }
-      if (!res.ok) {
-        const detail = await res.text().catch(() => '');
-        return { ok: false, code: 'gmail-error', message: `Gmail API ${res.status}: ${detail.slice(0, 200)}` };
-      }
-      const json = (await res.json()) as { id?: string; message?: { id?: string } };
-      return { ok: true, draftId: json.id ?? '', messageId: json.message?.id };
+      return await upsertDraft(raw, payload.draftId, {
+        getToken: (force) => getAccessToken(creds, force),
+      });
     } catch (err) {
       if (err instanceof CredError) return { ok: false, code: 'credentials-missing', message: err.message };
       if (err instanceof OAuthError) return { ok: false, code: err.code, message: err.message };
