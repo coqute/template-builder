@@ -52,6 +52,22 @@ describe('upsertDraft', () => {
     expect(fetchFn.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh');
   });
 
+  it('fetch 자체 실패(오프라인)는 network 코드로 반환 — toast 재시도 대상', async () => {
+    const fetchFn = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+    const r = await upsertDraft('RAW', undefined, { getToken: async () => 'tok', fetchFn });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe('network');
+      expect(r.message).toContain('fetch failed');
+    }
+  });
+
+  it('getToken 예외는 network로 삼키지 않고 전파 (main에서 OAuthError 분류)', async () => {
+    const boom = new Error('refresh dead');
+    const getToken = vi.fn().mockRejectedValue(boom);
+    await expect(upsertDraft('RAW', undefined, { getToken, fetchFn: vi.fn() })).rejects.toBe(boom);
+  });
+
   it('update가 500이면 create 폴백 없이 에러 반환', async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }));
     const r = await upsertDraft('RAW', 'd1', { getToken: async () => 'tok', fetchFn });

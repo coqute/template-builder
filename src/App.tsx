@@ -142,6 +142,25 @@ export function App() {
     window.reportApi?.setDirty?.(dirty);
   }, [dirty]);
 
+  // 재시작 후 filePath만 복원되고 savedSnapshot은 null → dirty(●)/종료확인이 불능이 되는 갭 보정:
+  // 디스크 내용을 snapshot으로 삼는다 (localStorage 초안과 다르면 정확히 dirty로 표시됨).
+  // 파일이 사라졌으면 연결 해제 — 다음 Ctrl+S는 "다른 이름으로 저장".
+  useEffect(() => {
+    const api = window.reportApi;
+    if (!filePath || savedSnapshot !== null || !api?.readPath) return;
+    let cancelled = false;
+    void api.readPath(filePath).then((r) => {
+      if (cancelled) return;
+      if (r.ok) setSavedSnapshot(r.content);
+      else setFilePath(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // mount 1회 — filePath/savedSnapshot은 복원 직후 값만 대상
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSplitChange = useCallback((sizes: number[]) => {
     if (typeof localStorage === 'undefined') return;
     if (sizes.length !== 2) return;

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { copyHtmlToClipboard } from '../hooks/useClipboard';
 import { getTemplate } from './templates';
@@ -39,9 +39,18 @@ export function useEmailExport(
   rendered: EmailRenderResult | undefined,
   loadDoc: (next: EmailDocState) => void,
 ): ExportApi {
-  // 세션 내 마지막 생성 draft 추적 — 같은 템플릿 문서에서 반복 클릭 시 update(중복 생성 방지).
-  // 템플릿 전환 시 templateId 불일치로 자동 무효화, 문서 로드(openEmail) 시 명시 리셋.
+  // 세션 내 마지막 생성 draft 추적 — 같은 문서에서 반복 클릭 시 update(중복 생성 방지).
+  // 문서 로드(openEmail) 시 명시 리셋, 템플릿 전환 시 아래 effect가 리셋.
   const draftRef = useRef<{ draftId: string; templateId: string } | null>(null);
+  // setTemplateId는 필드를 초기화한 "새 문서" — A→B→A 왕복처럼 같은 템플릿으로 돌아와도
+  // 이전 A 초안을 덮어쓰면 안 되므로, templateId가 바뀌는 순간 무조건 무효화
+  const prevTemplateRef = useRef(doc.templateId);
+  useEffect(() => {
+    if (prevTemplateRef.current !== doc.templateId) {
+      prevTemplateRef.current = doc.templateId;
+      draftRef.current = null;
+    }
+  }, [doc.templateId]);
   // toast "다시 시도" 액션에서 최신 createDraft를 부르기 위한 자기 참조
   const createDraftRef = useRef<(() => Promise<void>) | null>(null);
 

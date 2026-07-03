@@ -11,6 +11,7 @@
     "dev:electron": "vite",
     "build:web": "tsc --noEmit -p tsconfig.json && vite build",
     "build:electron": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json && vite build && electron-builder",
+    "release:win": "powershell -ExecutionPolicy Bypass -File scripts/release-install.ps1",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
@@ -85,12 +86,27 @@
       "icon": "assets/icon.ico",
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "portable",
           "arch": [
             "x64"
           ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Template Builder",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "assets/icon.png"

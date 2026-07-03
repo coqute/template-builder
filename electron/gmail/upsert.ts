@@ -8,6 +8,8 @@ export interface UpsertDeps {
   fetchFn?: typeof fetch;
 }
 
+class FetchNetworkError extends Error {}
+
 /**
  * Gmail draft upsert — draftId가 있으면 drafts.update(PUT), 대상이 사라졌으면(404/400,
  * 사용자가 Gmail에서 발송/삭제한 경우) drafts.create(POST) 폴백. 401은 토큰 강제 갱신 후 1회 재시도.
@@ -22,12 +24,19 @@ export async function upsertDraft(
 
   let token = await deps.getToken();
   const send = async (method: 'POST' | 'PUT', url: string) => {
-    const call = (t: string) =>
-      fetchFn(url, {
-        method,
-        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
-        body,
-      });
+    // fetch 자체 실패(DNS/오프라인 등)는 'network'로 분류 — toast "다시 시도" 액션 대상.
+    // getToken 예외(OAuthError)는 그대로 전파해 main에서 분류.
+    const call = async (t: string) => {
+      try {
+        return await fetchFn(url, {
+          method,
+          headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+          body,
+        });
+      } catch (err) {
+        throw new FetchNetworkError(err instanceof Error ? err.message : String(err));
+      }
+    };
     let res = await call(token);
     if (res.status === 401) {
       token = await deps.getToken(true);
@@ -45,14 +54,21 @@ export async function upsertDraft(
     return { ok: false, code: 'gmail-error', message: `Gmail API ${res.status}: ${detail.slice(0, 200)}` };
   };
 
-  if (draftId) {
-    const res = await send('PUT', `${DRAFTS_URL}/${encodeURIComponent(draftId)}`);
-    if (res.ok) return parseOk(res, true);
-    if (res.status !== 404 && res.status !== 400) return parseErr(res);
-    // 404/400 → 기존 draft 소멸 → create 폴백
-  }
+  try {
+    if (draftId) {
+      const res = await send('PUT', `${DRAFTS_URL}/${encodeURIComponent(draftId)}`);
+      if (res.ok) return parseOk(res, true);
+      if (res.status !== 404 && res.status !== 400) return parseErr(res);
+      // 404/400 → 기존 draft 소멸 → create 폴백
+    }
 
-  const res = await send('POST', DRAFTS_URL);
-  if (!res.ok) return parseErr(res);
-  return parseOk(res, false);
+    const res = await send('POST', DRAFTS_URL);
+    if (!res.ok) return parseErr(res);
+    return parseOk(res, false);
+  } catch (err) {
+    if (err instanceof FetchNetworkError) {
+      return { ok: false, code: 'network', message: `네트워크 오류: ${err.message}` };
+    }
+    throw err;
+  }
 }
