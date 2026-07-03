@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   CalendarPlus,
+  ChevronDown,
   ClipboardCopy,
   FileDown,
   FileText,
@@ -12,6 +14,7 @@ import {
 import { ThemeToggle } from './ThemeToggle';
 import { DocTypeSwitch } from './DocTypeSwitch';
 import { StampLogo } from './StampLogo';
+import { fileBaseName } from '../lib/recentFiles';
 import type { Theme } from '../hooks/useTheme';
 import type { DocType } from '../hooks/useDocType';
 
@@ -23,6 +26,8 @@ interface ToolbarProps {
   onLoadTemplate: () => void;
   onImportGmail: () => void;
   onOpen: () => void;
+  recentFiles?: string[];
+  onOpenRecent?: (path: string) => void;
   onSave: () => void;
   onCopyHtml: () => void;
   copyDisabled?: boolean;
@@ -46,6 +51,80 @@ interface BtnProps {
   primary?: boolean;
   disabled?: boolean;
   onClick: () => void;
+}
+
+/** "열기" split-button — 본체는 다이얼로그 열기, 우측 화살표는 최근 파일 드롭다운 */
+function OpenSplitButton({
+  onOpen,
+  recentFiles,
+  onOpenRecent,
+}: {
+  onOpen: () => void;
+  recentFiles: string[];
+  onOpenRecent?: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative flex shrink-0 items-stretch">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="group flex items-center gap-1.5 whitespace-nowrap rounded-l-sharp border border-accent px-2 py-1.5 text-xs font-medium transition hover:opacity-90"
+        style={{ background: 'var(--accent)', color: 'var(--bg)' }}
+        title="열기 (Ctrl+O)"
+      >
+        <span style={{ color: 'var(--bg)' }}>
+          <FileText size={14} />
+        </span>
+        <span className="hidden lg:inline">열기</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={recentFiles.length === 0}
+        className="flex items-center rounded-r-sharp border border-l-0 border-accent px-1 transition hover:opacity-90 disabled:opacity-40"
+        style={{ background: 'var(--accent)', color: 'var(--bg)' }}
+        title={recentFiles.length ? '최근 파일' : '최근 파일 없음'}
+        aria-label="최근 파일"
+      >
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full z-30 mt-1 min-w-[240px] rounded-sharp border border-rule bg-bg-elevated py-1 shadow-lg"
+          role="menu"
+        >
+          {recentFiles.map((path) => (
+            <button
+              key={path}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onOpenRecent?.(path);
+              }}
+              className="flex w-full flex-col items-start gap-0 px-3 py-1.5 text-left hover:bg-bg-sunken"
+              title={path}
+            >
+              <span className="w-full truncate text-xs text-fg">{fileBaseName(path)}</span>
+              <span className="w-full truncate text-[10px] text-fg-muted">{path}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Btn({ label, shortcut, icon, primary, disabled, onClick }: BtnProps) {
@@ -76,6 +155,8 @@ export function Toolbar({
   onLoadTemplate,
   onImportGmail,
   onOpen,
+  recentFiles,
+  onOpenRecent,
   onSave,
   onCopyHtml,
   copyDisabled,
@@ -131,7 +212,11 @@ export function Toolbar({
               icon={<Inbox size={14} />}
               onClick={onImportGmail}
             />
-            <Btn label="열기" shortcut="Ctrl+O" icon={<FileText size={14} />} onClick={onOpen} />
+            <OpenSplitButton
+              onOpen={onOpen}
+              recentFiles={recentFiles ?? []}
+              onOpenRecent={onOpenRecent}
+            />
             <Btn label="저장" shortcut="Ctrl+S" icon={<FileDown size={14} />} onClick={onSave} />
             <Btn
               label="HTML 복사"

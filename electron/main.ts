@@ -176,6 +176,19 @@ ipcMain.handle(
   },
 );
 
+// 최근 파일 열기 — 다이얼로그 없이 경로 직접 읽기. .md만 허용 (임의 파일 읽기 차단)
+ipcMain.handle('file:read-path', async (_evt, filePath: string) => {
+  try {
+    if (typeof filePath !== 'string' || !filePath.toLowerCase().endsWith('.md')) {
+      return { ok: false, error: '.md 파일만 열 수 있습니다.' };
+    }
+    const content = await fs.readFile(filePath, 'utf8');
+    return { ok: true, content };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
 // 이미 경로가 확정된 파일에 다이얼로그 없이 덮어쓰기 (Ctrl+S 저장)
 ipcMain.handle(
   'file:save-to-path',

@@ -24,6 +24,12 @@ import { useEmailDoc } from './email/useEmailDoc';
 import { useEmailState } from './email/useEmailState';
 import { useEmailExport } from './email/useEmailExport';
 import { readWithFallback } from './lib/storage';
+import {
+  fileBaseName as baseName,
+  loadRecentFiles,
+  pushRecentFile,
+  removeRecentFile,
+} from './lib/recentFiles';
 
 const STORAGE_KEY_MD = 'tb:md-draft:v1';
 const STORAGE_KEY_ZOOM = 'tb:preview-zoom';
@@ -51,10 +57,6 @@ const FALLBACK_MD = `@PREV 2026-04-27 ~ 2026-05-03
 # 2026-05-01(금)
 @HOLIDAY 근로자의 날
 `;
-
-function baseName(p: string): string {
-  return p.split(/[\\/]/).pop() ?? p;
-}
 
 function loadZoom(): ZoomMode {
   if (typeof localStorage === 'undefined') return 'fit';
@@ -96,6 +98,8 @@ export function App() {
   });
   // 마지막으로 디스크에 저장한 내용 (수정 여부 ● 표시용)
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  // 최근 파일 MRU (최대 5) — 열기/저장 성공 시 갱신, 열기 실패 시 제거
+  const [recentFiles, setRecentFiles] = useState<string[]>(loadRecentFiles);
   const { author, setAuthor } = useAuthor();
   const { theme, setTheme } = useTheme();
   const { docType, setDocType } = useDocType();
@@ -197,7 +201,28 @@ export function App() {
     setMd(result.content);
     setFilePath(result.filePath);
     setSavedSnapshot(result.content);
+    setRecentFiles(pushRecentFile(result.filePath));
     toast.success(`불러옴: ${baseName(result.filePath)}`);
+  }, []);
+
+  // 최근 파일 — 다이얼로그 없이 직접 열기. 실패(삭제/이동) 시 목록에서 제거
+  const openRecentFile = useCallback(async (path: string) => {
+    const api = window.reportApi;
+    if (!api?.readPath) {
+      toast.error('데스크탑 모드에서만 파일 열기를 지원합니다.');
+      return;
+    }
+    const result = await api.readPath(path);
+    if (!result.ok) {
+      setRecentFiles(removeRecentFile(path));
+      toast.error(`파일을 열 수 없어 목록에서 제거했습니다: ${baseName(path)}`);
+      return;
+    }
+    setMd(result.content);
+    setFilePath(path);
+    setSavedSnapshot(result.content);
+    setRecentFiles(pushRecentFile(path));
+    toast.success(`불러옴: ${baseName(path)}`);
   }, []);
 
   const saveFile = useCallback(async () => {
@@ -211,6 +236,7 @@ export function App() {
       const result = await api.saveToPath(filePath, md);
       if (result.ok) {
         setSavedSnapshot(md);
+        setRecentFiles(pushRecentFile(result.filePath));
         toast.success(`저장됨: ${baseName(result.filePath)}`);
         return;
       }
@@ -226,6 +252,7 @@ export function App() {
     if (!result.canceled) {
       setFilePath(result.filePath);
       setSavedSnapshot(md);
+      setRecentFiles(pushRecentFile(result.filePath));
       toast.success(`저장됨: ${baseName(result.filePath)}`);
     }
   }, [md, state.subject, filePath]);
@@ -352,6 +379,8 @@ export function App() {
           onLoadTemplate={loadTemplate}
           onImportGmail={importGmail}
           onOpen={openFile}
+          recentFiles={recentFiles}
+          onOpenRecent={openRecentFile}
           onSave={saveFile}
           onCopyHtml={copyHtml}
           copyDisabled={!state.rendered || !!state.fatalError || errorCount > 0}

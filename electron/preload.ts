@@ -22,6 +22,10 @@ const api = {
     ipcRenderer.invoke('file:save-to-path', { filePath, content }) as Promise<
       { ok: true; filePath: string } | { ok: false; error: string }
     >,
+  readPath: (filePath: string) =>
+    ipcRenderer.invoke('file:read-path', filePath) as Promise<
+      { ok: true; content: string } | { ok: false; error: string }
+    >,
   openExternal: (url: string) =>
     ipcRenderer.invoke('shell:open-external', url) as Promise<{ ok: boolean }>,
   createGmailDraft: (payload: DraftPayload) =>
