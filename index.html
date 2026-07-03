@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="paper">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ExampleIT Template Builder</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono@2.304/css/jetbrains-mono.min.css"
+    />
+    <script>
+      (function () {
+        try {
+          var stored =
+            localStorage.getItem('tb:theme') ||
+            localStorage.getItem('weekly-report-builder:theme');
+          if (stored === 'mono' || stored === 'paper') {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

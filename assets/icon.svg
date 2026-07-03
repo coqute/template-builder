@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="1024" height="1024" rx="232" ry="232"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="#FFFFFF"/>
+
+    <text
+      x="112"
+      y="816"
+      text-anchor="start"
+      font-family="'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif"
+      font-weight="900"
+      font-size="896"
+      fill="#0A0A0A"
+      stroke="#0A0A0A"
+      stroke-width="48"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+      paint-order="stroke fill"
+      letter-spacing="-0.06em"
+    >K</text>
+
+    <circle cx="836" cy="772" r="83" fill="#DC2626"/>
+  </g>
+</svg>

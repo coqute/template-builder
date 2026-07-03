@@ -1,0 +1,391 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================
+ * White — Minimalist (극단적 단순함)
+ * ========================================================== */
+[data-theme='paper'] {
+  --bg:              #FFFFFF;  /* pure white */
+  --bg-elevated:     #FFFFFF;  /* 동일 — 그림자로만 분리 */
+  --bg-deep:         #FAFAFA;  /* StatusBar 등 보조 */
+  --bg-sunken:       #F5F5F5;
+
+  --fg:              #0A0A0A;  /* near-black */
+  --fg-soft:         #404040;
+  --fg-muted:        #737373;
+  --fg-faint:        #A3A3A3;
+
+  --rule:            #E5E5E5;  /* very thin neutral gray */
+  --rule-thin:       #F5F5F5;
+  --rule-strong:     #D4D4D4;
+
+  --accent:          #0A0A0A;  /* primary action = pure black */
+  --accent-soft:     #404040;
+  --accent-glow:     rgba(10, 10, 10, 0.06);
+
+  --stamp-red:       #DC2626;  /* 휴무·error 단일 강조 색 */
+  --stamp-green:     #404040;  /* success도 무채색 */
+  --stamp-amber:     #525252;  /* warning도 무채색 */
+
+  --tok-week:        #0A0A0A;  /* 디렉티브 = 검정 굵게 */
+  --tok-day:         #DC2626;  /* 일자만 red — 유일한 시각 anchor */
+  --tok-loc:         #525252;  /* 회색 */
+  --tok-client:      #0A0A0A;  /* 검정 + 굵게 */
+  --tok-num:         #404040;  /* 진한 회색 */
+  --tok-dash:        #737373;  /* 옅은 회색 */
+  --tok-qaq:         #737373;
+  --tok-qaa:         #525252;
+  --tok-note:        #9CA3AF;  /* > 보조 설명 — 가장 옅은 회색 */
+  --tok-holiday:     #DC2626;  /* @HOLIDAY = 휴무 red */
+
+  --selection:       rgba(10, 10, 10, 0.12);
+  --shadow:          0 1px 0 rgba(0, 0, 0, 0.04);
+
+  --radius-sharp:    2px;       /* 더 sharp */
+  --radius:          4px;
+  --radius-card:     6px;
+  --rule-width:      1px;
+
+  color-scheme: light;
+}
+
+/* ==========================================================
+ * Mono — 새벽 2시 엔지니어 콘솔 (다크, 옵션)
+ * ========================================================== */
+[data-theme='mono'] {
+  --bg:              #0A0A0A;
+  --bg-elevated:     #111111;
+  --bg-deep:         #050505;
+  --bg-sunken:       #1A1A1A;
+
+  --fg:              #E8E5DD;
+  --fg-soft:         #B5B0A2;
+  --fg-muted:        #666058;
+  --fg-faint:        #3F3B36;
+
+  --rule:            #2A2622;
+  --rule-thin:       #1A1816;
+  --rule-strong:     #4A4238;
+
+  --accent:          #FF6B35;
+  --accent-soft:     #C04A20;
+  --accent-glow:     rgba(255, 107, 53, 0.08);
+
+  --stamp-red:       #E04848;
+  --stamp-green:     #5BC85B;
+  --stamp-amber:     #E0A83C;
+
+  --tok-week:        #FF6B35;
+  --tok-day:         #5BC85B;
+  --tok-loc:         #5DADE2;
+  --tok-client:      #E0A83C;
+  --tok-num:         #C39EE0;
+  --tok-dash:        #B5B0A2;
+  --tok-qaq:         #888070;
+  --tok-qaa:         #B5B0A2;
+  --tok-note:        #8A857A;  /* > 보조 설명 — 가장 옅은 톤 */
+  --tok-holiday:     #E04848;  /* @HOLIDAY = 휴무 red */
+
+  --selection:       rgba(255, 107, 53, 0.22);
+  --shadow:          none;
+
+  --radius-sharp:    0px;
+  --radius:          0px;
+  --radius-card:     0px;
+  --rule-width:      1.5px;
+
+  color-scheme: dark;
+}
+
+/* ==========================================================
+ * Atmosphere — 테마별 미세 텍스처
+ *  - Paper: SVG fractal noise grain (종이 표면 미감)
+ *  - Mono : vertical scanlines (CRT 모니터 미감)
+ * ========================================================== */
+[data-theme='paper'] {
+  --atmosphere-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --atmosphere-size: 280px 280px;
+  --atmosphere-blend: multiply;
+  --atmosphere-opacity: 0.04;
+}
+
+[data-theme='mono'] {
+  --atmosphere-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(255, 107, 53, 0.045) 2.5px,
+    rgba(255, 107, 53, 0) 3px
+  );
+  --atmosphere-size: 100% 3px;
+  --atmosphere-blend: screen;
+  --atmosphere-opacity: 1;
+}
+
+/* ==========================================================
+ * 기본 — html/body
+ * ========================================================== */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: var(--atmosphere-image);
+  background-size: var(--atmosphere-size);
+  background-blend-mode: var(--atmosphere-blend);
+  opacity: var(--atmosphere-opacity);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='mono'] body {
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, 'Pretendard Variable', Pretendard,
+    'Apple SD Gothic Neo', 'Malgun Gothic', monospace;
+}
+
+/* ==========================================================
+ * Display 폰트 — 한국어 헤딩 (Pretendard ExtraBold)
+ * Paper: 본문 패밀리(Pretendard)의 800 weight + tighter tracking
+ * Mono : mono 패밀리 + UPPERCASE 셸 라벨
+ * ========================================================== */
+.font-display {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  font-feature-settings: 'ss03' 1, 'ss04' 1;
+}
+
+[data-theme='mono'] .font-display {
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ==========================================================
+ * Page-load staggered reveal
+ * ========================================================== */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  animation: fade-up 320ms cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.reveal-1 { animation-delay: 0ms; }
+.reveal-2 { animation-delay: 80ms; }
+.reveal-3 { animation-delay: 160ms; }
+.reveal-4 { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none !important; }
+  body::before { animation: none !important; }
+}
+
+button { font: inherit; }
+
+::selection { background: var(--selection); }
+
+/* ==========================================================
+ * CodeMirror skin — 두 테마 모두
+ * ========================================================== */
+.cm-editor {
+  height: 100%;
+  background: transparent;
+  color: var(--fg);
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.cm-editor.cm-focused { outline: none; }
+
+.cm-gutters {
+  background: var(--bg-deep);
+  border-right: 1px solid var(--rule);
+  color: var(--fg-muted);
+}
+
+[data-theme='mono'] .cm-gutters {
+  border-right-width: 1.5px;
+}
+
+/* Active line — 옅은 회색(테마별) */
+.cm-activeLineGutter,
+.cm-activeLine {
+  background: rgba(0, 0, 0, 0.045);
+}
+
+[data-theme='mono'] .cm-activeLineGutter,
+[data-theme='mono'] .cm-activeLine {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Caret/cursor — native caret + cm-cursor element 둘 다 명시 */
+.cm-content {
+  caret-color: var(--accent);
+}
+
+.cm-editor .cm-cursor,
+.cm-editor .cm-cursor-primary,
+.cm-editor .cm-dropCursor {
+  border-left: 2px solid var(--accent) !important;
+}
+
+.cm-editor.cm-focused .cm-cursor,
+.cm-editor.cm-focused .cm-cursor-primary {
+  border-left: 2px solid var(--accent) !important;
+}
+
+[data-theme='mono'] .cm-editor .cm-cursor,
+[data-theme='mono'] .cm-editor .cm-cursor-primary {
+  animation: mono-cursor-blink 1s steps(2) infinite;
+}
+
+@keyframes mono-cursor-blink {
+  50% { opacity: 0; }
+}
+
+/* CodeMirror 6 selection — 자체 layer override */
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+.cm-editor > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--selection) !important;
+}
+
+.cm-content::selection,
+.cm-content *::selection {
+  background: var(--selection);
+}
+
+.tok-week { color: var(--tok-week); font-weight: 600; }
+.tok-next { color: var(--tok-week); font-weight: 600; opacity: 0.8; }
+.tok-author { color: var(--tok-week); font-weight: 500; opacity: 0.65; }
+.tok-day { color: var(--tok-day); font-weight: 700; }
+.tok-loc { color: var(--tok-loc); font-weight: 600; }
+.tok-client { color: var(--tok-client); font-weight: 600; }
+.tok-num { color: var(--tok-num); font-weight: 600; }
+.tok-dash { color: var(--tok-dash); }
+.tok-qaq { color: var(--tok-qaq); font-style: italic; }
+.tok-qaa { color: var(--tok-qaa); }
+.tok-note { color: var(--tok-note); font-style: italic; }
+.tok-holiday { color: var(--tok-holiday); font-weight: 600; }
+
+/* ==========================================================
+ * Preview — iframe 내부는 항상 흰 종이 (테마 무관)
+ * ========================================================== */
+.preview-frame {
+  background: white;
+  color: black;
+}
+
+/* ==========================================================
+ * Email 본문 contenteditable — placeholder + 본문 요소 스타일
+ * ========================================================== */
+.email-body-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--fg-faint);
+  pointer-events: none;
+}
+.email-body-editor ul,
+.email-body-editor ol {
+  margin: 0 0 6px;
+  padding-left: 22px;
+}
+.email-body-editor p {
+  margin: 0 0 6px;
+}
+.email-body-editor img {
+  max-width: 100%;
+  height: auto;
+}
+.email-body-editor a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.email-body-editor table {
+  border-collapse: collapse;
+  margin: 4px 0 8px;
+}
+.email-body-editor td,
+.email-body-editor th {
+  border: 1px solid var(--rule-strong);
+  padding: 4px 8px;
+}
+.email-body-editor th {
+  background: var(--bg-sunken);
+  font-weight: 600;
+}
+.email-body-editor pre {
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+  background: var(--bg-sunken);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  margin: 4px 0 8px;
+}
+.email-body-editor code {
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+  background: var(--bg-sunken);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* ==========================================================
+ * Scrollbar
+ * ========================================================== */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border-radius: 4px;
+}
+
+[data-theme='mono'] .scrollbar-thin::-webkit-scrollbar-thumb {
+  border-radius: 0;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ==========================================================
+ * 모션 — 사용자 reduced-motion 시 stamp 회전·blink 비활성
+ * ========================================================== */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='mono'] .cm-cursor { animation: none; }
+}
