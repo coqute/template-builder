@@ -48,4 +48,43 @@ describe('roundtrip', () => {
     expect(b.days.length).toBe(a.days.length);
     expect(b.days[1].blocks[0].items[0].channel).toBe('유선&메일');
   });
+
+  // P1-3: parser↔importer가 normalizeChannelValue를 공유 — 변주도 HTML 재임포트에서 소실되지 않는다
+  it('채널 공백 변주(유선 & 메일)는 HTML 재임포트 후에도 표준값으로 보존된다', () => {
+    const md = [
+      '@PREV 2026-05-11 ~ 2026-05-17',
+      '@CURRENT 2026-05-18 ~ 2026-05-24',
+      '',
+      '# 2026-05-11(월)',
+      '@LOC 한강',
+      '@CUS 한강 SRE',
+      '@SUM [ABZ+] (이영희/유선 & 메일) 채널 변주 문의',
+      '- 내용',
+      '',
+    ].join('\n');
+    const a = parse(md);
+    expect(a.days[0].blocks[0].items[0].channel).toBe('유선&메일'); // parser 수렴
+
+    const { report: imported, warnings } = importFromHtml(renderHtml(a));
+    expect(imported.days[0].blocks[0].items[0].channel).toBe('유선&메일'); // importer 공유 규칙
+    expect(warnings.filter((w) => w.includes('알 수 없는 채널'))).toHaveLength(0);
+  });
+
+  it('미등록 채널은 재임포트에서도 raw로 보존된다 (소실 금지) + 경고', () => {
+    const md = [
+      '@PREV 2026-05-11 ~ 2026-05-17',
+      '@CURRENT 2026-05-18 ~ 2026-05-24',
+      '',
+      '# 2026-05-11(월)',
+      '@SUM [ABZ+] (이영희/카톡) 비표준 채널 문의',
+      '- 내용',
+      '',
+    ].join('\n');
+    const a = parse(md);
+    expect(a.days[0].blocks[0].items[0].channel).toBe('카톡');
+
+    const { report: imported, warnings } = importFromHtml(renderHtml(a));
+    expect(imported.days[0].blocks[0].items[0].channel).toBe('카톡');
+    expect(warnings.some((w) => w.includes('알 수 없는 채널'))).toBe(true);
+  });
 });

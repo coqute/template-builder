@@ -12,7 +12,7 @@ import type {
   Weekday,
   WeekReport,
 } from './types';
-import { getWeekday, isKnownChannel, NOTE_PREFIX, WEEKDAYS } from './types';
+import { getWeekday, normalizeChannelValue, NOTE_PREFIX, WEEKDAYS } from './types';
 
 export class ParseError extends Error {
   readonly line: number;
@@ -486,28 +486,27 @@ function parseClientHeader(text: string, lineNo: number, diag: DiagFn): ClientIt
   return { client: '', workType: text, content: [] };
 }
 
-/** 채널 정규화 — `유선 & 메일` 같은 공백 변주는 자동 수렴, 미등록 값은 raw 보존 + warning */
+/** 채널 정규화 진단 래퍼 — 규칙 자체는 normalizeChannelValue(types.ts, importer와 공유) */
 function normalizeChannel(channelRaw: string, lineNo: number, diag: DiagFn): string {
-  if (isKnownChannel(channelRaw)) return channelRaw;
-  const compact = channelRaw.replace(/\s*&\s*/g, '&').trim();
-  if (isKnownChannel(compact)) {
+  const r = normalizeChannelValue(channelRaw);
+  if (r.normalized) {
     diag(
       lineNo,
       'info',
-      `채널 "${channelRaw}"를 "${compact}"로 정규화했습니다.`,
+      `채널 "${channelRaw}"를 "${r.value}"로 정규화했습니다.`,
       undefined,
       'channel-normalized',
     );
-    return compact;
+  } else if (!r.known) {
+    diag(
+      lineNo,
+      'warning',
+      `채널 "${channelRaw}"는 표준 값(메일/유선/유선&메일)이 아닙니다. 입력값 그대로 사용합니다.`,
+      undefined,
+      'unknown-channel',
+    );
   }
-  diag(
-    lineNo,
-    'warning',
-    `채널 "${channelRaw}"는 표준 값(메일/유선/유선&메일)이 아닙니다. 입력값 그대로 사용합니다.`,
-    undefined,
-    'unknown-channel',
-  );
-  return channelRaw;
+  return r.value;
 }
 
 /** `2026.5.1` / `2026/05/01` → `2026-05-01` ISO 정규화 */

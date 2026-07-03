@@ -120,6 +120,23 @@ export function isKnownChannel(s: string): s is Channel {
   return (KNOWN_CHANNELS as readonly string[]).includes(s);
 }
 
+/** 채널 정규화 결과 — 진단 없는 코어 규칙. parser(진단 래퍼)와 importer가 공유 */
+export interface ChannelNormalization {
+  /** 최종 채널 값 — 표준값으로 수렴됐거나, 미등록이면 raw 그대로 */
+  value: string;
+  /** 최종 값이 표준 채널(메일/유선/유선&메일)인가 */
+  known: boolean;
+  /** 공백 변주(`유선 & 메일`) 수렴이 일어났는가 */
+  normalized: boolean;
+}
+
+export function normalizeChannelValue(raw: string): ChannelNormalization {
+  if (isKnownChannel(raw)) return { value: raw, known: true, normalized: false };
+  const compact = raw.replace(/\s*&\s*/g, '&').trim();
+  if (isKnownChannel(compact)) return { value: compact, known: true, normalized: true };
+  return { value: raw, known: false, normalized: false };
+}
+
 /**
  * `>` 보조 설명(노트) 라인 — details/items/answers 배열 안에 `'> '` 접두 문자열로 in-band 저장.
  * 구조 변경 없이 기존 string[] 배열과 호환되며, 렌더/직렬화 시 이 마커로 구분한다.

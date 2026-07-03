@@ -1,5 +1,4 @@
 import type {
-  Channel,
   ClientItem,
   ContentBlock,
   DateRange,
@@ -7,7 +6,7 @@ import type {
   LocationBlock,
   WeekReport,
 } from './types';
-import { getWeekday } from './types';
+import { getWeekday, normalizeChannelValue } from './types';
 
 export interface ImportInput {
   html?: string;
@@ -22,8 +21,6 @@ export interface ImportResult {
 const RE_HEADER_DATE = /□\s*Date\s*:\s*(\d{4})\.(\d{2})\.(\d{2})\s*~\s*(\d{4})\.(\d{2})\.(\d{2})/;
 const RE_DAY_LABEL = /(\d{4})-(\d{2})-(\d{2})\s*\(([월화수목금토일])\)/;
 const RE_DAY_DOT = /(\d{4})\.(\d{2})\.(\d{2})\s*\(([월화수목금토일])\)/;
-
-const VALID_CHANNELS = new Set<Channel>(['메일', '유선', '유선&메일']);
 
 export function importFromInput(input: ImportInput): ImportResult {
   if (input.html && input.html.trim().length > 0) {
@@ -227,11 +224,10 @@ function parseClientHead(line: string, warnings: string[]): ClientItem {
   const channelMatch = line.match(/^\[([^\]]+)\]\s*\(([^)/]+)\/([^)]+)\)\s*(.*)$/);
   if (channelMatch) {
     const [, client, contact, channelRaw, workType] = channelMatch;
-    if (!VALID_CHANNELS.has(channelRaw as Channel)) {
-      warnings.push(`알 수 없는 채널: ${channelRaw}`);
-      return { client, contact, workType, content: [] };
-    }
-    return { client, contact, channel: channelRaw as Channel, workType, content: [] };
+    // parser와 동일 의미론(normalizeChannelValue 공유): 공백 변주 수렴, 미등록도 raw 보존 (채널 소실 방지)
+    const ch = normalizeChannelValue(channelRaw.trim());
+    if (!ch.known) warnings.push(`알 수 없는 채널: ${channelRaw}`);
+    return { client, contact, channel: ch.value, workType, content: [] };
   }
   const namedMatch = line.match(/^\[([^\]]+)\]\s*\(([^)/]+)\)\s*(.*)$/);
   if (namedMatch) {
