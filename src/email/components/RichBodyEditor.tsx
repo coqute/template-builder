@@ -64,10 +64,17 @@ export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOver
         return;
       }
     }
-    // 2) HTML → sanitize 후 삽입
+    // 2) HTML → sanitize 후 삽입. 이미지가 조용히 제거되면 알림 (붙여넣기 성공으로 오인 방지)
     const html = dt.getData('text/html');
     if (html) {
-      document.execCommand('insertHTML', false, sanitizeBodyHtml(html));
+      let dropped = false;
+      const clean = sanitizeBodyHtml(html, (reason) => {
+        if (reason === 'image-oversize' && !dropped) {
+          dropped = true;
+          onImageOversize?.();
+        }
+      });
+      document.execCommand('insertHTML', false, clean);
       emit();
       return;
     }

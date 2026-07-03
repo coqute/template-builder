@@ -52,14 +52,20 @@ function isSafeHref(v: string): boolean {
 // HTML 붙여넣기 경로를 포함한 모든 삽입에서 거대 이미지가 localStorage quota를 터뜨리지 않도록 가드.
 const MAX_DATA_IMAGE_CHARS = 2_200_000;
 
-function isSafeImgSrc(v: string): boolean {
+/** 새니타이즈 중 콘텐츠가 조용히 제거될 때 알림 콜백의 사유 */
+export type SanitizeDropReason = 'image-oversize' | 'image-blocked';
+export type SanitizeDropHandler = (reason: SanitizeDropReason) => void;
+
+type ImgSrcVerdict = 'ok' | 'oversize' | 'blocked';
+
+function classifyImgSrc(v: string): ImgSrcVerdict {
   const t = v.trim().toLowerCase();
-  if (t.startsWith('http://') || t.startsWith('https://')) return true;
+  if (t.startsWith('http://') || t.startsWith('https://')) return 'ok';
   // 래스터 이미지 data URI만 허용 — svg+xml은 스크립트 실행 가능 문서이므로 차단
   if (/^data:image\/(png|jpe?g|gif|webp|bmp)(;|,)/.test(t)) {
-    return v.length <= MAX_DATA_IMAGE_CHARS;
+    return v.length <= MAX_DATA_IMAGE_CHARS ? 'ok' : 'oversize';
   }
-  return false;
+  return 'blocked';
 }
 
 /** CSS 이스케이프 디코드 (\75 → 'u', \28 → '(' 등) — 위험 함수 우회 탐지용 */
@@ -88,13 +94,13 @@ function sanitizeStyle(style: string): string {
   return out.join('; ');
 }
 
-function cleanElement(el: Element, doc: Document): Node | null {
+function cleanElement(el: Element, doc: Document, onDrop?: SanitizeDropHandler): Node | null {
   const tag = el.tagName.toUpperCase();
   if (!ALLOWED_TAGS.has(tag)) {
     // 비허용 태그 → 자식만 살려 fragment로 펼침 (텍스트/허용 자식 보존)
     const frag = doc.createDocumentFragment();
     for (const child of Array.from(el.childNodes)) {
-      const cleaned = cleanNode(child, doc);
+      const cleaned = cleanNode(child, doc, onDrop);
       if (cleaned) frag.appendChild(cleaned);
     }
     return frag;
@@ -108,7 +114,13 @@ function cleanElement(el: Element, doc: Document): Node | null {
       if (name.startsWith('on')) continue;
       if (!allowed.has(name)) continue;
       if (name === 'href' && !isSafeHref(attr.value)) continue;
-      if (name === 'src' && !isSafeImgSrc(attr.value)) continue;
+      if (name === 'src') {
+        const verdict = classifyImgSrc(attr.value);
+        if (verdict !== 'ok') {
+          onDrop?.(verdict === 'oversize' ? 'image-oversize' : 'image-blocked');
+          continue;
+        }
+      }
       if (DIGIT_ATTRS.has(name)) {
         const v = attr.value.trim();
         if (!RE_DIGITS.test(v)) continue;
@@ -126,15 +138,15 @@ function cleanElement(el: Element, doc: Document): Node | null {
   if (tag === 'A') fresh.setAttribute('target', '_blank');
 
   for (const child of Array.from(el.childNodes)) {
-    const cleaned = cleanNode(child, doc);
+    const cleaned = cleanNode(child, doc, onDrop);
     if (cleaned) fresh.appendChild(cleaned);
   }
   return fresh;
 }
 
-function cleanNode(node: Node, doc: Document): Node | null {
+function cleanNode(node: Node, doc: Document, onDrop?: SanitizeDropHandler): Node | null {
   if (node.nodeType === 3) return doc.createTextNode(node.textContent ?? ''); // text
-  if (node.nodeType === 1) return cleanElement(node as Element, doc);
+  if (node.nodeType === 1) return cleanElement(node as Element, doc, onDrop);
   return null; // comment 등 제거
 }
 
@@ -146,7 +158,7 @@ function preStrip(html: string): string {
     .replace(/<\/?(?:script|style|iframe|object|embed|link|meta)\b[^>]*>/gi, '');
 }
 
-export function sanitizeBodyHtml(dirty: string): string {
+export function sanitizeBodyHtml(dirty: string, onDrop?: SanitizeDropHandler): string {
   if (!dirty) return '';
   const pre = preStrip(dirty);
   if (typeof DOMParser === 'undefined') {
@@ -157,7 +169,7 @@ export function sanitizeBodyHtml(dirty: string): string {
   const body = doc.body;
   const out = doc.createElement('div');
   for (const child of Array.from(body.childNodes)) {
-    const cleaned = cleanNode(child, doc);
+    const cleaned = cleanNode(child, doc, onDrop);
     if (cleaned) out.appendChild(cleaned);
   }
   return out.innerHTML;

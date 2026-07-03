@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { sanitizeBodyHtml, htmlToPlain } from '../src/email/sanitize';
 
 describe('sanitizeBodyHtml', () => {
@@ -95,6 +95,86 @@ describe('sanitizeBodyHtml', () => {
     const out = sanitizeBodyHtml('<pre>systemctl status collector</pre><code>grep -i x</code>');
     expect(out).toContain('<pre>systemctl status collector</pre>');
     expect(out).toContain('<code>grep -i x</code>');
+  });
+});
+
+// P1-2 공격 벡터 회귀 게이트 — 이후 모든 sanitize 변경은 이 블록 green이 전제
+describe('sanitizeBodyHtml 공격 벡터', () => {
+  it('img onerror/onload 핸들러 제거', () => {
+    const out = sanitizeBodyHtml('<img src="https://a/x.png" onerror="alert(1)" onload="evil()"/>');
+    expect(out).not.toContain('onerror');
+    expect(out).not.toContain('onload');
+    expect(out).toContain('https://a/x.png');
+  });
+
+  it('blob: 이미지 src 차단', () => {
+    const out = sanitizeBodyHtml('<img src="blob:https://mail.google.com/uuid"/>');
+    expect(out).not.toContain('blob:');
+  });
+
+  it('iframe/object/embed 제거 (preStrip)', () => {
+    const out = sanitizeBodyHtml('<iframe src="https://evil"></iframe><object data="x"></object><embed src="y"/>본문');
+    expect(out).not.toMatch(/iframe|object|embed/i);
+    expect(out).toContain('본문');
+  });
+
+  it('meta/link 태그 제거', () => {
+    const out = sanitizeBodyHtml('<meta http-equiv="refresh" content="0;url=https://evil"/><link rel="stylesheet" href="x"/>텍스트');
+    expect(out).not.toMatch(/meta|http-equiv|stylesheet/i);
+    expect(out).toContain('텍스트');
+  });
+
+  it('대소문자 변조 javascript: href 차단', () => {
+    const out = sanitizeBodyHtml('<a href="JaVaScRiPt:alert(1)">x</a>');
+    expect(out.toLowerCase()).not.toContain('javascript:');
+  });
+
+  it('style expression()/-moz-binding/@import 차단', () => {
+    const a = sanitizeBodyHtml('<span style="width:expression(alert(1))">t</span>');
+    expect(a).not.toContain('expression');
+    const b = sanitizeBodyHtml('<span style="color:red;-moz-binding:url(evil)">t</span>');
+    expect(b).not.toContain('binding');
+    const c = sanitizeBodyHtml('<div style="background:@import url(evil)">t</div>');
+    expect(c).not.toContain('@import');
+  });
+
+  it('form/input/button은 펼쳐지고 텍스트만 보존', () => {
+    const out = sanitizeBodyHtml('<form action="https://evil"><input value="x"/><button>클릭</button>내용</form>');
+    expect(out).not.toMatch(/<form|<input|<button|action=/i);
+    expect(out).toContain('클릭');
+    expect(out).toContain('내용');
+  });
+
+  it('img srcset 등 비허용 속성 제거', () => {
+    const out = sanitizeBodyHtml('<img src="https://a/x.png" srcset="https://evil 2x" referrerpolicy="unsafe-url"/>');
+    expect(out).not.toContain('srcset');
+    expect(out).not.toContain('referrerpolicy');
+  });
+
+  it('HTML 주석 제거', () => {
+    const out = sanitizeBodyHtml('<p>앞<!-- secret -->뒤</p>');
+    expect(out).not.toContain('secret');
+    expect(out).toContain('앞');
+    expect(out).toContain('뒤');
+  });
+
+  it('onDrop: 초과 크기 이미지 → image-oversize 콜백', () => {
+    const onDrop = vi.fn();
+    const huge = 'A'.repeat(2_300_000);
+    sanitizeBodyHtml(`<img src="data:image/png;base64,${huge}"/>`, onDrop);
+    expect(onDrop).toHaveBeenCalledWith('image-oversize');
+  });
+
+  it('onDrop: svg/blob 등 차단 스킴 → image-blocked 콜백', () => {
+    const onDrop = vi.fn();
+    sanitizeBodyHtml('<img src="data:image/svg+xml,<svg/>"/>', onDrop);
+    expect(onDrop).toHaveBeenCalledWith('image-blocked');
+  });
+
+  it('onDrop: 정상 이미지에는 콜백 미호출', () => {
+    const onDrop = vi.fn();
+    sanitizeBodyHtml('<img src="data:image/png;base64,AAAA"/><img src="https://a/x.png"/>', onDrop);
+    expect(onDrop).not.toHaveBeenCalled();
   });
 });
 
