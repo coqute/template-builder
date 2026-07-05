@@ -29,6 +29,14 @@ const api = {
   setDirty: (dirty: boolean) => {
     ipcRenderer.send('app:set-dirty', dirty);
   },
+  loadTemplates: (teamDir?: string) =>
+    ipcRenderer.invoke('templates:load', teamDir) as Promise<{
+      team: Array<{ name: string; raw: unknown }>;
+      personal: Array<{ name: string; raw: unknown }>;
+      errors: string[];
+    }>,
+  openTemplatesDir: () =>
+    ipcRenderer.invoke('templates:open-dir') as Promise<{ ok: boolean; dir: string }>,
   openExternal: (url: string) =>
     ipcRenderer.invoke('shell:open-external', url) as Promise<{ ok: boolean }>,
   createGmailDraft: (payload: DraftPayload) =>

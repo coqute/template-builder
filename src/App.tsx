@@ -24,6 +24,7 @@ import { EmailStatusBar } from './email/components/EmailStatusBar';
 import { useEmailDoc } from './email/useEmailDoc';
 import { useEmailState } from './email/useEmailState';
 import { useEmailExport } from './email/useEmailExport';
+import { useTemplateOverlays } from './email/useTemplateOverlays';
 import { readWithFallback } from './lib/storage';
 import {
   fileBaseName as baseName,
@@ -113,9 +114,10 @@ export function App() {
   const state = useReportState(debouncedMd);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
 
-  // 이메일 문서 상태 (App이 소유 → Toolbar + EmailWorkspace 공유). profile은 템플릿 재해석 의존성
+  // 이메일 문서 상태 (App이 소유 → Toolbar + EmailWorkspace 공유). profile·오버레이는 템플릿 재해석 의존성
+  const overlays = useTemplateOverlays();
   const emailDoc = useEmailDoc();
-  const emailState = useEmailState(emailDoc.doc, profile);
+  const emailState = useEmailState(emailDoc.doc, profile, overlays.version);
   const emailExport = useEmailExport(emailDoc.doc, emailState.rendered, emailDoc.loadDoc);
 
   const jumpToLine = useCallback((line: number) => {
@@ -502,6 +504,7 @@ export function App() {
         onClose={() => setHelpOpen(false)}
         profile={profile}
         onProfileChange={setProfile}
+        onReloadTemplates={overlays.reload}
         theme={theme}
         docType={docType}
       />

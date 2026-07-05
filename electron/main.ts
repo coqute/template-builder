@@ -201,6 +201,59 @@ ipcMain.handle(
   },
 );
 
+// 템플릿 오버레이 로드 — 개인(userData/templates) + 팀(설정된 폴더의 templates/) *.json.
+// JSON 파싱까지만 main에서, 스키마 검증은 renderer(validateTemplateData)가 수행.
+const MAX_TEMPLATE_BYTES = 200 * 1024;
+
+interface RawTemplateFile {
+  name: string;
+  raw: unknown;
+}
+
+async function readTemplateDir(dir: string): Promise<{ items: RawTemplateFile[]; errors: string[] }> {
+  const items: RawTemplateFile[] = [];
+  const errors: string[] = [];
+  let names: string[] = [];
+  try {
+    names = await fs.readdir(dir);
+  } catch {
+    return { items, errors }; // 폴더 없음 — 무해
+  }
+  for (const name of names) {
+    if (!name.toLowerCase().endsWith('.json')) continue;
+    const p = path.join(dir, name);
+    try {
+      const st = await fs.stat(p);
+      if (!st.isFile()) continue;
+      if (st.size > MAX_TEMPLATE_BYTES) {
+        errors.push(`${name}: 200KB 크기 상한 초과`);
+        continue;
+      }
+      items.push({ name, raw: JSON.parse(await fs.readFile(p, 'utf8')) });
+    } catch (err) {
+      errors.push(`${name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return { items, errors };
+}
+
+ipcMain.handle('templates:load', async (_evt, teamDir?: string) => {
+  const personal = await readTemplateDir(path.join(app.getPath('userData'), 'templates'));
+  const team =
+    typeof teamDir === 'string' && teamDir.trim() && path.isAbsolute(teamDir)
+      ? await readTemplateDir(path.join(teamDir, 'templates'))
+      : { items: [], errors: [] };
+  return { team: team.items, personal: personal.items, errors: [...team.errors, ...personal.errors] };
+});
+
+// 개인 템플릿 폴더 열기 (없으면 생성) — 사용자가 JSON을 직접 넣는 진입점
+ipcMain.handle('templates:open-dir', async () => {
+  const dir = path.join(app.getPath('userData'), 'templates');
+  await fs.mkdir(dir, { recursive: true });
+  await shell.openPath(dir);
+  return { ok: true, dir };
+});
+
 // 최근 파일 열기 — 다이얼로그 없이 경로 직접 읽기. .md만 허용 (임의 파일 읽기 차단)
 ipcMain.handle('file:read-path', async (_evt, filePath: string) => {
   try {
@@ -215,13 +268,23 @@ ipcMain.handle('file:read-path', async (_evt, filePath: string) => {
 });
 
 // 이미 경로가 확정된 파일에 다이얼로그 없이 덮어쓰기 (Ctrl+S 저장)
+// 확장자 allowlist + 절대경로 검증 — preload 노출 API의 방어선 (file:read-path 가드와 대칭)
+const SAVE_EXTS = new Set(['.md', '.html', '.json']);
+
 ipcMain.handle(
   'file:save-to-path',
   async (_evt, payload: { filePath: string; content: string }) => {
     try {
-      if (!payload?.filePath) return { ok: false, error: '저장 경로가 없습니다.' };
-      await fs.writeFile(payload.filePath, payload.content, 'utf8');
-      return { ok: true, filePath: payload.filePath };
+      const filePath = payload?.filePath;
+      if (
+        typeof filePath !== 'string' ||
+        !path.isAbsolute(filePath) ||
+        !SAVE_EXTS.has(path.extname(filePath).toLowerCase())
+      ) {
+        return { ok: false, error: '허용되지 않는 저장 경로입니다 (.md/.html/.json 절대경로만).' };
+      }
+      await fs.writeFile(filePath, payload.content, 'utf8');
+      return { ok: true, filePath };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
     }

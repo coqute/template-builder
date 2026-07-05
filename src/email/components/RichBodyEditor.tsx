@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Bold, Code, Image as ImageIcon, Italic, Link2, List, ListOrdered, Table, Underline } from 'lucide-react';
 import { sanitizeBodyHtml } from '../sanitize';
+import { escapeHtml } from '../../lib/html';
 
 interface Props {
   /** 초기 HTML (비제어 — mount/리셋 시에만 주입). 외부 리셋은 부모가 key remount */
@@ -8,11 +9,13 @@ interface Props {
   onChange: (html: string) => void;
   placeholder?: string;
   onImageOversize?: () => void;
+  /** 자주 쓰는 본문 문구 (템플릿 bodyPresets) — 드롭다운으로 커서 위치에 삽입 */
+  presets?: string[];
 }
 
 const MAX_IMAGE_BYTES = 1_500_000; // 1.5MB — base64 가드
 
-export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOversize }: Props) {
+export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOversize, presets }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -137,6 +140,29 @@ export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOver
           <ImageIcon size={13} />
           <input type="file" accept="image/*" className="hidden" onChange={onImagePick} />
         </label>
+        {presets && presets.length > 0 && (
+          <>
+            <span className="mx-1 h-4 w-px bg-rule" />
+            <select
+              value=""
+              title="자주 쓰는 문구 삽입"
+              onChange={(e) => {
+                const text = e.target.value;
+                if (!text) return;
+                insertHtmlAtCursor(`${escapeHtml(text).replace(/\n/g, '<br/>')}`);
+                e.target.value = '';
+              }}
+              className="max-w-[160px] rounded-sharp border border-rule bg-bg-elevated px-1.5 py-0.5 text-[11px] text-fg-soft outline-none focus:border-accent"
+            >
+              <option value="">문구 삽입…</option>
+              {presets.map((p, i) => (
+                <option key={i} value={p}>
+                  {p.length > 30 ? `${p.slice(0, 30)}…` : p}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
       <div
         ref={ref}

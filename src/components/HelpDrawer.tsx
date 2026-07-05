@@ -4,12 +4,15 @@ import type { Theme } from '../hooks/useTheme';
 import type { DocType } from '../hooks/useDocType';
 import { getTemplates } from '../email/templates';
 import { buildGreeting, type UserProfile } from '../email/profile';
+import { loadTeamFolder, saveTeamFolder } from '../email/useTemplateOverlays';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   profile: UserProfile;
   onProfileChange: (next: UserProfile) => void;
+  /** 템플릿 오버레이 다시 불러오기 (팀 폴더 변경/JSON 추가 후) */
+  onReloadTemplates?: () => void;
   theme: Theme;
   docType: DocType;
 }
@@ -89,8 +92,9 @@ const ROWS: Array<{ token: string; tone: string; description: string; example: s
   },
 ];
 
-export function HelpDrawer({ open, onClose, profile, onProfileChange, theme, docType }: Props) {
+export function HelpDrawer({ open, onClose, profile, onProfileChange, onReloadTemplates, theme, docType }: Props) {
   const [draft, setDraft] = useState<UserProfile>(profile);
+  const [teamFolder, setTeamFolder] = useState<string>(loadTeamFolder);
 
   useEffect(() => {
     setDraft(profile);
@@ -209,6 +213,46 @@ export function HelpDrawer({ open, onClose, profile, onProfileChange, theme, doc
                 <p className="mt-2 text-[11px]" style={{ color: 'var(--stamp-amber)' }}>
                   ⚠ 이미지는 붙여넣기 시 누락될 수 있어 Gmail에서 직접 첨부를 권장합니다. 텍스트·표는 안정적으로 유지됩니다.
                 </p>
+              </section>
+
+              <section className="mt-3 rounded-card border border-rule bg-bg p-3">
+                <h3 className="mb-2 text-xs font-semibold text-fg">
+                  {isMono ? '$ user-templates' : '사용자 템플릿'}
+                </h3>
+                <p className="mb-2 text-[11px] leading-relaxed text-fg-muted">
+                  개인 폴더 또는 팀 공유폴더의 <code className="font-mono">templates/*.json</code>이
+                  드롭다운에 추가됩니다. 팀 템플릿은 내장 양식을 덮어쓸 수 있습니다.
+                </p>
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void window.reportApi?.openTemplatesDir?.()}
+                    className="rounded-sharp border border-rule px-2 py-1 text-[11px] text-fg-soft hover:bg-bg-deep"
+                  >
+                    개인 템플릿 폴더 열기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReloadTemplates?.()}
+                    className="rounded-sharp border border-rule px-2 py-1 text-[11px] text-fg-soft hover:bg-bg-deep"
+                  >
+                    다시 불러오기
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-14 shrink-0 text-[11px] text-fg-soft">팀 폴더</span>
+                  <input
+                    type="text"
+                    value={teamFolder}
+                    placeholder="\\server\share\TemplateBuilder"
+                    onChange={(e) => setTeamFolder(e.target.value)}
+                    onBlur={() => {
+                      saveTeamFolder(teamFolder);
+                      onReloadTemplates?.();
+                    }}
+                    className="min-w-0 flex-1 rounded-sharp border border-rule bg-bg-deep px-2 py-1 text-xs text-fg outline-none focus:border-accent"
+                  />
+                </div>
               </section>
 
               <section className="mt-3 rounded-card border border-rule bg-bg p-3">

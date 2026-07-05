@@ -138,6 +138,7 @@ export function EmailWorkspace({
                     initialHtml={doc.bodyHtml}
                     onChange={onBody}
                     placeholder={template.bodyPlaceholder}
+                    presets={template.bodyPresets}
                     onImageOversize={() =>
                       toast.warning('이미지가 1.5MB를 초과합니다. Gmail에서 직접 첨부를 권장합니다.')
                     }

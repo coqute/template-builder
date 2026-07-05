@@ -12,7 +12,11 @@ export interface EmailState {
   error?: string;
 }
 
-export function useEmailState(doc: EmailDocState, profile?: UserProfile): EmailState {
+export function useEmailState(
+  doc: EmailDocState,
+  profile?: UserProfile,
+  templatesVersion = 0, // 오버레이 로드 완료 신호 — 재해석 트리거
+): EmailState {
   return useMemo(() => {
     const template = getTemplate(doc.templateId, profile);
     if (!template) return { error: '알 수 없는 템플릿입니다.' };
@@ -23,5 +27,5 @@ export function useEmailState(doc: EmailDocState, profile?: UserProfile): EmailS
     } catch (err) {
       return { template, error: err instanceof Error ? err.message : '렌더 오류' };
     }
-  }, [doc, profile]);
+  }, [doc, profile, templatesVersion]);
 }
