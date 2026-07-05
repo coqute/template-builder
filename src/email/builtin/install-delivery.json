@@ -1,0 +1,18 @@
+{
+  "id": "install-delivery",
+  "name": "설치파일·에이전트 전달",
+  "subjectPattern": "[예시IT] {product} 설치파일 전달 ({customer})",
+  "note": "수집서버/MariaDB/서버모니터링 에이전트 등 설치파일 다운로드 링크를 전달. 파일명·버전·링크는 본문에 작성.",
+  "sections": [
+    {
+      "title": "",
+      "fields": [
+        { "key": "customer", "label": "고객사", "type": "text", "placeholder": "ABZ+", "subjectOnly": true },
+        { "key": "product", "label": "전달 대상", "type": "text", "placeholder": "제조사 수집서버", "required": true, "subjectOnly": true }
+      ]
+    }
+  ],
+  "hasBody": true,
+  "bodyLabel": "전달 내용",
+  "bodyPlaceholder": "예: 수집서버 설치파일 다운 링크 : https://...\nMariaDB(v11.4.10) : https://..."
+}

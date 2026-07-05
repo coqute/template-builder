@@ -1,0 +1,23 @@
+{
+  "id": "license-delivery",
+  "name": "라이선스 키 전달",
+  "subjectPattern": "[예시IT] 제조사 수집서버 라이선스 키 전달 ({customer})",
+  "note": "발급된 제조사 수집서버 라이선스 키를 고객에게 전달. 본문에 추가 안내가 필요하면 작성.",
+  "sections": [
+    {
+      "title": "",
+      "fields": [
+        { "key": "licenseType", "label": "유형", "type": "text", "default": "POC용" },
+        { "key": "customer", "label": "최종고객", "type": "text", "placeholder": "에이비제트플러스", "required": true },
+        { "key": "project", "label": "프로젝트명", "type": "text", "placeholder": "IDC서비스운영팀(PoC)" },
+        { "key": "startDate", "label": "시작일", "type": "date" },
+        { "key": "endDate", "label": "종료일", "type": "date" },
+        { "key": "serverIp", "label": "수집서버 IP", "type": "text", "wide": true },
+        { "key": "licenseKey", "label": "라이선스", "type": "textarea", "required": true, "placeholder": "라이선스 키 문자열", "wide": true }
+      ]
+    }
+  ],
+  "hasBody": true,
+  "bodyLabel": "안내사항",
+  "bodyPlaceholder": "예: 수집서버 설치에 필요하오니 복사가 가능하도록 부탁드립니다."
+}

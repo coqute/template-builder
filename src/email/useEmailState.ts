@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { renderEmail } from './render';
 import { validateEmail, type EmailValidation } from './validate';
 import { getTemplate } from './templates';
+import type { UserProfile } from './profile';
 import type { EmailDocState, EmailRenderResult, EmailTemplate } from './types';
 
 export interface EmailState {
@@ -11,9 +12,9 @@ export interface EmailState {
   error?: string;
 }
 
-export function useEmailState(doc: EmailDocState): EmailState {
+export function useEmailState(doc: EmailDocState, profile?: UserProfile): EmailState {
   return useMemo(() => {
-    const template = getTemplate(doc.templateId);
+    const template = getTemplate(doc.templateId, profile);
     if (!template) return { error: '알 수 없는 템플릿입니다.' };
     try {
       const rendered = renderEmail(template, doc.fieldValues, doc.bodyHtml, doc.subject);
@@ -22,5 +23,5 @@ export function useEmailState(doc: EmailDocState): EmailState {
     } catch (err) {
       return { template, error: err instanceof Error ? err.message : '렌더 오류' };
     }
-  }, [doc]);
+  }, [doc, profile]);
 }

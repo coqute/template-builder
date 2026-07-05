@@ -39,7 +39,15 @@ export interface EmailTemplate {
   bodyPlaceholder?: string;
   /** 설명/안내 (드롭다운 선택 시 표시) */
   note?: string;
+  /** 자주 쓰는 본문 문구 — 본문 에디터 드롭다운으로 삽입 (팀 표준 문구 전파용) */
+  bodyPresets?: string[];
 }
+
+/** 템플릿 JSON 원본 — greeting/closing 생략 시 로더가 프로필 파생값 주입 */
+export type EmailTemplateData = Omit<EmailTemplate, 'greeting' | 'closing'> & {
+  greeting?: string;
+  closing?: string;
+};
 
 export interface EmailDocState {
   templateId: string;

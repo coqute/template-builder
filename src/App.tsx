@@ -14,7 +14,8 @@ import { HelpDrawer } from './components/HelpDrawer';
 import { useDebounced } from './hooks/useDebounced';
 import { useReportState } from './hooks/useReportState';
 import { copyHtmlToClipboard, readClipboard } from './hooks/useClipboard';
-import { useAuthor } from './hooks/useAuthor';
+import { useUserProfile } from './hooks/useUserProfile';
+import { OnboardingModal } from './components/OnboardingModal';
 import { buildWeeklyTemplate } from './hooks/useTemplate';
 import { useTheme } from './hooks/useTheme';
 import { useDocType } from './hooks/useDocType';
@@ -30,6 +31,7 @@ import {
   pushRecentFile,
   removeRecentFile,
 } from './lib/recentFiles';
+import { loadUserProfile } from './email/profile';
 
 const STORAGE_KEY_MD = 'tb:md-draft:v1';
 const STORAGE_KEY_ZOOM = 'tb:preview-zoom';
@@ -41,9 +43,10 @@ const LEGACY_KEY_SPLIT = 'weekly-report-builder:split';
 
 const DEFAULT_SPLIT: [number, number] = [42, 58];
 
-const FALLBACK_MD = `@PREV 2026-04-27 ~ 2026-05-03
+function buildFallbackMd(authorName: string): string {
+  return `@PREV 2026-04-27 ~ 2026-05-03
 @CURRENT 2026-05-04 ~ 2026-05-08
-@AUTHOR 박민수
+@AUTHOR ${authorName || '작성자'}
 
 # 2026-04-27(월)
 @LOC 남산 데이터센터
@@ -57,6 +60,7 @@ const FALLBACK_MD = `@PREV 2026-04-27 ~ 2026-05-03
 # 2026-05-01(금)
 @HOLIDAY 근로자의 날
 `;
+}
 
 function loadZoom(): ZoomMode {
   if (typeof localStorage === 'undefined') return 'fit';
@@ -85,8 +89,8 @@ function loadSplit(): [number, number] {
 
 export function App() {
   const [md, setMd] = useState<string>(() => {
-    if (typeof localStorage === 'undefined') return FALLBACK_MD;
-    return readWithFallback(STORAGE_KEY_MD, LEGACY_KEY_MD) ?? FALLBACK_MD;
+    if (typeof localStorage === 'undefined') return buildFallbackMd('');
+    return readWithFallback(STORAGE_KEY_MD, LEGACY_KEY_MD) ?? buildFallbackMd(loadUserProfile().name);
   });
   const [helpOpen, setHelpOpen] = useState(false);
   const [zoom, setZoom] = useState<ZoomMode>(loadZoom);
@@ -100,7 +104,8 @@ export function App() {
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   // 최근 파일 MRU (최대 5) — 열기/저장 성공 시 갱신, 열기 실패 시 제거
   const [recentFiles, setRecentFiles] = useState<string[]>(loadRecentFiles);
-  const { author, setAuthor } = useAuthor();
+  const { profile, setProfile, needsOnboarding } = useUserProfile();
+  const author = profile.name;
   const { theme, setTheme } = useTheme();
   const { docType, setDocType } = useDocType();
 
@@ -108,9 +113,9 @@ export function App() {
   const state = useReportState(debouncedMd);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
 
-  // 이메일 문서 상태 (App이 소유 → Toolbar + EmailWorkspace 공유)
+  // 이메일 문서 상태 (App이 소유 → Toolbar + EmailWorkspace 공유). profile은 템플릿 재해석 의존성
   const emailDoc = useEmailDoc();
-  const emailState = useEmailState(emailDoc.doc);
+  const emailState = useEmailState(emailDoc.doc, profile);
   const emailExport = useEmailExport(emailDoc.doc, emailState.rendered, emailDoc.loadDoc);
 
   const jumpToLine = useCallback((line: number) => {
@@ -183,9 +188,9 @@ export function App() {
         return;
       }
     }
-    setMd(FALLBACK_MD);
+    setMd(buildFallbackMd(author));
     toast.success('내장 샘플을 불러왔습니다.');
-  }, [detachFile]);
+  }, [detachFile, author]);
 
   const loadTemplate = useCallback(() => {
     detachFile();
@@ -201,7 +206,7 @@ export function App() {
         toast.error('클립보드가 비어 있습니다. Gmail 본문을 먼저 복사하세요.');
         return;
       }
-      const { report, warnings } = importFromInput({ html, plain });
+      const { report, warnings } = importFromInput({ html, plain, defaultAuthor: author });
       const generated = serialize(report);
       detachFile();
       setMd(generated);
@@ -213,7 +218,7 @@ export function App() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'import 실패');
     }
-  }, [detachFile]);
+  }, [detachFile, author]);
 
   const openFile = useCallback(async () => {
     if (!window.reportApi?.openMd) {
@@ -495,11 +500,12 @@ export function App() {
       <HelpDrawer
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
-        author={author}
-        onAuthorChange={setAuthor}
+        profile={profile}
+        onProfileChange={setProfile}
         theme={theme}
         docType={docType}
       />
+      {needsOnboarding && <OnboardingModal onSubmit={setProfile} />}
       <Toaster
         theme={theme === 'mono' ? 'dark' : 'light'}
         position="bottom-right"

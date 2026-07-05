@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { renderEmailHtml, renderEmailPlain, decorateBodyHtml, renderEmail } from '../src/email/render';
 import { getTemplate } from '../src/email/templates';
+import type { UserProfile } from '../src/email/profile';
 
-const tech = getTemplate('tech-inquiry')!;
-const access = getTemplate('access-info')!;
-const tech = getTemplate('tech-answer')!;
+// 테스트 전용 프로필 — 인사말·기본값이 프로필에서 파생됨을 함께 검증
+const P: UserProfile = { name: '김테스트', email: 'tester@company.example', company: '예시아이티' };
+
+const tech = getTemplate('tech-inquiry', P)!;
+const access = getTemplate('access-info', P)!;
+const tech = getTemplate('tech-answer', P)!;
 
 describe('renderEmailHtml', () => {
-  it('인사말·맺음말 포함', () => {
+  it('인사말·맺음말은 프로필에서 파생', () => {
     const html = renderEmailHtml(tech, {}, '');
-    expect(html).toContain('예시아이티 박민수입니다');
+    expect(html).toContain('예시아이티 김테스트입니다');
     expect(html).toContain('감사합니다');
   });
 

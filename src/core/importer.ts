@@ -11,6 +11,8 @@ import { getWeekday, normalizeChannelValue } from './types';
 export interface ImportInput {
   html?: string;
   plain?: string;
+  /** 가져온 보고서의 작성자명 (HTML에는 없음) — 호출부가 프로필 이름 주입 */
+  defaultAuthor?: string;
 }
 
 export interface ImportResult {
@@ -24,15 +26,15 @@ const RE_DAY_DOT = /(\d{4})\.(\d{2})\.(\d{2})\s*\(([월화수목금토일])\)/;
 
 export function importFromInput(input: ImportInput): ImportResult {
   if (input.html && input.html.trim().length > 0) {
-    return importFromHtml(input.html);
+    return importFromHtml(input.html, input.defaultAuthor);
   }
   if (input.plain && input.plain.trim().length > 0) {
-    return importFromPlain(input.plain);
+    return importFromPlain(input.plain, input.defaultAuthor);
   }
   throw new Error('가져올 본문이 비어 있습니다 (HTML/plain 모두 없음).');
 }
 
-export function importFromHtml(html: string): ImportResult {
+export function importFromHtml(html: string, defaultAuthor = '작성자'): ImportResult {
   const warnings: string[] = [];
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const fullText = (doc.body?.textContent ?? '').replace(/ /g, ' ');
@@ -55,12 +57,12 @@ export function importFromHtml(html: string): ImportResult {
   const currentWeekRange = nextWeekFrom(prevWeekRange);
 
   return {
-    report: { prevWeekRange, currentWeekRange, authorName: '박민수', days },
+    report: { prevWeekRange, currentWeekRange, authorName: defaultAuthor, days },
     warnings,
   };
 }
 
-export function importFromPlain(text: string): ImportResult {
+export function importFromPlain(text: string, defaultAuthor = '작성자'): ImportResult {
   const warnings: string[] = [];
   const normalized = text.replace(/\r\n/g, '\n').replace(/ /g, ' ');
   const headerRange = extractDateHeader(normalized);
@@ -74,7 +76,7 @@ export function importFromPlain(text: string): ImportResult {
   const currentWeekRange = nextWeekFrom(prevWeekRange);
 
   return {
-    report: { prevWeekRange, currentWeekRange, authorName: '박민수', days },
+    report: { prevWeekRange, currentWeekRange, authorName: defaultAuthor, days },
     warnings,
   };
 }

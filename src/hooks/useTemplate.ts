@@ -48,7 +48,7 @@ export function buildWeeklyTemplate(options: BuildTemplateOptions = {}): Templat
   const currentStart = isoDate(currentMonday);
   const currentEnd = isoDate(currentFriday);
 
-  const author = (options.authorName ?? '박민수').trim() || '박민수';
+  const author = (options.authorName ?? '').trim() || '작성자';
 
   const lines: string[] = [
     `@PREV ${prevStart} ~ ${prevEnd}`,

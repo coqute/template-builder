@@ -70,7 +70,7 @@ export interface ParseOptions {
 export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutcome {
   const lines = md.replace(/\r\n/g, '\n').split('\n');
   const ctx: ParseContext = {
-    authorName: options.defaultAuthor ?? '박민수',
+    authorName: options.defaultAuthor ?? '작성자',
     days: [],
     diagnostics: [],
   };

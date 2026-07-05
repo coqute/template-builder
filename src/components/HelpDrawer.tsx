@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Theme } from '../hooks/useTheme';
 import type { DocType } from '../hooks/useDocType';
-import { EMAIL_TEMPLATES } from '../email/templates';
+import { getTemplates } from '../email/templates';
+import { buildGreeting, type UserProfile } from '../email/profile';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  author: string;
-  onAuthorChange: (next: string) => void;
+  profile: UserProfile;
+  onProfileChange: (next: UserProfile) => void;
   theme: Theme;
   docType: DocType;
 }
@@ -29,8 +30,8 @@ const ROWS: Array<{ token: string; tone: string; description: string; example: s
   {
     token: '@AUTHOR',
     tone: 'tok-author',
-    description: '작성자명 (제목에 사용)',
-    example: '@AUTHOR 박민수',
+    description: '작성자명 (제목에 사용) — 내 프로필의 이름이 기본값',
+    example: '@AUTHOR 홍길동',
   },
   {
     token: '#',
@@ -88,15 +89,17 @@ const ROWS: Array<{ token: string; tone: string; description: string; example: s
   },
 ];
 
-export function HelpDrawer({ open, onClose, author, onAuthorChange, theme, docType }: Props) {
-  const [draft, setDraft] = useState<string>(author);
+export function HelpDrawer({ open, onClose, profile, onProfileChange, theme, docType }: Props) {
+  const [draft, setDraft] = useState<UserProfile>(profile);
 
   useEffect(() => {
-    setDraft(author);
-  }, [author, open]);
+    setDraft(profile);
+  }, [profile, open]);
 
   const isMono = theme === 'mono';
   const isEmail = docType === 'email';
+  const dirty =
+    draft.name !== profile.name || draft.email !== profile.email || draft.company !== profile.company;
 
   return (
     <div
@@ -133,6 +136,47 @@ export function HelpDrawer({ open, onClose, author, onAuthorChange, theme, docTy
           </button>
         </header>
         <div className="scrollbar-thin h-[calc(100%-58px)] overflow-y-auto px-4 py-3">
+          {/* 내 프로필 — 양 모드 공통. 주간보고서 @AUTHOR + 이메일 인사말/기본값의 단일 소스 */}
+          <section className="mb-3 rounded-card border border-rule bg-bg p-3">
+            <h3 className="mb-2 text-xs font-semibold text-fg">
+              {isMono ? '$ profile' : '내 프로필'}
+            </h3>
+            <div className="space-y-1.5">
+              <ProfileInput
+                label="이름"
+                value={draft.name}
+                placeholder="홍길동"
+                onChange={(v) => setDraft((d) => ({ ...d, name: v }))}
+              />
+              <ProfileInput
+                label="이메일"
+                value={draft.email}
+                placeholder="hong@company.example"
+                onChange={(v) => setDraft((d) => ({ ...d, email: v }))}
+              />
+              <ProfileInput
+                label="회사"
+                value={draft.company}
+                placeholder="예시아이티"
+                onChange={(v) => setDraft((d) => ({ ...d, company: v }))}
+              />
+            </div>
+            <p className="mt-2 whitespace-pre-line rounded-sharp px-2 py-1.5 text-[11px] text-fg-muted" style={{ background: 'var(--bg-deep)' }}>
+              {buildGreeting(draft)}
+            </p>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onProfileChange(draft)}
+                className="rounded-sharp px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--bg)' }}
+                disabled={!dirty || !draft.name.trim()}
+              >
+                저장
+              </button>
+            </div>
+          </section>
+
           {isEmail ? (
             <>
               <section className="rounded-card border border-rule bg-bg p-3">
@@ -143,7 +187,7 @@ export function HelpDrawer({ open, onClose, author, onAuthorChange, theme, docTy
                   상단 드롭다운에서 템플릿을 고르면 폼·본문이 준비됩니다.
                 </p>
                 <ul className="space-y-1.5 text-[11px] text-fg-soft">
-                  {EMAIL_TEMPLATES.map((t) => (
+                  {getTemplates().map((t) => (
                     <li key={t.id}>
                       <span className="font-medium text-fg">{t.name}</span>
                       {t.note && <span className="text-fg-muted"> — {t.note}</span>}
@@ -212,38 +256,6 @@ export function HelpDrawer({ open, onClose, author, onAuthorChange, theme, docTy
 
           <section className="mt-3 rounded-card border border-rule bg-bg p-3">
             <h3 className="mb-2 text-xs font-semibold text-fg">
-              {isMono ? '$ author' : '작성자명'}
-            </h3>
-            <p className="mb-2 text-[11px] text-fg-muted">
-              [템플릿] 자동 생성 시 @AUTHOR 줄에 들어갑니다.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="박민수"
-                className="flex-1 rounded-sharp border border-rule bg-bg-deep px-2 py-1 text-xs text-fg outline-none focus:border-accent"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const next = draft.trim();
-                  if (next && next !== author) {
-                    onAuthorChange(next);
-                  }
-                }}
-                className="rounded-sharp px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
-                style={{ background: 'var(--accent)', color: 'var(--bg)' }}
-                disabled={!draft.trim() || draft.trim() === author}
-              >
-                저장
-              </button>
-            </div>
-          </section>
-
-          <section className="mt-3 rounded-card border border-rule bg-bg p-3">
-            <h3 className="mb-2 text-xs font-semibold text-fg">
               {isMono ? '$ shortcuts' : '단축키'}
             </h3>
             <ul className="space-y-1 text-[11px] text-fg-soft">
@@ -273,5 +285,30 @@ export function HelpDrawer({ open, onClose, author, onAuthorChange, theme, docTy
         }
       `}</style>
     </div>
+  );
+}
+
+function ProfileInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="w-12 shrink-0 text-[11px] text-fg-soft">{label}</span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-w-0 flex-1 rounded-sharp border border-rule bg-bg-deep px-2 py-1 text-xs text-fg outline-none focus:border-accent"
+      />
+    </label>
   );
 }

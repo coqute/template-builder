@@ -3,7 +3,7 @@ import { Allotment } from 'allotment';
 import { toast } from 'sonner';
 import { FileText, PencilLine, RotateCcw } from 'lucide-react';
 import { HtmlPreview, ZoomToggle, type ZoomMode } from '../../components/HtmlPreview';
-import { EMAIL_TEMPLATES } from '../templates';
+import { getTemplates } from '../templates';
 import type { EmailRenderResult, EmailTemplate, EmailDocState } from '../types';
 import { EmailFieldForm } from './EmailFieldForm';
 import { RichBodyEditor } from './RichBodyEditor';
@@ -62,7 +62,7 @@ export function EmailWorkspace({
           onChange={(e) => onTemplateChange(e.target.value)}
           className="w-40 shrink-0 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-accent"
         >
-          {EMAIL_TEMPLATES.map((t) => (
+          {getTemplates().map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>

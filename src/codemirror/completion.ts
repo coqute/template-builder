@@ -19,7 +19,7 @@ const DIRECTIVES: Completion[] = [
     apply: '@CURRENT ',
     info: '예: @CURRENT 2026-05-18 ~ 2026-05-24',
   },
-  { label: '@AUTHOR', detail: '작성자명', apply: '@AUTHOR ', info: '예: @AUTHOR 박민수' },
+  { label: '@AUTHOR', detail: '작성자명', apply: '@AUTHOR ', info: '예: @AUTHOR 홍길동' },
   { label: '@LOC', detail: '지원장소 (` / `로 줄바꿈)', apply: '@LOC ', info: '예: @LOC 한강 제트플러스 4F' },
   {
     label: '@CUS',
