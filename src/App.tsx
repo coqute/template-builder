@@ -1,67 +1,19 @@
-import { Allotment } from 'allotment';
-import 'allotment/dist/style.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Toaster, toast } from 'sonner';
-import {
-  importFromInput,
-  serialize,
-} from '@core/index';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { Toaster } from 'sonner';
 import { Toolbar } from './components/Toolbar';
-import { MarkdownEditor, type MarkdownEditorHandle } from './components/MarkdownEditor';
-import { HtmlPreview, ZoomToggle, type ZoomMode } from './components/HtmlPreview';
-import { StatusBar } from './components/StatusBar';
 import { HelpDrawer } from './components/HelpDrawer';
-import { useDebounced } from './hooks/useDebounced';
-import { useReportState } from './hooks/useReportState';
-import { copyHtmlToClipboard, readClipboard } from './hooks/useClipboard';
-import { useUserProfile } from './hooks/useUserProfile';
 import { OnboardingModal } from './components/OnboardingModal';
-import { buildWeeklyTemplate } from './hooks/useTemplate';
+import type { ZoomMode } from './components/HtmlPreview';
+import { useUserProfile } from './hooks/useUserProfile';
 import { useTheme } from './hooks/useTheme';
 import { useDocType } from './hooks/useDocType';
-import { EmailWorkspace } from './email/components/EmailWorkspace';
-import { EmailStatusBar } from './email/components/EmailStatusBar';
-import { useEmailDoc } from './email/useEmailDoc';
-import { useEmailState } from './email/useEmailState';
-import { useEmailExport } from './email/useEmailExport';
 import { useTemplateOverlays } from './email/useTemplateOverlays';
 import { readWithFallback } from './lib/storage';
-import {
-  fileBaseName as baseName,
-  loadRecentFiles,
-  pushRecentFile,
-  removeRecentFile,
-} from './lib/recentFiles';
-import { loadUserProfile } from './email/profile';
+import { DOC_TYPE_MODULES, getDocTypeModule } from './doctypes';
+import { DocTypeHostProvider, type DocTypeHandlers, type DocTypeHostValue } from './doctypes/DocTypeHost';
 
-const STORAGE_KEY_MD = 'tb:md-draft:v1';
 const STORAGE_KEY_ZOOM = 'tb:preview-zoom';
-const STORAGE_KEY_SPLIT = 'tb:split';
-const STORAGE_KEY_FILE = 'tb:md-file-path:v1';
-const LEGACY_KEY_MD = 'weekly-report-builder:md-draft:v1';
 const LEGACY_KEY_ZOOM = 'weekly-report-builder:preview-zoom';
-const LEGACY_KEY_SPLIT = 'weekly-report-builder:split';
-
-const DEFAULT_SPLIT: [number, number] = [42, 58];
-
-function buildFallbackMd(authorName: string): string {
-  return `@PREV 2026-04-27 ~ 2026-05-03
-@CURRENT 2026-05-04 ~ 2026-05-08
-@AUTHOR ${authorName || '작성자'}
-
-# 2026-04-27(월)
-@LOC 남산 데이터센터
-@CUS 남산 IDC
-@SUM [ABZ+] (이영희) 신규 수집 서버 설치 완료 후, 후속 작업 진행 (PoC)
-1) 모니터링 에이전트 설치 방법 시연 및 안내
-- Rocky 9, Ubuntu 22.04, Windows 각각 OS별 설치 가이드
-2) 관리 콘솔 설치 진행
-- 초기 설정 전, 서비스만 실행 중
-
-# 2026-05-01(금)
-@HOLIDAY 근로자의 날
-`;
-}
 
 function loadZoom(): ZoomMode {
   if (typeof localStorage === 'undefined') return 'fit';
@@ -69,66 +21,44 @@ function loadZoom(): ZoomMode {
   return v === 'fit' || v === '50' || v === '75' || v === '100' ? v : 'fit';
 }
 
-function loadSplit(): [number, number] {
-  if (typeof localStorage === 'undefined') return DEFAULT_SPLIT;
-  const raw = readWithFallback(STORAGE_KEY_SPLIT, LEGACY_KEY_SPLIT);
-  if (!raw) return DEFAULT_SPLIT;
-  try {
-    const parsed = JSON.parse(raw);
-    if (
-      Array.isArray(parsed) &&
-      parsed.length === 2 &&
-      parsed.every((n) => typeof n === 'number' && n > 0)
-    ) {
-      return [parsed[0], parsed[1]] as [number, number];
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_SPLIT;
-}
+const DOC_TYPE_IDS = DOC_TYPE_MODULES.map((m) => m.id);
+const SWITCH_OPTIONS = DOC_TYPE_MODULES.map((m) => ({
+  id: m.id,
+  label: m.label,
+  icon: m.switchIcon,
+  hint: m.switchHint,
+}));
 
+/**
+ * 앱 셸 — 문서 타입별 상태/액션을 모른다. 활성 DocType 모듈을 마운트하고
+ * 메뉴/단축키 이벤트를 모듈이 등록한 핸들러로 위임한다. (전역: 도움말·테마·줌·프로필)
+ */
 export function App() {
-  const [md, setMd] = useState<string>(() => {
-    if (typeof localStorage === 'undefined') return buildFallbackMd('');
-    return readWithFallback(STORAGE_KEY_MD, LEGACY_KEY_MD) ?? buildFallbackMd(loadUserProfile().name);
-  });
   const [helpOpen, setHelpOpen] = useState(false);
   const [zoom, setZoom] = useState<ZoomMode>(loadZoom);
-  const [splitSizes] = useState<[number, number]>(loadSplit);
-  // 현재 편집 중인 .md의 디스크 경로 (열기/다른이름저장으로 확정 → Ctrl+S 덮어쓰기 대상)
-  const [filePath, setFilePath] = useState<string | null>(() => {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEY_FILE) || null;
-  });
-  // 마지막으로 디스크에 저장한 내용 (수정 여부 ● 표시용)
-  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
-  // 최근 파일 MRU (최대 5) — 열기/저장 성공 시 갱신, 열기 실패 시 제거
-  const [recentFiles, setRecentFiles] = useState<string[]>(loadRecentFiles);
   const { profile, setProfile, needsOnboarding } = useUserProfile();
-  const author = profile.name;
   const { theme, setTheme } = useTheme();
-  const { docType, setDocType } = useDocType();
-
-  const debouncedMd = useDebounced(md, 200);
-  const state = useReportState(debouncedMd);
-  const editorRef = useRef<MarkdownEditorHandle | null>(null);
-
-  // 이메일 문서 상태 (App이 소유 → Toolbar + EmailWorkspace 공유). profile·오버레이는 템플릿 재해석 의존성
+  const { docType, setDocType } = useDocType(DOC_TYPE_IDS);
   const overlays = useTemplateOverlays();
-  const emailDoc = useEmailDoc();
-  const emailState = useEmailState(emailDoc.doc, profile, overlays.version);
-  const emailExport = useEmailExport(emailDoc.doc, emailState.rendered, emailDoc.loadDoc);
 
-  const jumpToLine = useCallback((line: number) => {
-    editorRef.current?.jumpToLine(line);
+  const active = getDocTypeModule(docType);
+  const Workspace = active.Workspace;
+
+  // ── DocType 호스트: 툴바 슬롯 + 핸들러 레지스트리 ────────────────────────
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  const handlersStore = useRef<MutableRefObject<DocTypeHandlers> | null>(null);
+
+  const registerHandlers = useCallback((ref: MutableRefObject<DocTypeHandlers>) => {
+    handlersStore.current = ref;
+    return () => {
+      if (handlersStore.current === ref) handlersStore.current = null;
+    };
   }, []);
 
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_MD, md);
-    }
-  }, [md]);
+  const hostValue: DocTypeHostValue = useMemo(
+    () => ({ toolbarSlot, registerHandlers }),
+    [toolbarSlot, registerHandlers],
+  );
 
   useEffect(() => {
     if (typeof localStorage !== 'undefined') {
@@ -136,210 +66,19 @@ export function App() {
     }
   }, [zoom]);
 
-  useEffect(() => {
-    if (typeof localStorage === 'undefined') return;
-    if (filePath) localStorage.setItem(STORAGE_KEY_FILE, filePath);
-    else localStorage.removeItem(STORAGE_KEY_FILE);
-  }, [filePath]);
-
-  const dirty = filePath != null && savedSnapshot != null && md !== savedSnapshot;
-
-  // main 프로세스에 dirty 통지 — 창 닫기 전 확인 다이얼로그용
-  useEffect(() => {
-    window.reportApi?.setDirty?.(dirty);
-  }, [dirty]);
-
-  // 재시작 후 filePath만 복원되고 savedSnapshot은 null → dirty(●)/종료확인이 불능이 되는 갭 보정:
-  // 디스크 내용을 snapshot으로 삼는다 (localStorage 초안과 다르면 정확히 dirty로 표시됨).
-  // 파일이 사라졌으면 연결 해제 — 다음 Ctrl+S는 "다른 이름으로 저장".
-  useEffect(() => {
-    const api = window.reportApi;
-    if (!filePath || savedSnapshot !== null || !api?.readPath) return;
-    let cancelled = false;
-    void api.readPath(filePath).then((r) => {
-      if (cancelled) return;
-      if (r.ok) setSavedSnapshot(r.content);
-      else setFilePath(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // mount 1회 — filePath/savedSnapshot은 복원 직후 값만 대상
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleSplitChange = useCallback((sizes: number[]) => {
-    if (typeof localStorage === 'undefined') return;
-    if (sizes.length !== 2) return;
-    localStorage.setItem(STORAGE_KEY_SPLIT, JSON.stringify(sizes));
-  }, []);
-
-  // 새 콘텐츠 로드 시 기존 파일 연결 해제 → 다음 Ctrl+S는 "다른 이름으로 저장"
-  const detachFile = useCallback(() => {
-    setFilePath(null);
-    setSavedSnapshot(null);
-  }, []);
-
-  const loadSample = useCallback(async () => {
-    detachFile();
-    if (window.reportApi?.loadSample) {
-      const sample = await window.reportApi.loadSample();
-      if (sample) {
-        setMd(sample);
-        toast.success('샘플을 불러왔습니다.');
-        return;
-      }
-    }
-    setMd(buildFallbackMd(author));
-    toast.success('내장 샘플을 불러왔습니다.');
-  }, [detachFile, author]);
-
-  const loadTemplate = useCallback(() => {
-    detachFile();
-    const { md: tpl, prevStart, prevEnd } = buildWeeklyTemplate({ authorName: author });
-    setMd(tpl);
-    toast.success(`지난 주 (${prevStart} ~ ${prevEnd}) 빈 템플릿을 생성했습니다.`);
-  }, [author, detachFile]);
-
-  const importGmail = useCallback(async () => {
-    try {
-      const { html, plain } = await readClipboard();
-      if (!html && !plain) {
-        toast.error('클립보드가 비어 있습니다. Gmail 본문을 먼저 복사하세요.');
-        return;
-      }
-      const { report, warnings } = importFromInput({ html, plain, defaultAuthor: author });
-      const generated = serialize(report);
-      detachFile();
-      setMd(generated);
-      if (warnings.length > 0) {
-        toast.warning(`가져왔습니다 (경고 ${warnings.length}건). 검증 결과를 확인하세요.`);
-      } else {
-        toast.success('Gmail 본문을 .md로 변환했습니다.');
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'import 실패');
-    }
-  }, [detachFile, author]);
-
-  const openFile = useCallback(async () => {
-    if (!window.reportApi?.openMd) {
-      toast.error('데스크탑 모드에서만 파일 열기를 지원합니다.');
-      return;
-    }
-    const result = await window.reportApi.openMd();
-    if (result.canceled) return;
-    setMd(result.content);
-    setFilePath(result.filePath);
-    setSavedSnapshot(result.content);
-    setRecentFiles(pushRecentFile(result.filePath));
-    toast.success(`불러옴: ${baseName(result.filePath)}`);
-  }, []);
-
-  // 최근 파일 — 다이얼로그 없이 직접 열기. 실패(삭제/이동) 시 목록에서 제거
-  const openRecentFile = useCallback(async (path: string) => {
-    const api = window.reportApi;
-    if (!api?.readPath) {
-      toast.error('데스크탑 모드에서만 파일 열기를 지원합니다.');
-      return;
-    }
-    const result = await api.readPath(path);
-    if (!result.ok) {
-      setRecentFiles(removeRecentFile(path));
-      toast.error(`파일을 열 수 없어 목록에서 제거했습니다: ${baseName(path)}`);
-      return;
-    }
-    setMd(result.content);
-    setFilePath(path);
-    setSavedSnapshot(result.content);
-    setRecentFiles(pushRecentFile(path));
-    toast.success(`불러옴: ${baseName(path)}`);
-  }, []);
-
-  const saveFile = useCallback(async () => {
-    const api = window.reportApi;
-    if (!api?.save) {
-      toast.error('데스크탑 모드에서만 파일 저장을 지원합니다.');
-      return;
-    }
-    // 기존 파일이 확정돼 있으면 다이얼로그 없이 그 경로에 덮어쓰기
-    if (filePath && api.saveToPath) {
-      const result = await api.saveToPath(filePath, md);
-      if (result.ok) {
-        setSavedSnapshot(md);
-        setRecentFiles(pushRecentFile(result.filePath));
-        toast.success(`저장됨: ${baseName(result.filePath)}`);
-        return;
-      }
-      // 경로가 사라졌거나 쓰기 실패 → 무효화 후 아래 "다른 이름으로 저장"으로 폴백
-      toast.error(`기존 경로에 저장하지 못했습니다 — 위치를 다시 지정하세요. (${result.error})`);
-      setFilePath(null);
-    }
-    // 신규/경로 미확정 — 다른 이름으로 저장 다이얼로그
-    const defaultName = state.subject
-      ? state.subject.replace(/[\\/:*?"<>|]/g, '_')
-      : 'weekly-report';
-    const result = await api.save({ defaultName, content: md, kind: 'md' });
-    if (!result.canceled) {
-      setFilePath(result.filePath);
-      setSavedSnapshot(md);
-      setRecentFiles(pushRecentFile(result.filePath));
-      toast.success(`저장됨: ${baseName(result.filePath)}`);
-    }
-  }, [md, state.subject, filePath]);
-
-  const copyHtml = useCallback(async () => {
-    if (!state.rendered) {
-      toast.error('렌더링할 내용이 없습니다.');
-      return;
-    }
-    try {
-      await copyHtmlToClipboard({
-        html: state.rendered.html,
-        plain: state.rendered.plain,
-      });
-      toast.success('HTML 복사 완료 — Gmail/Outlook 본문에 Ctrl+V 하세요.');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '복사 실패');
-    }
-  }, [state.rendered]);
-
+  // 네이티브 메뉴 → 활성 모듈 핸들러 위임 (menu:help만 전역)
   useEffect(() => {
     const off = window.reportApi?.onMenu((channel) => {
-      const isEmail = docType === 'email';
-      switch (channel) {
-        case 'menu:new':
-          if (!isEmail) {
-            detachFile();
-            setMd('');
-          }
-          break;
-        case 'menu:load-sample':
-          if (!isEmail) void loadSample();
-          break;
-        case 'menu:open':
-          if (isEmail) void emailExport.openEmail();
-          else void openFile();
-          break;
-        case 'menu:save':
-          if (isEmail) void emailExport.saveEmail();
-          else void saveFile();
-          break;
-        case 'menu:import-gmail':
-          if (!isEmail) void importGmail();
-          break;
-        case 'menu:copy-html':
-          if (isEmail) void emailExport.copyEmailHtml();
-          else void copyHtml();
-          break;
-        case 'menu:help':
-          setHelpOpen((v) => !v);
-          break;
+      if (channel === 'menu:help') {
+        setHelpOpen((v) => !v);
+        return;
       }
+      handlersStore.current?.current.menu[channel]?.();
     });
     return () => off?.();
-  }, [docType, loadSample, openFile, saveFile, importGmail, copyHtml, emailExport, detachFile]);
+  }, []);
 
+  // 단축키 → 활성 모듈 위임. F1(도움말)만 전역
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
@@ -350,154 +89,43 @@ export function App() {
         }
         return;
       }
-      const key = e.key.toLowerCase();
-      if (docType === 'email') {
-        if (key === 's') {
-          e.preventDefault();
-          void emailExport.saveEmail();
-        } else if (key === 'o') {
-          e.preventDefault();
-          void emailExport.openEmail();
-        } else if (key === 'c' && e.shiftKey) {
-          e.preventDefault();
-          void emailExport.copyEmailHtml();
-        } else if (e.key === 'Enter') {
-          e.preventDefault();
-          void emailExport.createDraft();
-        }
-        return;
-      }
-      // weekly 단축키
-      if (key === 's') {
-        e.preventDefault();
-        void saveFile();
-      } else if (key === 'o') {
-        e.preventDefault();
-        void openFile();
-      } else if (key === 'l') {
-        e.preventDefault();
-        void loadSample();
-      } else if (key === 't') {
-        e.preventDefault();
-        loadTemplate();
-      } else if (key === 'c' && e.shiftKey) {
-        e.preventDefault();
-        void copyHtml();
-      } else if (key === 'i' && e.shiftKey) {
-        e.preventDefault();
-        void importGmail();
-      }
+      const combo =
+        e.key === 'Enter' ? 'enter' : `${e.shiftKey ? 'shift+' : ''}${e.key.toLowerCase()}`;
+      const handled = handlersStore.current?.current.shortcut?.(combo) ?? false;
+      if (handled) e.preventDefault();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [docType, saveFile, openFile, loadSample, loadTemplate, copyHtml, importGmail, emailExport]);
-
-  const previewHtml = state.rendered?.html ?? '';
-  const errorCount = state.diagnostics.filter((d) => d.severity === 'error').length;
-
-  const subjectHint = useMemo(
-    () => state.subject ?? '제목은 @WEEK + @AUTHOR 기반으로 자동 생성됩니다.',
-    [state.subject],
-  );
+  }, []);
 
   return (
     <div className="flex h-full flex-col bg-bg text-fg">
       <div className="reveal reveal-1">
         <Toolbar
-          docType={docType}
+          options={SWITCH_OPTIONS}
+          docType={active.id}
           onDocTypeChange={setDocType}
-          onLoadSample={loadSample}
-          onLoadTemplate={loadTemplate}
-          onImportGmail={importGmail}
-          onOpen={openFile}
-          recentFiles={recentFiles}
-          onOpenRecent={openRecentFile}
-          onSave={saveFile}
-          onCopyHtml={copyHtml}
-          copyDisabled={!state.rendered || !!state.fatalError || errorCount > 0}
-          onEmailOpen={emailExport.openEmail}
-          onEmailSave={emailExport.saveEmail}
-          onEmailCopyHtml={emailExport.copyEmailHtml}
-          onComposeGmail={emailExport.composeInGmail}
-          onCreateDraft={emailExport.createDraft}
-          emailActionDisabled={!emailState.rendered}
+          badge={active.badge}
+          onToolbarSlot={setToolbarSlot}
           onToggleHelp={() => setHelpOpen((v) => !v)}
           theme={theme}
           onThemeChange={setTheme}
         />
       </div>
 
-      {/* 콘텐츠 영역 — 항상 flex-1 (푸터가 양쪽 모드 공통이라 높이 불변, 전환 시 비율 점프 없음) */}
-      <main className="min-h-0 flex-1">
-        {docType === 'weekly' ? (
-          <Allotment defaultSizes={splitSizes} onChange={handleSplitChange}>
-            <Allotment.Pane minSize={320}>
-              <PaneHeader
-                title={
-                  filePath
-                    ? `${baseName(filePath)}${dirty ? ' ●' : ''}`
-                    : theme === 'mono'
-                      ? 'INPUT.md'
-                      : '입력'
-                }
-                hint="@PREV · @CURRENT · @LOC · @CUS · # 일자 · @SUM · 1) · - · <- · -> · >"
-                theme={theme}
-              />
-              <div className="h-[calc(100%-32px)]">
-                <MarkdownEditor ref={editorRef} value={md} onChange={setMd} />
-              </div>
-            </Allotment.Pane>
-            <Allotment.Pane minSize={400}>
-              <PaneHeader
-                title={theme === 'mono' ? 'PREVIEW.html' : '미리보기'}
-                hint={
-                  state.stale
-                    ? '⚠ 입력 오류 — 마지막 정상 미리보기를 유지 중입니다'
-                    : subjectHint
-                }
-                actions={<ZoomToggle zoom={zoom} onZoomChange={setZoom} />}
-                theme={theme}
-              />
-              <div className="h-[calc(100%-32px)]">
-                <HtmlPreview html={previewHtml} zoom={zoom} />
-              </div>
-            </Allotment.Pane>
-          </Allotment>
-        ) : (
-          <EmailWorkspace
-            template={emailState.template}
-            doc={emailDoc.doc}
-            bodyKey={emailDoc.bodyKey}
-            rendered={emailState.rendered}
-            onTemplateChange={emailDoc.setTemplateId}
-            onField={emailDoc.setField}
-            onBody={emailDoc.setBody}
-            onSubject={emailDoc.setSubject}
-            onRegenerateSubject={emailDoc.regenerateSubject}
+      {/* 활성 문서 타입 워크스페이스 — 모듈이 본문+상태바를 소유 */}
+      <div className="min-h-0 flex-1">
+        <DocTypeHostProvider value={hostValue}>
+          <Workspace
+            key={active.id}
+            theme={theme}
+            profile={profile}
             zoom={zoom}
             onZoomChange={setZoom}
-            theme={theme}
+            templatesVersion={overlays.version}
           />
-        )}
-      </main>
-
-      {/* 통합 푸터 — 양쪽 모드 동일 높이(32px) 상시 렌더 */}
-      {docType === 'weekly' ? (
-        <StatusBar
-          validation={state.validation}
-          diagnostics={state.diagnostics}
-          onJumpToLine={jumpToLine}
-          fatalError={state.fatalError}
-          subject={state.subject}
-          theme={theme}
-        />
-      ) : (
-        <EmailStatusBar
-          validation={emailState.validation}
-          recipientHint={emailState.template?.recipientHint}
-          theme={theme}
-        />
-      )}
+        </DocTypeHostProvider>
+      </div>
 
       <HelpDrawer
         open={helpOpen}
@@ -506,7 +134,7 @@ export function App() {
         onProfileChange={setProfile}
         onReloadTemplates={overlays.reload}
         theme={theme}
-        docType={docType}
+        docType={active.id}
       />
       {needsOnboarding && <OnboardingModal onSubmit={setProfile} />}
       <Toaster
@@ -525,44 +153,6 @@ export function App() {
           },
         }}
       />
-    </div>
-  );
-}
-
-function PaneHeader({
-  title,
-  hint,
-  actions,
-  theme,
-}: {
-  title: string;
-  hint?: string;
-  actions?: React.ReactNode;
-  theme: 'paper' | 'mono';
-}) {
-  const isMono = theme === 'mono';
-  return (
-    <div className="flex h-8 flex-nowrap items-center justify-between gap-3 overflow-hidden border-b border-rule bg-bg-deep px-3 text-[11px]">
-      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-        <span
-          className={[
-            'shrink-0 whitespace-nowrap text-fg-soft',
-            isMono
-              ? 'font-medium uppercase tracking-wider text-[10px]'
-              : 'font-display text-[12px]',
-          ].join(' ')}
-        >
-          {title}
-        </span>
-        {hint && (
-          <span className="min-w-0 flex-1 truncate text-fg-muted" title={hint}>
-            {hint}
-          </span>
-        )}
-      </div>
-      {actions && (
-        <div className="flex shrink-0 items-center whitespace-nowrap">{actions}</div>
-      )}
     </div>
   );
 }

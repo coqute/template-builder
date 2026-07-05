@@ -1,27 +1,18 @@
-import { FileSpreadsheet, Mail } from 'lucide-react';
-import type { DocType } from '../hooks/useDocType';
-
-interface Props {
-  docType: DocType;
-  onChange: (next: DocType) => void;
+export interface DocTypeOption {
+  id: string;
+  label: string;
+  icon?: React.ReactNode;
+  hint?: string;
 }
 
-const OPTIONS: Array<{ value: DocType; label: string; icon: React.ReactNode; hint: string }> = [
-  {
-    value: 'weekly',
-    label: '주간보고서',
-    icon: <FileSpreadsheet size={12} />,
-    hint: '주간보고서 .md → HTML 표',
-  },
-  {
-    value: 'email',
-    label: '이메일',
-    icon: <Mail size={12} />,
-    hint: '반복 이메일 템플릿 → Gmail 작성',
-  },
-];
+interface Props {
+  options: readonly DocTypeOption[];
+  docType: string;
+  onChange: (next: string) => void;
+}
 
-export function DocTypeSwitch({ docType, onChange }: Props) {
+/** 문서 타입 전환 스위치 — 옵션은 doctypes 레지스트리에서 주입 */
+export function DocTypeSwitch({ options, docType, onChange }: Props) {
   return (
     <div
       role="radiogroup"
@@ -29,15 +20,15 @@ export function DocTypeSwitch({ docType, onChange }: Props) {
       className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-sharp border border-rule p-0.5"
       style={{ background: 'var(--bg-elevated)' }}
     >
-      {OPTIONS.map((opt) => {
-        const active = docType === opt.value;
+      {options.map((opt) => {
+        const active = docType === opt.id;
         return (
           <button
-            key={opt.value}
+            key={opt.id}
             type="button"
             role="radio"
             aria-checked={active}
-            onClick={() => onChange(opt.value)}
+            onClick={() => onChange(opt.id)}
             title={opt.hint}
             className={[
               'flex shrink-0 items-center gap-1 whitespace-nowrap rounded-sharp px-2 py-0.5 text-[11px] leading-none transition',
