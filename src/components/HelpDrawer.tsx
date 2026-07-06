@@ -270,6 +270,16 @@ export function HelpDrawer({ open, onClose, profile, onProfileChange, onReloadTe
             </>
           ) : (
           <>
+          <section className="mb-3 rounded-card border border-rule bg-bg p-3">
+            <h3 className="mb-2 text-xs font-semibold text-fg">
+              {isMono ? '$ editor-mode' : '비주얼 / 텍스트 모드'}
+            </h3>
+            <p className="text-[11px] leading-relaxed text-fg-soft">
+              입력 패널 우측 상단 토글로 전환합니다. <b>비주얼</b>은 문법 없이 폼으로 작성,
+              <b> 텍스트</b>는 아래 키워드를 직접 타이핑(자동완성·진단 지원). 어느 모드든 저장·복사
+              결과는 동일한 .md입니다.
+            </p>
+          </section>
           <ul className="space-y-3">
             {ROWS.map((row) => (
               <li key={row.token} className="rounded-card border border-rule bg-bg p-3">

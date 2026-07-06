@@ -10,10 +10,12 @@ import {
   Inbox,
   Sparkles,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { MarkdownEditor, type MarkdownEditorHandle } from '../components/MarkdownEditor';
 import { HtmlPreview, ZoomToggle } from '../components/HtmlPreview';
 import { StatusBar } from '../components/StatusBar';
 import { Btn, OpenSplitButton } from '../components/ToolbarButton';
+import { VisualWeeklyEditor } from './weekly-visual/VisualWeeklyEditor';
 import { useWeeklyState } from '../hooks/useWeeklyState';
 import { fileBaseName as baseName } from '../lib/recentFiles';
 import { readWithFallback } from '../lib/storage';
@@ -24,6 +26,15 @@ import type { Theme } from '../hooks/useTheme';
 const STORAGE_KEY_SPLIT = 'tb:split';
 const LEGACY_KEY_SPLIT = 'weekly-report-builder:split';
 const DEFAULT_SPLIT: [number, number] = [42, 58];
+
+type EditorMode = 'visual' | 'text';
+const STORAGE_KEY_EDITOR_MODE = 'tb:weekly-editor-mode:v1';
+
+function loadEditorMode(): EditorMode {
+  if (typeof localStorage === 'undefined') return 'visual';
+  const v = localStorage.getItem(STORAGE_KEY_EDITOR_MODE);
+  return v === 'text' ? 'text' : 'visual'; // 기본 비주얼 — 문법 몰라도 작성 가능 (팀 배포)
+}
 
 function loadSplit(): [number, number] {
   if (typeof localStorage === 'undefined') return DEFAULT_SPLIT;
@@ -49,10 +60,42 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
   const w = useWeeklyState(profile.name);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const [splitSizes] = useState<[number, number]>(loadSplit);
+  const [editorMode, setEditorMode] = useState<EditorMode>(loadEditorMode);
 
-  const jumpToLine = useCallback((line: number) => {
-    editorRef.current?.jumpToLine(line);
-  }, []);
+  const switchMode = useCallback(
+    (next: EditorMode) => {
+      if (next === 'visual') {
+        // 문법 오류가 있으면 AST가 불완전 — 비주얼 전환 차단 (텍스트에서 수정 유도)
+        const hasError = w.state.diagnostics.some((d) => d.severity === 'error');
+        if (hasError) {
+          toast.error('문법 오류가 있어 비주얼 모드로 전환할 수 없습니다. 하단 진단을 확인하세요.');
+          return;
+        }
+      }
+      setEditorMode(next);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_EDITOR_MODE, next);
+      }
+    },
+    [w.state.diagnostics],
+  );
+
+  const jumpToLine = useCallback(
+    (line: number) => {
+      // 진단 라인 점프는 텍스트 모드 전용 — 비주얼이면 먼저 전환
+      if (editorMode !== 'text') {
+        setEditorMode('text');
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_EDITOR_MODE, 'text');
+        }
+        // 전환 직후 에디터 mount를 기다렸다 점프
+        setTimeout(() => editorRef.current?.jumpToLine(line), 50);
+        return;
+      }
+      editorRef.current?.jumpToLine(line);
+    },
+    [editorMode],
+  );
 
   const handleSplitChange = useCallback((sizes: number[]) => {
     if (typeof localStorage === 'undefined') return;
@@ -151,11 +194,20 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
                       ? 'INPUT.md'
                       : '입력'
                 }
-                hint="@PREV · @CURRENT · @LOC · @CUS · # 일자 · @SUM · 1) · - · <- · -> · >"
+                hint={
+                  editorMode === 'visual'
+                    ? '폼으로 작성 — 저장은 .md 그대로'
+                    : '@PREV · @CURRENT · @LOC · @CUS · # 일자 · @SUM · 1) · - · <- · -> · >'
+                }
+                actions={<EditorModeToggle mode={editorMode} onChange={switchMode} />}
                 theme={theme}
               />
               <div className="h-[calc(100%-32px)]">
-                <MarkdownEditor ref={editorRef} value={w.md} onChange={w.setMd} />
+                {editorMode === 'visual' ? (
+                  <VisualWeeklyEditor md={w.md} onMd={w.setMd} />
+                ) : (
+                  <MarkdownEditor ref={editorRef} value={w.md} onChange={w.setMd} />
+                )}
               </div>
             </Allotment.Pane>
             <Allotment.Pane minSize={400}>
@@ -183,6 +235,38 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
         />
       </div>
     </>
+  );
+}
+
+function EditorModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: EditorMode;
+  onChange: (next: EditorMode) => void;
+}) {
+  const opt = (value: EditorMode, label: string) => (
+    <button
+      type="button"
+      onClick={() => onChange(value)}
+      className={[
+        'rounded-sharp px-1.5 py-0.5 text-[10px] leading-none transition',
+        mode === value ? 'font-semibold' : 'text-fg-muted hover:text-fg',
+      ].join(' ')}
+      style={mode === value ? { background: 'var(--accent)', color: 'var(--bg)' } : undefined}
+      title={value === 'visual' ? '폼 기반 작성 (문법 불필요)' : '.md 텍스트 직접 편집 (자동완성·린트)'}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      className="flex items-center gap-0.5 rounded-sharp border border-rule p-0.5"
+      style={{ background: 'var(--bg-elevated)' }}
+    >
+      {opt('visual', '비주얼')}
+      {opt('text', '텍스트')}
+    </div>
   );
 }
 
