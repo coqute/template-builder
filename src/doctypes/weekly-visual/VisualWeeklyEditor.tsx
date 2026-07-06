@@ -20,7 +20,7 @@ import {
   updateItemFields,
   updateContentBlock,
 } from '@core/edit';
-import { ItemEditor } from './ItemEditor';
+import { Field, ItemEditor, VISUAL_INPUT_CLS } from './ItemEditor';
 
 interface Props {
   /** 단일 소스 md — 편집 시 즉시 serialize해 반영 (저장/미리보기/상태바 경로 무변경) */
@@ -28,8 +28,20 @@ interface Props {
   onMd: (next: string) => void;
 }
 
-const inputCls =
-  'rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-accent';
+const WEEKDAY_LABEL: Record<string, string> = {
+  월: '월요일',
+  화: '화요일',
+  수: '수요일',
+  목: '목요일',
+  금: '금요일',
+  토: '토요일',
+  일: '일요일',
+};
+
+function formatDayTitle(date: string): string {
+  const [, m, d] = date.split('-');
+  return `${Number(m)}월 ${Number(d)}일`;
+}
 
 /**
  * 주간보고서 비주얼 에디터 — AST를 로컬 상태로 소유해 입력이 즉각 반응하고,
@@ -57,46 +69,57 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
   };
 
   return (
-    <div className="scrollbar-thin h-full space-y-2 overflow-y-auto bg-bg-elevated p-2.5">
-      {/* 주간 헤더 */}
-      <section className="rounded-card border border-rule bg-bg p-2.5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <label className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-fg-muted">보고 주(월)</span>
+    <div className="scrollbar-thin h-full space-y-4 overflow-y-auto bg-bg-deep p-3">
+      {/* 주간 정보 */}
+      <section className="rounded-card border border-rule bg-bg p-3">
+        <h3 className="mb-2.5 text-[13px] font-semibold text-fg">주간 정보</h3>
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <Field label="보고 주 — 지난주 월요일 선택">
             <input
               type="date"
               value={report.prevWeekRange.start}
               onChange={(e) => e.target.value && apply(setWeekByPrevMonday(report, e.target.value))}
-              className={inputCls}
-              title="지난 주 월요일 — @PREV(월~일)·@CURRENT(다음주)가 자동 계산됩니다"
+              className={VISUAL_INPUT_CLS}
             />
-          </label>
-          <span className="text-[10px] text-fg-muted">
-            @PREV {report.prevWeekRange.start} ~ {report.prevWeekRange.end} · @CURRENT{' '}
-            {report.currentWeekRange.start} ~ {report.currentWeekRange.end}
-          </span>
-          <label className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-fg-muted">작성자</span>
+          </Field>
+          <Field label="작성자" width="w-32">
             <input
               type="text"
               value={report.authorName}
               onChange={(e) => apply(updateHeader(report, { authorName: e.target.value }))}
-              className={`${inputCls} w-24`}
+              className={VISUAL_INPUT_CLS}
             />
-          </label>
+          </Field>
+          <div className="pb-1 text-[12px] leading-relaxed text-fg-muted">
+            보고 대상 {report.prevWeekRange.start} ~ {report.prevWeekRange.end}
+            <br />
+            이번 주 계획 {report.currentWeekRange.start} ~ {report.currentWeekRange.end}
+          </div>
         </div>
       </section>
 
       {/* 일자 카드 */}
       {report.days.map((day, di) => (
-        <section key={day.date} className="rounded-card border border-rule bg-bg p-2.5">
-          <div className="mb-1.5 flex items-center gap-2">
-            <span
-              className={`font-mono text-xs font-semibold ${day.holiday ? 'text-red-500' : 'text-fg'}`}
-            >
-              {day.date} ({day.weekday})
+        <section
+          key={day.date}
+          className="overflow-hidden rounded-card border border-rule bg-bg"
+        >
+          {/* 날짜 밴드 — 스캔 기준점 */}
+          <div
+            className="flex items-center gap-3 border-b border-rule px-3 py-2"
+            style={{
+              background: day.holiday ? 'rgba(220, 38, 38, 0.07)' : 'var(--bg-deep)',
+              borderLeft: `3px solid ${day.holiday ? '#DC2626' : 'var(--accent)'}`,
+            }}
+          >
+            <span className={`text-sm font-semibold ${day.holiday ? 'text-red-600' : 'text-fg'}`}>
+              {formatDayTitle(day.date)}
             </span>
-            <label className="flex items-center gap-1 text-[10px] text-fg-soft">
+            <span className="text-[12px] text-fg-soft">
+              {WEEKDAY_LABEL[day.weekday] ?? day.weekday} · {day.date}
+            </span>
+            <span className="flex-1" />
+            <label className="flex cursor-pointer items-center gap-1.5 text-[12px] text-fg-soft">
               <input
                 type="checkbox"
                 checked={!!day.holiday}
@@ -104,117 +127,123 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
               />
               휴무
             </label>
-            {day.holiday && (
-              <input
-                type="text"
-                value={day.holiday.reason}
-                placeholder="휴무 사유 (예: 근로자의 날)"
-                onChange={(e) => apply(updateHolidayReason(report, di, e.target.value))}
-                className={`${inputCls} flex-1`}
-              />
-            )}
-            <span className="flex-1" />
             <button
               type="button"
               title="일자 삭제"
               onClick={() => apply(removeDay(report, di))}
-              className="flex items-center rounded-sharp p-1 text-fg-muted hover:bg-bg-sunken hover:text-fg"
+              className="flex items-center rounded-sharp p-1 text-fg-muted transition hover:bg-bg-sunken hover:text-fg"
             >
-              <Trash2 size={12} />
+              <Trash2 size={13} />
             </button>
           </div>
 
-          {day.holiday ? (
-            <p className="text-[11px] text-fg-muted">휴무 행 — 빨간 배경으로 렌더됩니다.</p>
-          ) : (
-            <div className="space-y-2">
-              {day.blocks.map((block, bi) => (
-                <div key={bi} className="rounded-sharp border border-dashed border-rule p-2">
-                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] font-semibold text-fg-muted">@LOC</span>
-                    <input
-                      type="text"
-                      value={block.locations.join(' / ')}
-                      placeholder="지원장소 ( / 로 줄바꿈)"
-                      onChange={(e) =>
-                        apply(
-                          updateBlockFields(report, di, bi, {
-                            locations: e.target.value
-                              .split('/')
-                              .map((s) => s.trim())
-                              .filter((s, idx, arr) => s !== '' || idx === arr.length - 1),
-                          }),
-                        )
-                      }
-                      className={`${inputCls} w-44`}
-                    />
-                    <span className="text-[10px] font-semibold text-fg-muted">@CUS</span>
-                    <input
-                      type="text"
-                      value={block.customer}
-                      placeholder="고객사/작업구분"
-                      onChange={(e) => apply(updateBlockFields(report, di, bi, { customer: e.target.value }))}
-                      className={`${inputCls} w-40`}
-                    />
-                    <span className="flex-1" />
-                    {day.blocks.length > 1 && (
+          <div className="p-3">
+            {day.holiday ? (
+              <Field label="휴무 사유 — 표에서 빨간 행으로 강조됩니다">
+                <input
+                  type="text"
+                  value={day.holiday.reason}
+                  placeholder="예: 근로자의 날"
+                  onChange={(e) => apply(updateHolidayReason(report, di, e.target.value))}
+                  className={`${VISUAL_INPUT_CLS} w-full max-w-sm`}
+                />
+              </Field>
+            ) : (
+              <div className="space-y-3">
+                {day.blocks.map((block, bi) => (
+                  <div key={bi}>
+                    {/* 장소/구분 필드 */}
+                    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                      <Field label="지원장소" width="w-52">
+                        <input
+                          type="text"
+                          value={block.locations.join(' / ')}
+                          placeholder="예: 한강 제트플러스 4F"
+                          title="여러 장소는 / 로 구분 (표에서 줄바꿈)"
+                          onChange={(e) =>
+                            apply(
+                              updateBlockFields(report, di, bi, {
+                                locations: e.target.value
+                                  .split('/')
+                                  .map((s) => s.trim())
+                                  .filter((s, idx, arr) => s !== '' || idx === arr.length - 1),
+                              }),
+                            )
+                          }
+                          className={VISUAL_INPUT_CLS}
+                        />
+                      </Field>
+                      <Field label="고객사 / 작업구분" width="w-44">
+                        <input
+                          type="text"
+                          value={block.customer}
+                          placeholder="예: 한강 SRE"
+                          onChange={(e) =>
+                            apply(updateBlockFields(report, di, bi, { customer: e.target.value }))
+                          }
+                          className={VISUAL_INPUT_CLS}
+                        />
+                      </Field>
+                      <span className="flex-1" />
+                      {day.blocks.length > 1 && (
+                        <button
+                          type="button"
+                          title="이 장소 블록 삭제"
+                          onClick={() => apply(removeLocationBlock(report, di, bi))}
+                          className="mb-1 flex items-center gap-1 rounded-sharp px-1.5 py-1 text-[11px] text-fg-muted transition hover:bg-bg-sunken hover:text-fg"
+                        >
+                          <Trash2 size={12} /> 블록 삭제
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 작업 카드들 */}
+                    <div className="mt-2.5 space-y-2.5">
+                      {block.items.map((item, ii) => (
+                        <ItemEditor
+                          key={ii}
+                          item={item}
+                          order={ii + 1}
+                          canMoveUp={ii > 0}
+                          canMoveDown={ii < block.items.length - 1}
+                          onField={(patch) => apply(updateItemFields(report, di, bi, ii, patch))}
+                          onMove={(dir) => apply(moveItem(report, di, bi, ii, dir))}
+                          onRemove={() => apply(removeItem(report, di, bi, ii))}
+                          onAddBlock={(kind) => apply(addContentBlock(report, di, bi, ii, kind))}
+                          onUpdateBlock={(ci, b) => apply(updateContentBlock(report, di, bi, ii, ci, b))}
+                          onMoveBlock={(ci, dir) => apply(moveContentBlock(report, di, bi, ii, ci, dir))}
+                          onRemoveBlock={(ci) => apply(removeContentBlock(report, di, bi, ii, ci))}
+                        />
+                      ))}
                       <button
                         type="button"
-                        title="장소 블록 삭제"
-                        onClick={() => apply(removeLocationBlock(report, di, bi))}
-                        className="flex items-center rounded-sharp p-1 text-fg-muted hover:bg-bg-sunken hover:text-fg"
+                        onClick={() => apply(addItem(report, di, bi))}
+                        className="flex items-center gap-1.5 rounded-sharp border border-rule px-2.5 py-1.5 text-[12px] font-medium text-fg-soft transition hover:border-accent hover:text-fg"
                       >
-                        <Trash2 size={11} />
+                        <Plus size={12} /> 작업 추가
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    {block.items.map((item, ii) => (
-                      <ItemEditor
-                        key={ii}
-                        item={item}
-                        canMoveUp={ii > 0}
-                        canMoveDown={ii < block.items.length - 1}
-                        onField={(patch) => apply(updateItemFields(report, di, bi, ii, patch))}
-                        onMove={(dir) => apply(moveItem(report, di, bi, ii, dir))}
-                        onRemove={() => apply(removeItem(report, di, bi, ii))}
-                        onAddBlock={(kind) => apply(addContentBlock(report, di, bi, ii, kind))}
-                        onUpdateBlock={(ci, b) => apply(updateContentBlock(report, di, bi, ii, ci, b))}
-                        onMoveBlock={(ci, dir) => apply(moveContentBlock(report, di, bi, ii, ci, dir))}
-                        onRemoveBlock={(ci) => apply(removeContentBlock(report, di, bi, ii, ci))}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => apply(addItem(report, di, bi))}
-                      className="flex items-center gap-1 rounded-sharp border border-dashed border-rule px-2 py-1 text-[11px] text-fg-muted transition hover:border-accent hover:text-fg"
-                    >
-                      <Plus size={11} /> 작업(@SUM) 추가
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => apply(addLocationBlock(report, di))}
-                className="flex items-center gap-1 rounded-sharp border border-dashed border-rule px-2 py-1 text-[11px] text-fg-muted transition hover:border-accent hover:text-fg"
-              >
-                <Plus size={11} /> {day.blocks.length === 0 ? '작업 블록 추가' : '다른 장소 블록 추가'}
-              </button>
-            </div>
-          )}
+                ))}
+                <button
+                  type="button"
+                  onClick={() => apply(addLocationBlock(report, di))}
+                  className="flex items-center gap-1.5 rounded-sharp border border-dashed border-rule px-2.5 py-1.5 text-[12px] text-fg-muted transition hover:border-accent hover:text-fg"
+                >
+                  <Plus size={12} />
+                  {day.blocks.length === 0 ? '이 날짜에 작업 추가' : '다른 장소 블록 추가'}
+                </button>
+              </div>
+            )}
+          </div>
         </section>
       ))}
 
       {/* 일자 추가 */}
-      <section className="flex items-center gap-2 rounded-card border border-dashed border-rule bg-bg p-2.5">
-        <CalendarPlus size={13} className="text-fg-muted" />
-        <input
-          type="date"
-          value={newDate}
-          onChange={(e) => setNewDate(e.target.value)}
-          className={inputCls}
-        />
+      <section className="flex flex-wrap items-end gap-3 rounded-card border border-dashed border-rule bg-bg p-3">
+        <Field label="일자 추가">
+          <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className={VISUAL_INPUT_CLS} />
+        </Field>
         <button
           type="button"
           disabled={!newDate || report.days.some((d) => d.date === newDate)}
@@ -222,13 +251,13 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
             apply(addDay(report, newDate));
             setNewDate('');
           }}
-          className="rounded-sharp px-2.5 py-1 text-[11px] font-medium disabled:opacity-40"
+          className="mb-0.5 flex items-center gap-1.5 rounded-sharp px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40"
           style={{ background: 'var(--accent)', color: 'var(--bg)' }}
         >
-          일자 추가
+          <CalendarPlus size={13} /> 추가
         </button>
-        <span className="text-[10px] text-fg-muted">
-          빈 주 5일 생성은 툴바 [템플릿](Ctrl+T)을 사용하세요.
+        <span className="mb-1.5 text-[12px] text-fg-muted">
+          빈 주(월~금) 한 번에 만들기는 툴바의 [템플릿] (Ctrl+T)
         </span>
       </section>
     </div>
