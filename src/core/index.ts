@@ -1,4 +1,5 @@
 export * from './types';
+export { GRAMMAR, HIGHLIGHT_RULES, DATE_FLEX_SRC, highlightClassFor } from './grammar';
 export { parse, parseTolerant, ParseError } from './parser';
 export type { ParseOptions } from './parser';
 export { validate } from './validator';

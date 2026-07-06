@@ -22,30 +22,25 @@ export class ParseError extends Error {
   }
 }
 
-// ── 유연 문법 정규식 ──
-// 날짜: ISO 외 점(.)·슬래시(/) 구분자, 한 자리 월·일 허용 → 파서가 ISO로 정규화 + info 진단
-const RE_DATE_FLEX = String.raw`\d{4}[-./]\d{1,2}[-./]\d{1,2}`;
-const RE_PREV = new RegExp(`^@(?:PREV|WEEK)\\s+(${RE_DATE_FLEX})\\s*~\\s*(${RE_DATE_FLEX})\\s*$`);
-const RE_CURRENT = new RegExp(`^@(?:CURRENT|NEXT)\\s+(${RE_DATE_FLEX})\\s*~\\s*(${RE_DATE_FLEX})\\s*$`);
-const RE_AUTHOR = /^@AUTHOR\s+(.+?)\s*$/;
-/** 일자 행 — `#` 뒤 공백 생략·요일 생략 허용 (요일 없으면 자동 보충) */
-const RE_DAY_FLEX = new RegExp(`^#\\s*(${RE_DATE_FLEX})\\s*(?:\\(([^)]*)\\))?\\s*$`);
-const RE_LOC = /^@LOC\s+(.+?)\s*$/;
-const RE_CUS = /^@CUS\s+(.+?)\s*$/;
-const RE_HOLIDAY = /^@HOLIDAY(?:\s+(.*))?\s*$/;
-/** @SUM (신규) 또는 ## (legacy) — 두 형식 모두 인식 */
-const RE_CLIENT = /^(?:@SUM|##)\s+(.+?)\s*$/;
-const RE_NUM = /^(\d+)\)\s*(.*?)\s*$/;
-const RE_DASH = /^-\s+(.*?)\s*$/;
-const RE_QA_Q = /^<-\s*(.*?)\s*$/;
-const RE_QA_A = /^->\s*(.*?)\s*$/;
-/** `>` 보조 설명(노트) 라인 — NOTE_PREFIX 접두 문자열로 details/items/answers에 in-band 저장 */
-const RE_NOTE = /^>\s?(.*?)\s*$/;
+// ── 문법 정규식 — 단일 소스는 grammar.ts (Grammar Registry). 로컬 별칭만 유지 ──
+import { GRAMMAR } from './grammar';
 
-// @SUM 헤더 — workType 빈 문자열 허용 (`(.*?)`) — 비어 있으면 validator가 warning
-const RE_CLIENT_CHANNEL = /^\[([^\]]+)\]\s*\(([^)/]+)\/([^)]+)\)\s*(.*?)\s*$/;
-const RE_CLIENT_NEW = /^\[([^\]]+)\]\s*\(([^)/]+)\)\s*(.*?)\s*$/;
-const RE_CLIENT_BARE = /^\[([^\]]+)\]\s*(.*?)\s*$/;
+const RE_PREV = GRAMMAR.prev;
+const RE_CURRENT = GRAMMAR.current;
+const RE_AUTHOR = GRAMMAR.author;
+const RE_DAY_FLEX = GRAMMAR.day;
+const RE_LOC = GRAMMAR.loc;
+const RE_CUS = GRAMMAR.cus;
+const RE_HOLIDAY = GRAMMAR.holiday;
+const RE_CLIENT = GRAMMAR.client;
+const RE_NUM = GRAMMAR.num;
+const RE_DASH = GRAMMAR.dash;
+const RE_QA_Q = GRAMMAR.qaQ;
+const RE_QA_A = GRAMMAR.qaA;
+const RE_NOTE = GRAMMAR.note;
+const RE_CLIENT_CHANNEL = GRAMMAR.clientChannel;
+const RE_CLIENT_NEW = GRAMMAR.clientNew;
+const RE_CLIENT_BARE = GRAMMAR.clientBare;
 
 interface ParseContext {
   prevWeekRange?: DateRange;

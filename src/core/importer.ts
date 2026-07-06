@@ -7,6 +7,7 @@ import type {
   WeekReport,
 } from './types';
 import { getWeekday, normalizeChannelValue } from './types';
+import { GRAMMAR } from './grammar';
 
 export interface ImportInput {
   html?: string;
@@ -223,7 +224,8 @@ function parseItemsFromContentLines(lines: string[], warnings: string[]): Client
 }
 
 function parseClientHead(line: string, warnings: string[]): ClientItem {
-  const channelMatch = line.match(/^\[([^\]]+)\]\s*\(([^)/]+)\/([^)]+)\)\s*(.*)$/);
+  // @SUM 헤더 3종 — parser와 동일 정규식(GRAMMAR) 공유
+  const channelMatch = line.match(GRAMMAR.clientChannel);
   if (channelMatch) {
     const [, client, contact, channelRaw, workType] = channelMatch;
     // parser와 동일 의미론(normalizeChannelValue 공유): 공백 변주 수렴, 미등록도 raw 보존 (채널 소실 방지)
@@ -231,12 +233,12 @@ function parseClientHead(line: string, warnings: string[]): ClientItem {
     if (!ch.known) warnings.push(`알 수 없는 채널: ${channelRaw}`);
     return { client, contact, channel: ch.value, workType, content: [] };
   }
-  const namedMatch = line.match(/^\[([^\]]+)\]\s*\(([^)/]+)\)\s*(.*)$/);
+  const namedMatch = line.match(GRAMMAR.clientNew);
   if (namedMatch) {
     const [, client, contact, workType] = namedMatch;
     return { client, contact, workType, content: [] };
   }
-  const bareMatch = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+  const bareMatch = line.match(GRAMMAR.clientBare);
   if (bareMatch) {
     const [, client, workType] = bareMatch;
     return { client, workType, content: [] };
@@ -256,17 +258,17 @@ function parseContentLines(lines: string[]): ContentBlock[] {
       continue;
     }
     let m: RegExpMatchArray | null;
-    if ((m = line.match(/^(\d+)\)\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.num))) {
       current = { kind: 'numbered', index: Number.parseInt(m[1], 10), title: m[2], details: [] };
       out.push(current);
       continue;
     }
-    if ((m = line.match(/^<-\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.qaQ))) {
       current = { kind: 'qa', question: m[1] || undefined, answers: [] };
       out.push(current);
       continue;
     }
-    if ((m = line.match(/^->\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.qaA))) {
       if (!current || current.kind !== 'qa') {
         current = { kind: 'qa', answers: [] };
         out.push(current);
@@ -274,7 +276,7 @@ function parseContentLines(lines: string[]): ContentBlock[] {
       (current as { answers: string[] }).answers.push(m[1]);
       continue;
     }
-    if ((m = line.match(/^>\s?(.*)$/))) {
+    if ((m = line.match(GRAMMAR.note))) {
       // `>` 노트 라인 — NOTE_PREFIX 접두 보존하여 현재 블록에 부착
       const noteLine = `> ${m[1]}`;
       if (current && current.kind === 'numbered') {
@@ -292,7 +294,7 @@ function parseContentLines(lines: string[]): ContentBlock[] {
       (current as { items: string[] }).items.push(noteLine);
       continue;
     }
-    if ((m = line.match(/^-\s+(.*)$/))) {
+    if ((m = line.match(GRAMMAR.dash))) {
       if (current && current.kind === 'numbered') {
         current.details.push(m[1]);
         continue;
@@ -370,7 +372,7 @@ function parsePlainBody(text: string, warnings: string[]): DayEntry[] {
     }
 
     let m: RegExpMatchArray | null;
-    if ((m = line.match(/^(\d+)\)\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.num))) {
       if (!currentItem) {
         currentItem = { client: '', workType: '', content: [] };
         currentBlock.items.push(currentItem);
@@ -385,7 +387,7 @@ function parsePlainBody(text: string, warnings: string[]): DayEntry[] {
       currentContent = block;
       continue;
     }
-    if ((m = line.match(/^<-\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.qaQ))) {
       if (!currentItem) {
         currentItem = { client: '', workType: '', content: [] };
         currentBlock.items.push(currentItem);
@@ -395,7 +397,7 @@ function parsePlainBody(text: string, warnings: string[]): DayEntry[] {
       currentContent = block;
       continue;
     }
-    if ((m = line.match(/^->\s*(.*)$/))) {
+    if ((m = line.match(GRAMMAR.qaA))) {
       if (!currentItem) {
         currentItem = { client: '', workType: '', content: [] };
         currentBlock.items.push(currentItem);
@@ -409,7 +411,7 @@ function parsePlainBody(text: string, warnings: string[]): DayEntry[] {
       (target as { answers: string[] }).answers.push(m[1]);
       continue;
     }
-    if ((m = line.match(/^>\s?(.*)$/))) {
+    if ((m = line.match(GRAMMAR.note))) {
       // `>` 노트 라인 — NOTE_PREFIX 접두 보존하여 현재 블록에 부착
       if (!currentItem) {
         currentItem = { client: '', workType: '', content: [] };
@@ -433,7 +435,7 @@ function parsePlainBody(text: string, warnings: string[]): DayEntry[] {
       noteBullets.items.push(noteLine);
       continue;
     }
-    if ((m = line.match(/^-\s+(.*)$/))) {
+    if ((m = line.match(GRAMMAR.dash))) {
       if (!currentItem) {
         currentItem = { client: '', workType: '', content: [] };
         currentBlock.items.push(currentItem);
