@@ -122,6 +122,13 @@ function parseHtmlTable(table: HTMLTableElement, warnings: string[]): DayEntry[]
         const weekday = m[4] as DayEntry['weekday'];
         currentDay = { date, weekday, blocks: [] };
         days.push(currentDay);
+        // 휴무 행 복원 — renderer는 사유를 HTML에 렌더하지 않고 빨간 배경(#FFCCCC)만 칠하므로
+        // 배경색으로 휴무 여부를 인식한다. 사유 텍스트는 소실(허용 소실 계약).
+        const rowHtml = (row as HTMLElement).outerHTML ?? '';
+        if (/ffcccc/i.test(rowHtml)) {
+          currentDay.holiday = { reason: '' };
+          continue;
+        }
       } else if (dateLabel.trim()) {
         warnings.push(`인식할 수 없는 일자 라벨: ${dateLabel.slice(0, 40)}`);
       }
