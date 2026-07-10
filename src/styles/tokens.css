@@ -305,35 +305,51 @@ button { font: inherit; }
 }
 
 /* ==========================================================
- * 주간보고서 비주얼 에디터 — 작업 카드 (인덱스 스파인)
- * 날짜 밴드(3px 액센트)보다 한 단계 아래 위계: 옅은 2px 스파인.
- * 호버·편집 중(:focus-within)에는 스파인 점등 + 미세 그림자 — 현재 작업 위치 표시.
+ * 주간보고서 비주얼 에디터 — 에디토리얼 넘버럴
+ * 박스·컬러 보더 없이 타이포그래피가 작업 구분을 담당:
+ * 좌측 여백의 큰 고스트 숫자(01·02) + 작업 사이 헤어라인 + 넉넉한 여백.
+ * 편집 중(:focus-within)에는 숫자에 잉크가 차오른다.
  * ========================================================== */
-.work-card {
-  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+.work-entry {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: 12px;
 }
-.work-card:hover {
-  border-left-color: color-mix(in srgb, var(--accent) 70%, transparent);
+.work-entry + .work-entry {
+  border-top: 1px solid var(--rule);
+  margin-top: 18px;
+  padding-top: 18px;
 }
-.work-card:focus-within {
-  border-left-color: var(--accent);
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--fg) 10%, transparent);
+.work-numeral {
+  padding-top: 1px;
+  text-align: right;
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  opacity: 0.13;
+  transition: opacity 0.18s ease;
+  user-select: none;
 }
-.work-card-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 11px;
+.work-entry:hover .work-numeral {
+  opacity: 0.3;
+}
+.work-entry:focus-within .work-numeral {
+  opacity: 0.92;
+}
+[data-theme='mono'] .work-numeral {
+  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
   font-weight: 700;
-  border-radius: var(--radius-sharp, 2px);
+  letter-spacing: 0;
+}
+/* "작업 추가"도 같은 넘버럴 언어 — 다음 번호가 옅게 예고됨 */
+.work-entry-add .work-numeral {
+  opacity: 0.1;
+}
+.work-entry-add:hover .work-numeral {
+  opacity: 0.35;
 }
 
 /* ==========================================================

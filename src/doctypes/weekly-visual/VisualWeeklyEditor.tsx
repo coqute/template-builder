@@ -150,7 +150,15 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
               </Field>
             ) : (
               <div className="space-y-3">
-                {day.blocks.map((block, bi) => (
+                {(() => {
+                  // 날짜 내 전역 작업 번호 — 장소 블록이 여러 개여도 01·02·03 연속
+                  const offsets: number[] = [];
+                  let acc = 0;
+                  for (const b of day.blocks) {
+                    offsets.push(acc);
+                    acc += b.items.length;
+                  }
+                  return day.blocks.map((block, bi) => (
                   <div key={bi}>
                     {/* 장소/구분 필드 */}
                     <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
@@ -197,13 +205,13 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
                       )}
                     </div>
 
-                    {/* 작업 카드들 — 인덱스 스파인 언어 (번호 배지 + 좌측 스파인) */}
-                    <div className="mt-2.5 space-y-3">
+                    {/* 작업 목록 — 에디토리얼 넘버럴 (헤어라인+여백이 구분 담당) */}
+                    <div className="mt-3">
                       {block.items.map((item, ii) => (
                         <ItemEditor
                           key={ii}
                           item={item}
-                          order={ii + 1}
+                          order={offsets[bi] + ii + 1}
                           canMoveUp={ii > 0}
                           canMoveDown={ii < block.items.length - 1}
                           onField={(patch) => apply(updateItemFields(report, di, bi, ii, patch))}
@@ -215,16 +223,23 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
                           onRemoveBlock={(ci) => apply(removeContentBlock(report, di, bi, ii, ci))}
                         />
                       ))}
+                      {/* 추가 버튼도 넘버럴 언어 — 다음 번호가 옅게 예고 */}
                       <button
                         type="button"
                         onClick={() => apply(addItem(report, di, bi))}
-                        className="flex items-center gap-1.5 rounded-sharp border border-rule px-2.5 py-1.5 text-[12px] font-medium text-fg-soft transition hover:border-accent hover:text-fg"
+                        className={`work-entry work-entry-add w-full text-left ${block.items.length > 0 ? 'mt-4 border-t border-rule pt-4' : ''}`}
                       >
-                        <Plus size={12} /> 작업 추가
+                        <span className="work-numeral" aria-hidden="true">
+                          {String(offsets[bi] + block.items.length + 1).padStart(2, '0')}
+                        </span>
+                        <span className="flex items-center gap-1.5 py-1 text-[12px] font-medium text-fg-muted transition group-hover:text-fg">
+                          <Plus size={12} /> 작업 추가
+                        </span>
                       </button>
                     </div>
                   </div>
-                ))}
+                  ));
+                })()}
                 <button
                   type="button"
                   onClick={() => apply(addLocationBlock(report, di))}

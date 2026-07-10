@@ -61,39 +61,15 @@ export function ItemEditor({
   onMoveBlock,
   onRemoveBlock,
 }: ItemEditorProps) {
-  const summary = [
-    item.client ? `[${item.client}]` : null,
-    item.contact ? `${item.contact}${item.channel ? `/${item.channel}` : ''}` : null,
-    item.workType || null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
   return (
-    <div className="work-card overflow-hidden rounded-card border border-rule bg-bg-elevated">
-      {/* 헤더 밴드 — 번호 배지 + 요약 (본문 필드와 명도 단차로 분리) */}
-      <div className="flex items-center gap-2 border-b border-rule bg-bg-deep px-3 py-1.5">
-        <span className="work-card-badge">{order}</span>
-        <span
-          className={`min-w-0 flex-1 truncate text-[12px] ${
-            item.client.trim() ? 'text-fg-soft' : 'text-red-500'
-          }`}
-        >
-          {item.client.trim() ? summary || '내용을 입력하세요' : '고객사 미입력'}
-        </span>
-        <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
-          <ArrowUp size={13} />
-        </IconBtn>
-        <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
-          <ArrowDown size={13} />
-        </IconBtn>
-        <IconBtn title="작업 삭제" onClick={onRemove}>
-          <Trash2 size={13} />
-        </IconBtn>
+    <div className="work-entry group">
+      {/* 고스트 넘버럴 — 편집 중 잉크가 차오름 (tokens.css) */}
+      <div className="work-numeral" aria-hidden="true">
+        {String(order).padStart(2, '0')}
       </div>
 
-      <div className="p-3">
-      {/* 헤더 필드 — 고정 라벨 */}
+      <div className="min-w-0">
+      {/* 헤더 필드 — 고정 라벨. 이동/삭제는 행 우측에 옅게 (hover·편집 시 선명) */}
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
         <Field label="고객사" required width="w-28">
           <input
@@ -132,6 +108,17 @@ export function ItemEditor({
             className={VISUAL_INPUT_CLS}
           />
         </Field>
+        <span className="mb-0.5 flex items-center gap-0.5 opacity-40 transition group-focus-within:opacity-100 group-hover:opacity-100">
+          <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
+            <ArrowUp size={13} />
+          </IconBtn>
+          <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
+            <ArrowDown size={13} />
+          </IconBtn>
+          <IconBtn title="작업 삭제" onClick={onRemove}>
+            <Trash2 size={13} />
+          </IconBtn>
+        </span>
       </div>
 
       {/* 본문 블록 — 좌측 라인으로 계층 표현 (박스 중첩 대신) */}
