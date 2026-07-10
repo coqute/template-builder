@@ -305,6 +305,38 @@ button { font: inherit; }
 }
 
 /* ==========================================================
+ * 주간보고서 비주얼 에디터 — 작업 카드 (인덱스 스파인)
+ * 날짜 밴드(3px 액센트)보다 한 단계 아래 위계: 옅은 2px 스파인.
+ * 호버·편집 중(:focus-within)에는 스파인 점등 + 미세 그림자 — 현재 작업 위치 표시.
+ * ========================================================== */
+.work-card {
+  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.work-card:hover {
+  border-left-color: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.work-card:focus-within {
+  border-left-color: var(--accent);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--fg) 10%, transparent);
+}
+.work-card-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-sharp, 2px);
+}
+
+/* ==========================================================
  * Email 본문 contenteditable — placeholder + 본문 요소 스타일
  * ========================================================== */
 .email-body-editor:empty::before {

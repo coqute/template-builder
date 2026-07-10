@@ -197,8 +197,8 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
                       )}
                     </div>
 
-                    {/* 작업 카드들 */}
-                    <div className="mt-2.5 space-y-2.5">
+                    {/* 작업 카드들 — 인덱스 스파인 언어 (번호 배지 + 좌측 스파인) */}
+                    <div className="mt-2.5 space-y-3">
                       {block.items.map((item, ii) => (
                         <ItemEditor
                           key={ii}

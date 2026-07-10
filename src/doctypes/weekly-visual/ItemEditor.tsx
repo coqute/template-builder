@@ -61,13 +61,25 @@ export function ItemEditor({
   onMoveBlock,
   onRemoveBlock,
 }: ItemEditorProps) {
+  const summary = [
+    item.client ? `[${item.client}]` : null,
+    item.contact ? `${item.contact}${item.channel ? `/${item.channel}` : ''}` : null,
+    item.workType || null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <div className="rounded-card border border-rule bg-bg-elevated p-3">
-      {/* 카드 헤더 — 순번 + 이동/삭제 */}
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-xs font-semibold text-fg">작업 {order}</span>
-        <span className="min-w-0 flex-1 truncate text-[11px] text-fg-muted">
-          {item.client ? `[${item.client}]` : ''} {item.workType}
+    <div className="work-card overflow-hidden rounded-card border border-rule bg-bg-elevated">
+      {/* 헤더 밴드 — 번호 배지 + 요약 (본문 필드와 명도 단차로 분리) */}
+      <div className="flex items-center gap-2 border-b border-rule bg-bg-deep px-3 py-1.5">
+        <span className="work-card-badge">{order}</span>
+        <span
+          className={`min-w-0 flex-1 truncate text-[12px] ${
+            item.client.trim() ? 'text-fg-soft' : 'text-red-500'
+          }`}
+        >
+          {item.client.trim() ? summary || '내용을 입력하세요' : '고객사 미입력'}
         </span>
         <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
           <ArrowUp size={13} />
@@ -80,6 +92,7 @@ export function ItemEditor({
         </IconBtn>
       </div>
 
+      <div className="p-3">
       {/* 헤더 필드 — 고정 라벨 */}
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
         <Field label="고객사" required width="w-28">
@@ -147,6 +160,7 @@ export function ItemEditor({
           <option key={c} value={c} />
         ))}
       </datalist>
+      </div>
     </div>
   );
 }
