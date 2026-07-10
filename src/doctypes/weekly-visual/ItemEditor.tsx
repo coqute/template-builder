@@ -1,10 +1,10 @@
-import { ArrowDown, ArrowUp, ListOrdered, List, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import type { ClientItem, ContentBlock } from '@core/index';
 import { KNOWN_CHANNELS } from '@core/index';
 
 interface ItemEditorProps {
   item: ClientItem;
-  /** 카드 헤더 표기용 순번 (1-based) */
+  /** 날짜 내 전역 순번 (1-based) — 고스트 넘버럴 */
   order: number;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -17,10 +17,7 @@ interface ItemEditorProps {
   onRemoveBlock: (ci: number) => void;
 }
 
-export const VISUAL_INPUT_CLS =
-  'rounded-sharp border border-rule bg-bg-elevated px-2.5 py-1.5 text-[13px] text-fg outline-none transition focus:border-accent';
-
-/** 상단 고정 라벨 + 입력 — 값을 채운 뒤에도 필드 의미가 보이도록 */
+/** 캡션 + 밑줄 필드 — 원고지 조판의 기본 입력 단위 */
 export function Field({
   label,
   required,
@@ -38,7 +35,7 @@ export function Field({
     <label
       className={['flex flex-col gap-1', grow ? 'min-w-[180px] flex-1' : '', width ?? ''].join(' ')}
     >
-      <span className="text-[11px] font-medium text-fg-soft">
+      <span className="ms-caption">
         {label}
         {required && <span style={{ color: 'var(--stamp-red, #DC2626)' }}> *</span>}
       </span>
@@ -47,7 +44,7 @@ export function Field({
   );
 }
 
-/** 작업(@SUM) 항목 편집 카드 — 명시적 한국어 라벨, 본문 블록은 좌측 라인 계층 */
+/** 작업 항목 — 고스트 넘버럴 + 밑줄 필드. 박스 없음 */
 export function ItemEditor({
   item,
   order,
@@ -69,85 +66,92 @@ export function ItemEditor({
       </div>
 
       <div className="min-w-0">
-      {/* 헤더 필드 — 고정 라벨. 이동/삭제는 행 우측에 옅게 (hover·편집 시 선명) */}
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-        <Field label="고객사" required width="w-28">
-          <input
-            type="text"
-            value={item.client}
-            placeholder="ABZ+"
-            onChange={(e) => onField({ client: e.target.value })}
-            className={`${VISUAL_INPUT_CLS} ${item.client.trim() ? '' : 'border-red-400'}`}
-          />
-        </Field>
-        <Field label="담당자" width="w-28">
-          <input
-            type="text"
-            value={item.contact ?? ''}
-            placeholder="(생략 가능)"
-            onChange={(e) => onField({ contact: e.target.value })}
-            className={VISUAL_INPUT_CLS}
-          />
-        </Field>
-        <Field label="채널" width="w-28">
-          <input
-            type="text"
-            value={item.channel ?? ''}
-            placeholder="메일 / 유선"
-            list="visual-channel-options"
-            onChange={(e) => onField({ channel: e.target.value })}
-            className={VISUAL_INPUT_CLS}
-          />
-        </Field>
-        <Field label="작업 설명" grow>
-          <input
-            type="text"
-            value={item.workType}
-            placeholder="예: 수집서버 방화벽 포트 통신 확인 요청"
-            onChange={(e) => onField({ workType: e.target.value })}
-            className={VISUAL_INPUT_CLS}
-          />
-        </Field>
-        <span className="mb-0.5 flex items-center gap-0.5 opacity-40 transition group-focus-within:opacity-100 group-hover:opacity-100">
-          <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
-            <ArrowUp size={13} />
-          </IconBtn>
-          <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
-            <ArrowDown size={13} />
-          </IconBtn>
-          <IconBtn title="작업 삭제" onClick={onRemove}>
-            <Trash2 size={13} />
-          </IconBtn>
-        </span>
-      </div>
-
-      {/* 본문 블록 — 좌측 라인으로 계층 표현 (박스 중첩 대신) */}
-      {item.content.length > 0 && (
-        <div className="mt-3 space-y-3 border-l-2 border-rule pl-3">
-          {item.content.map((block, ci) => (
-            <ContentBlockEditor
-              key={ci}
-              block={block}
-              canMoveUp={ci > 0}
-              canMoveDown={ci < item.content.length - 1}
-              onChange={(b) => onUpdateBlock(ci, b)}
-              onMove={(dir) => onMoveBlock(ci, dir)}
-              onRemove={() => onRemoveBlock(ci)}
+        {/* 헤더 필드 행 — 액션은 우측에 옅게 (hover·편집 시 선명) */}
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <Field label="고객사" required width="w-28">
+            <input
+              type="text"
+              value={item.client}
+              placeholder="ABZ+"
+              onChange={(e) => onField({ client: e.target.value })}
+              className="ms-input"
+              style={item.client.trim() ? undefined : { borderBottomColor: 'var(--stamp-red, #DC2626)' }}
             />
-          ))}
+          </Field>
+          <Field label="담당자" width="w-28">
+            <input
+              type="text"
+              value={item.contact ?? ''}
+              placeholder="(생략 가능)"
+              onChange={(e) => onField({ contact: e.target.value })}
+              className="ms-input"
+            />
+          </Field>
+          <Field label="채널" width="w-28">
+            <input
+              type="text"
+              value={item.channel ?? ''}
+              placeholder="메일 / 유선"
+              list="visual-channel-options"
+              onChange={(e) => onField({ channel: e.target.value })}
+              className="ms-input"
+            />
+          </Field>
+          <Field label="작업 설명" grow>
+            <input
+              type="text"
+              value={item.workType}
+              placeholder="예: 수집서버 방화벽 포트 통신 확인 요청"
+              onChange={(e) => onField({ workType: e.target.value })}
+              className="ms-input"
+            />
+          </Field>
+          <span className="mb-1 flex items-center gap-0.5 opacity-35 transition group-focus-within:opacity-100 group-hover:opacity-100">
+            <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
+              <ArrowUp size={13} />
+            </IconBtn>
+            <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
+              <ArrowDown size={13} />
+            </IconBtn>
+            <IconBtn title="작업 삭제" onClick={onRemove}>
+              <Trash2 size={13} />
+            </IconBtn>
+          </span>
         </div>
-      )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <AddBlockBtn icon={<ListOrdered size={12} />} label="번호 작업" onClick={() => onAddBlock('numbered')} />
-        <AddBlockBtn icon={<MessageSquare size={12} />} label="문의 · 답변" onClick={() => onAddBlock('qa')} />
-        <AddBlockBtn icon={<List size={12} />} label="불릿 목록" onClick={() => onAddBlock('bullets')} />
+
+        {/* 본문 블록 — 캡션과 여백만으로 구분 (박스·계층선 없음) */}
+        {item.content.length > 0 && (
+          <div className="mt-4 space-y-4">
+            {item.content.map((block, ci) => (
+              <ContentBlockEditor
+                key={ci}
+                block={block}
+                canMoveUp={ci > 0}
+                canMoveDown={ci < item.content.length - 1}
+                onChange={(b) => onUpdateBlock(ci, b)}
+                onMove={(dir) => onMoveBlock(ci, dir)}
+                onRemove={() => onRemoveBlock(ci)}
+              />
+            ))}
+          </div>
+        )}
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <button type="button" className="ms-add" onClick={() => onAddBlock('numbered')}>
+            <Plus size={11} /> 번호 작업
+          </button>
+          <button type="button" className="ms-add" onClick={() => onAddBlock('qa')}>
+            <Plus size={11} /> 문의 · 답변
+          </button>
+          <button type="button" className="ms-add" onClick={() => onAddBlock('bullets')}>
+            <Plus size={11} /> 불릿 목록
+          </button>
+        </div>
       </div>
       <datalist id="visual-channel-options">
         {KNOWN_CHANNELS.map((c) => (
           <option key={c} value={c} />
         ))}
       </datalist>
-      </div>
     </div>
   );
 }
@@ -176,21 +180,23 @@ function ContentBlockEditor({
   const meta = BLOCK_META[block.kind];
   const lines = (v: string) => v.split('\n');
   return (
-    <div>
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-fg-soft" title={meta.hint}>
+    <div className="group/block">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="ms-caption" title={meta.hint}>
           {block.kind === 'numbered' ? `번호 작업 ${block.index})` : meta.label}
         </span>
         <span className="flex-1" />
-        <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
-          <ArrowUp size={12} />
-        </IconBtn>
-        <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
-          <ArrowDown size={12} />
-        </IconBtn>
-        <IconBtn title="블록 삭제" onClick={onRemove}>
-          <Trash2 size={12} />
-        </IconBtn>
+        <span className="flex items-center gap-0.5 opacity-0 transition group-focus-within/block:opacity-100 group-hover/block:opacity-100">
+          <IconBtn title="위로 이동" disabled={!canMoveUp} onClick={() => onMove(-1)}>
+            <ArrowUp size={12} />
+          </IconBtn>
+          <IconBtn title="아래로 이동" disabled={!canMoveDown} onClick={() => onMove(1)}>
+            <ArrowDown size={12} />
+          </IconBtn>
+          <IconBtn title="블록 삭제" onClick={onRemove}>
+            <Trash2 size={12} />
+          </IconBtn>
+        </span>
       </div>
 
       <div className="space-y-1.5">
@@ -201,12 +207,14 @@ function ContentBlockEditor({
               value={block.title}
               placeholder="작업 제목 — 예: 서버모니터링 에이전트 설치 지원"
               onChange={(e) => onChange({ ...block, title: e.target.value })}
-              className={`${VISUAL_INPUT_CLS} w-full`}
+              className="ms-input w-full"
             />
-            <LineArea
+            <textarea
               value={block.details.join('\n')}
-              placeholder={'세부 내용 — 한 줄에 하나씩\n보조 설명(회색 노트)은 "> "로 시작'}
-              onChange={(v) => onChange({ ...block, details: lines(v) })}
+              placeholder={'세부 내용 — 한 줄에 하나씩, 노트는 "> "로 시작'}
+              onChange={(e) => onChange({ ...block, details: lines(e.target.value) })}
+              rows={Math.max(2, block.details.length)}
+              className="ms-area"
             />
           </>
         )}
@@ -217,44 +225,28 @@ function ContentBlockEditor({
               value={block.question ?? ''}
               placeholder="문의 내용 — 예: 임계치 초과 이벤트가 발생하지 않습니다"
               onChange={(e) => onChange({ ...block, question: e.target.value || undefined })}
-              className={`${VISUAL_INPUT_CLS} w-full`}
+              className="ms-input w-full"
             />
-            <LineArea
+            <textarea
               value={block.answers.join('\n')}
-              placeholder={'답변 — 한 줄에 하나씩\n보조 설명(회색 노트)은 "> "로 시작'}
-              onChange={(v) => onChange({ ...block, answers: lines(v) })}
+              placeholder={'답변 — 한 줄에 하나씩, 노트는 "> "로 시작'}
+              onChange={(e) => onChange({ ...block, answers: lines(e.target.value) })}
+              rows={Math.max(2, block.answers.length)}
+              className="ms-area"
             />
           </>
         )}
         {block.kind === 'bullets' && (
-          <LineArea
+          <textarea
             value={block.items.join('\n')}
-            placeholder={'항목 — 한 줄에 하나씩\n보조 설명(회색 노트)은 "> "로 시작'}
-            onChange={(v) => onChange({ ...block, items: lines(v) })}
+            placeholder={'항목 — 한 줄에 하나씩, 노트는 "> "로 시작'}
+            onChange={(e) => onChange({ ...block, items: lines(e.target.value) })}
+            rows={Math.max(2, block.items.length)}
+            className="ms-area"
           />
         )}
       </div>
     </div>
-  );
-}
-
-function LineArea({
-  value,
-  placeholder,
-  onChange,
-}: {
-  value: string;
-  placeholder: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <textarea
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      rows={Math.max(2, value.split('\n').length)}
-      className="w-full resize-y rounded-sharp border border-rule bg-bg-elevated px-2.5 py-1.5 text-[13px] leading-relaxed text-fg outline-none transition focus:border-accent"
-    />
   );
 }
 
@@ -278,28 +270,6 @@ function IconBtn({
       className="flex shrink-0 items-center rounded-sharp p-1 text-fg-muted transition hover:bg-bg-sunken hover:text-fg disabled:opacity-30"
     >
       {children}
-    </button>
-  );
-}
-
-function AddBlockBtn({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1.5 rounded-sharp border border-rule px-2.5 py-1 text-[12px] text-fg-soft transition hover:border-accent hover:text-fg"
-    >
-      <Plus size={11} />
-      {icon}
-      {label}
     </button>
   );
 }
