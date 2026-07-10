@@ -46,12 +46,19 @@ const TD = `border:${MAIL_BORDER};padding:7px 10px;vertical-align:top;${MAIL_TEX
 const TD_LABEL = `${TD}background:#DCE3F2;font-weight:600;color:#111827;white-space:nowrap;`;
 const TD_SECTION = `${TD}background:#B0C2E2;font-weight:700;color:#111827;text-align:center;vertical-align:middle;white-space:nowrap;`;
 
-// 본문 내 표·코드 블록을 Gmail/미리보기에서 보이도록 인라인 스타일 주입 (contenteditable은 테두리 미포함)
+// 본문 내 표·코드·리스트를 Gmail/미리보기에서 보이도록 인라인 스타일 주입 (contenteditable은 테두리 미포함)
 const BODY_TABLE_STYLE = 'border-collapse:collapse;';
-const BODY_CELL_STYLE = `border:${MAIL_BORDER};padding:6px 9px;vertical-align:top;`;
+// 삽입 표 셀은 가로·세로 중앙 정렬 — 좌상단 고정으로 보이던 문제 해소
+const BODY_CELL_STYLE = `border:${MAIL_BORDER};padding:6px 9px;text-align:center;vertical-align:middle;`;
 const BODY_TH_EXTRA = 'background:#DCE3F2;font-weight:600;';
 const BODY_PRE_STYLE = `font-family:'Courier New',Consolas,monospace;background:#f6f8fa;border:1px solid #e5e7eb;border-radius:4px;padding:8px 10px;white-space:pre-wrap;`;
 const BODY_CODE_STYLE = `font-family:'Courier New',Consolas,monospace;background:#f6f8fa;padding:1px 4px;border-radius:3px;`;
+// 리스트 들여쓰기/마커를 인라인으로 고정 — Outlook 등 기본값이 다른 클라이언트 대비
+const BODY_UL_STYLE = 'list-style:disc;margin:4px 0 8px;padding-left:22px;';
+const BODY_OL_STYLE = 'list-style:decimal;margin:4px 0 8px;padding-left:22px;';
+const BODY_LI_STYLE = 'margin:2px 0;';
+const BODY_BLOCKQUOTE_STYLE =
+  'margin:4px 0 8px;padding:4px 10px;border-left:3px solid #c5cfdd;color:#4b5563;';
 
 /** style 속성에 defaults의 프로퍼티를 idempotent하게 병합 (이미 있는 prop은 보존) */
 function mergeStyle(el: Element, defaults: string): void {
@@ -85,6 +92,10 @@ export function decorateBodyHtml(safeHtml: string): string {
     if (c.parentElement && c.parentElement.tagName === 'PRE') return; // pre 내부 code는 중복 스타일 생략
     mergeStyle(c, BODY_CODE_STYLE);
   });
+  doc.querySelectorAll('ul').forEach((el) => mergeStyle(el, BODY_UL_STYLE));
+  doc.querySelectorAll('ol').forEach((el) => mergeStyle(el, BODY_OL_STYLE));
+  doc.querySelectorAll('li').forEach((el) => mergeStyle(el, BODY_LI_STYLE));
+  doc.querySelectorAll('blockquote').forEach((el) => mergeStyle(el, BODY_BLOCKQUOTE_STYLE));
   return doc.body.innerHTML;
 }
 

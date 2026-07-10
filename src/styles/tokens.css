@@ -312,13 +312,28 @@ button { font: inherit; }
   color: var(--fg-faint);
   pointer-events: none;
 }
-.email-body-editor ul,
-.email-body-editor ol {
-  margin: 0 0 6px;
+/* Tailwind preflight가 list-style을 제거하므로 명시 복원 — 에디터에서도 마커가 보이게 (WYSIWYG) */
+.email-body-editor ul {
+  list-style: disc outside;
+  margin: 4px 0 8px;
   padding-left: 22px;
+}
+.email-body-editor ol {
+  list-style: decimal outside;
+  margin: 4px 0 8px;
+  padding-left: 22px;
+}
+.email-body-editor li {
+  margin: 2px 0;
 }
 .email-body-editor p {
   margin: 0 0 6px;
+}
+.email-body-editor blockquote {
+  margin: 4px 0 8px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--rule-strong);
+  color: var(--fg-soft);
 }
 .email-body-editor img {
   max-width: 100%;
@@ -336,6 +351,15 @@ button { font: inherit; }
 .email-body-editor th {
   border: 1px solid var(--rule-strong);
   padding: 4px 8px;
+  /* 발송 렌더(decorateBodyHtml)와 동일한 중앙 정렬 — 편집 화면 = 미리보기 */
+  text-align: center;
+  vertical-align: middle;
+  min-width: 48px;
+}
+/* 빈 셀도 클릭·타이핑 가능한 높이 확보 */
+.email-body-editor td:empty::before,
+.email-body-editor th:empty::before {
+  content: '\00a0';
 }
 .email-body-editor th {
   background: var(--bg-sunken);

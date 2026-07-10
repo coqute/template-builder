@@ -96,6 +96,27 @@ describe('decorateBodyHtml', () => {
     expect(out).toContain('color:red');
     expect(out).toMatch(/border:/);
   });
+
+  it('표 셀은 가로·세로 중앙 정렬 (좌상단 고정 문제 방지)', () => {
+    const out = decorateBodyHtml('<table><tr><th>헤더</th><td>셀</td></tr></table>');
+    expect(out).toMatch(/<th style="[^"]*text-align:center/);
+    expect(out).toMatch(/<th style="[^"]*vertical-align:middle/);
+    expect(out).toMatch(/<td style="[^"]*text-align:center/);
+    expect(out).toMatch(/<td style="[^"]*vertical-align:middle/);
+  });
+
+  it('ul/ol/li에 마커·들여쓰기 인라인 스타일 (메일 클라이언트 견고성)', () => {
+    const out = decorateBodyHtml('<ul><li>불릿</li></ul><ol><li>번호</li></ol>');
+    expect(out).toMatch(/<ul style="[^"]*list-style:disc/);
+    expect(out).toMatch(/<ol style="[^"]*list-style:decimal/);
+    expect(out).toMatch(/padding-left:22px/);
+    expect(out).toMatch(/<li style="[^"]*margin:2px 0/);
+  });
+
+  it('blockquote 좌측 보더 스타일 주입', () => {
+    const out = decorateBodyHtml('<blockquote>인용</blockquote>');
+    expect(out).toMatch(/<blockquote style="[^"]*border-left:3px solid/);
+  });
 });
 
 describe('이슈 서두 (bodyLead)', () => {
