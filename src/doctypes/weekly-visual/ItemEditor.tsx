@@ -75,7 +75,7 @@ export function ItemEditor({
               placeholder="ABZ+"
               onChange={(e) => onField({ client: e.target.value })}
               className="ms-input"
-              style={item.client.trim() ? undefined : { borderBottomColor: 'var(--stamp-red, #DC2626)' }}
+              style={item.client.trim() ? undefined : { borderColor: 'var(--stamp-red, #DC2626)' }}
             />
           </Field>
           <Field label="담당자" width="w-28">
@@ -201,13 +201,13 @@ function ContentBlockEditor({
 
       <div className="space-y-1.5">
         {block.kind === 'numbered' && (
-          <>
+          <div className="ms-stack">
             <input
               type="text"
               value={block.title}
               placeholder="작업 제목 — 예: 서버모니터링 에이전트 설치 지원"
               onChange={(e) => onChange({ ...block, title: e.target.value })}
-              className="ms-input w-full"
+              className="ms-input"
             />
             <textarea
               value={block.details.join('\n')}
@@ -216,16 +216,16 @@ function ContentBlockEditor({
               rows={Math.max(2, block.details.length)}
               className="ms-area"
             />
-          </>
+          </div>
         )}
         {block.kind === 'qa' && (
-          <>
+          <div className="ms-stack">
             <input
               type="text"
               value={block.question ?? ''}
               placeholder="문의 내용 — 예: 임계치 초과 이벤트가 발생하지 않습니다"
               onChange={(e) => onChange({ ...block, question: e.target.value || undefined })}
-              className="ms-input w-full"
+              className="ms-input"
             />
             <textarea
               value={block.answers.join('\n')}
@@ -234,7 +234,7 @@ function ContentBlockEditor({
               rows={Math.max(2, block.answers.length)}
               className="ms-area"
             />
-          </>
+          </div>
         )}
         {block.kind === 'bullets' && (
           <textarea

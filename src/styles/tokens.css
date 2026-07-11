@@ -311,22 +311,22 @@ button { font: inherit; }
  * ========================================================== */
 
 /* 밑줄 필드 — 박스 입력 대체. focus 시 잉크색으로 진해짐 */
+/* 박스 입력 유지(사용자 확정) — 중첩 해소는 계층선 제거·캡션 구분·ms-stack 결합이 담당 */
 .ms-input {
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 3px 1px 5px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sharp);
+  padding: 6px 10px;
   font-size: 13px;
   color: var(--fg);
   outline: none;
   transition: border-color 0.15s ease;
 }
 .ms-input:hover {
-  border-bottom-color: var(--rule-strong);
+  border-color: var(--rule-strong);
 }
 .ms-input:focus {
-  border-bottom-color: var(--fg);
+  border-color: var(--fg);
 }
 .ms-input::placeholder {
   color: var(--fg-faint);
@@ -334,11 +334,10 @@ button { font: inherit; }
 .ms-area {
   display: block;
   width: 100%;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  border-radius: 0;
-  padding: 3px 1px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sharp);
+  padding: 6px 10px;
   font-size: 13px;
   line-height: 1.65;
   color: var(--fg);
@@ -347,13 +346,30 @@ button { font: inherit; }
   transition: border-color 0.15s ease;
 }
 .ms-area:hover {
-  border-bottom-color: var(--rule-strong);
+  border-color: var(--rule-strong);
 }
 .ms-area:focus {
-  border-bottom-color: var(--fg);
+  border-color: var(--fg);
 }
 .ms-area::placeholder {
   color: var(--fg-faint);
+}
+
+/* 본문 블록의 제목+세부를 한 몸으로 결합 — 블록당 박스 1개 (중첩 해소의 핵심) */
+.ms-stack .ms-input {
+  width: 100%;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.ms-stack .ms-area {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: -1px;
+}
+.ms-stack .ms-input:focus,
+.ms-stack .ms-area:focus {
+  position: relative;
+  z-index: 1;
 }
 
 /* 필드 캡션 — 원고의 각주 라벨 */
