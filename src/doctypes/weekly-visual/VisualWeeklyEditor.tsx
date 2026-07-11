@@ -141,7 +141,7 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
 
               {day.holiday ? (
                 <div className="mt-3 pl-[56px]">
-                  <Field label="휴무 사유 — 표에서 빨간 행으로 강조됩니다">
+                  <Field label="휴무 사유 — 표의 빨간 행 내용 칸에 표기됩니다">
                     <input
                       type="text"
                       value={day.holiday.reason}

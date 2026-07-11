@@ -16,8 +16,8 @@ import type { WeekReport } from '../src/core/types';
  *  3. inheritLocation 블록 경계: renderer가 rowspan으로 병합 → 재임포트 시 단일 블록으로 평탄화될 수 있음
  *     → 비교는 "일자별 전체 item 시퀀스" 기준 (블록 구조 무시)
  *  4. 날짜 변주(점/슬래시)·요일 생략: 파서가 ISO로 정규화 → 정규화된 값 기준 비교
- *  5. @HOLIDAY 사유: renderer가 사유를 HTML에 렌더하지 않음(실제 메일 포맷 = 빨간 빈 행)
- *     → 휴무 "여부"만 배경색으로 복원, 사유 텍스트는 소실
+ *
+ * @HOLIDAY 사유는 내용 셀에 렌더되고 importer가 복원 — 완전 보존 (허용 소실 아님)
  */
 
 function fullPipeline(md: string): { imported: WeekReport; reparsed: WeekReport } {
@@ -32,7 +32,7 @@ function flattenItems(r: WeekReport) {
   return r.days.map((d) => ({
     date: d.date,
     weekday: d.weekday,
-    holiday: d.holiday ? true : null, // 허용 소실 5 — 여부만 비교 (사유는 HTML 미표기)
+    holiday: d.holiday ?? null, // 사유 포함 완전 비교 — 내용 셀 렌더로 왕복 보존
     items: d.blocks.flatMap((b) =>
       b.items.map((i) => ({
         client: i.client,

@@ -68,10 +68,11 @@ describe('renderer', () => {
     expect(html).toContain('word-break:keep-all');
   });
 
-  it('@HOLIDAY 일자는 빨간 배경 행으로 출력한다 (텍스트 없이 색만)', () => {
+  it('@HOLIDAY 일자는 빨간 배경 행 + 내용 셀에 사유를 출력한다', () => {
     const html = renderHtml(parse(SAMPLE));
     expect(html).toContain('background:#FFCCCC');
     expect(html).toContain('color:#B91C1C');
+    expect(html).toContain('근로자의 날'); // 휴무 사유는 내용 셀에 표기
     // 기타 셀에 (휴무) 텍스트는 표시하지 않음
     expect(html).not.toContain('(휴무)');
   });

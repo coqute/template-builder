@@ -97,12 +97,17 @@ function renderDayRows(day: DayEntry): string[] {
     const tdHolidayCenter = `${TD_CENTER}background:${HOLIDAY_BG};`;
     const tdHolidayBase = `${TD_BASE}background:${HOLIDAY_BG};`;
     const tdDate = `${tdHolidayCenter}color:${HOLIDAY_FG};font-weight:600;`;
+    // 휴무 사유는 내용 셀에 표기 — importer가 이 텍스트로 사유를 왕복 복원한다
+    const reason = day.holiday.reason.trim();
+    const reasonHtml = reason
+      ? `<span style="color:${HOLIDAY_FG};font-weight:600;">${escapeHtml(reason)}</span>`
+      : '';
     return [
       `<tr style="background:${HOLIDAY_BG};">` +
         `<td style="${tdDate}">${escapeHtml(formatDateLabel(day))}</td>` +
         `<td style="${tdHolidayCenter}"></td>` +
         `<td style="${tdHolidayCenter}"></td>` +
-        `<td style="${tdHolidayBase}"></td>` +
+        `<td style="${tdHolidayBase}">${reasonHtml}</td>` +
         `<td style="${tdHolidayBase}"></td>` +
         `</tr>`,
     ];
@@ -244,7 +249,7 @@ export function renderPlain(report: WeekReport): string {
 
   for (const day of report.days) {
     if (day.holiday) {
-      rows.push([formatDateLabel(day), '', '', '', ''].join('\t'));
+      rows.push([formatDateLabel(day), '', '', day.holiday.reason.trim(), ''].join('\t'));
       continue;
     }
     if (day.blocks.length === 0) {
