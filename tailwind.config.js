@@ -33,9 +33,9 @@ export default {
         DEFAULT: 'var(--radius)',
         card: 'var(--radius-card)',
       },
-      borderWidth: {
-        rule: 'var(--rule-width)',
-      },
+      // 주의: borderWidth에 'rule' 키를 두면 색상 유틸 `border-rule`이 "4변 너비"로
+      // 해석되어 `border-t border-rule` 사용처마다 유령 박스가 생긴다 (2026-07 버그).
+      // border-rule은 색상 전용으로 유지한다.
       boxShadow: {
         themed: 'var(--shadow)',
       },
