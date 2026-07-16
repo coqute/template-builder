@@ -107,20 +107,23 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
             acc += b.items.length;
           }
           return (
-            <section key={day.date} className="group/day">
-              {/* 러닝 헤드 — 날짜 제목 뒤로 룰이 우측 끝까지 */}
+            <section
+              key={day.date}
+              className={`group/day day-section ${day.holiday ? 'day-section--holiday' : ''}`}
+            >
+              {/* 러닝 헤드 — 전폭 굵은 룰(섹션 상단) 아래 날짜 제목 */}
               <div className="flex items-center gap-3">
                 <span
-                  className="text-[17px] font-bold tracking-tight"
+                  className="text-[19px] font-bold tracking-tight"
                   style={{ color: day.holiday ? 'var(--stamp-red, #DC2626)' : 'var(--fg)' }}
                 >
                   {formatDayTitle(day.date)}
                 </span>
                 <span className="text-[12px] text-fg-soft">
                   {WEEKDAY_LABEL[day.weekday] ?? day.weekday}
-                  {day.holiday ? ' · 휴무' : ''}
+                  {day.holiday ? ' · 휴무' : ''} · {day.date}
                 </span>
-                <span className={`day-rule ${day.holiday ? 'day-rule--holiday' : ''}`} />
+                <span className="flex-1" />
                 <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-fg-muted opacity-60 transition group-hover/day:opacity-100">
                   <input
                     type="checkbox"

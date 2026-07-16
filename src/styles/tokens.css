@@ -384,13 +384,14 @@ button { font: inherit; }
   color: var(--fg-muted);
 }
 
-/* 날짜 러닝 헤드 — 제목 뒤로 헤어라인이 우측 끝까지 뻗음 */
-.day-rule {
-  flex: 1;
-  border-top: 1px solid var(--rule);
+/* 날짜 섹션 — 신문 조판식 전폭 굵은 룰로 시작 (날짜 간 구분의 1차 신호).
+   마스트헤드(2px)와 같은 리듬. 휴무일은 빨간 룰 */
+.day-section {
+  border-top: 2px solid var(--fg);
+  padding-top: 10px;
 }
-.day-rule--holiday {
-  border-top-color: color-mix(in srgb, var(--stamp-red, #dc2626) 45%, transparent);
+.day-section--holiday {
+  border-top-color: var(--stamp-red, #dc2626);
 }
 
 /* 텍스트형 추가 버튼 — 보더 없는 조판 버튼 */
