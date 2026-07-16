@@ -70,22 +70,45 @@ export function EmailWorkspace({
         </select>
         <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" />
         <span className="shrink-0 text-[11px] font-medium text-fg-muted">제목</span>
+        {/* 자동 모드(직접 편집 전): 입력값이 패턴에 실시간 반영된 제목을 그대로 표시.
+            타이핑하면 수동 고정, 전부 지우면 자동 복귀 */}
         <input
           type="text"
-          value={doc.subject ?? ''}
+          value={doc.subject ?? rendered?.subject ?? ''}
           onChange={(e) => onSubject(e.target.value)}
-          placeholder={rendered?.subject || '제목을 입력하세요'}
-          className="min-w-0 flex-1 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-accent"
+          placeholder="제목을 입력하세요"
+          title={
+            doc.subject === undefined
+              ? '자동 — 문의 주제·고객사 입력이 제목에 그대로 반영됩니다. 직접 수정하면 고정됩니다.'
+              : '직접 입력한 제목 (전부 지우면 자동으로 복귀)'
+          }
+          className={[
+            'min-w-0 flex-1 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs outline-none focus:border-accent',
+            doc.subject === undefined ? 'text-fg-soft' : 'text-fg',
+          ].join(' ')}
         />
-        <button
-          type="button"
-          onClick={onRegenerateSubject}
-          title="현재 항목으로 제목 자동 생성"
-          className="flex shrink-0 items-center gap-1 rounded-sharp border border-rule px-1.5 py-1 text-[11px] text-fg-soft transition hover:bg-bg-sunken hover:text-fg"
+        <span
+          className="shrink-0 rounded-sharp px-1.5 py-0.5 text-[10px] font-medium"
+          style={
+            doc.subject === undefined
+              ? { background: 'var(--accent)', color: 'var(--bg)' }
+              : { border: '1px solid var(--rule)', color: 'var(--fg-muted)' }
+          }
+          title={doc.subject === undefined ? '입력값이 제목에 실시간 반영 중' : '직접 입력한 제목으로 고정됨'}
         >
-          <RotateCcw size={12} />
-          <span className="hidden lg:inline">자동</span>
-        </button>
+          {doc.subject === undefined ? '자동' : '수동'}
+        </span>
+        {doc.subject !== undefined && (
+          <button
+            type="button"
+            onClick={onRegenerateSubject}
+            title="자동 생성으로 되돌리기"
+            className="flex shrink-0 items-center gap-1 rounded-sharp border border-rule px-1.5 py-1 text-[11px] text-fg-soft transition hover:bg-bg-sunken hover:text-fg"
+          >
+            <RotateCcw size={12} />
+            <span className="hidden lg:inline">자동으로</span>
+          </button>
+        )}
         {template.recipientHint && (
           <span
             className="hidden shrink-0 rounded-sharp border border-rule px-2 py-0.5 text-[10px] text-fg-muted xl:inline-block"

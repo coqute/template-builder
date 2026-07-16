@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DEFAULT_TEMPLATE_ID, getTemplate } from './templates';
-import { buildEmailSubject } from './render';
 import type { EmailDocState } from './types';
 
 const KEY = 'tb:email-doc:v1';
@@ -23,11 +22,9 @@ function initialValues(templateId: string): Record<string, string> {
   return out;
 }
 
-/** 템플릿 + 필드값으로 제목 시드 생성 */
-function seedSubject(templateId: string, values: Record<string, string>): string {
-  const t = getTemplate(templateId);
-  return t ? buildEmailSubject(t, values) : '';
-}
+// 제목 의미론: doc.subject === undefined → "자동 모드" (렌더 시 subjectPattern에 필드값 실시간 반영).
+// 사용자가 제목을 직접 입력하면 수동 고정, 비우면 다시 자동 복귀. (기존 시드 방식은
+// 템플릿 선택 시점의 빈 필드로 제목이 고정되어 topic 입력이 반영되지 않던 문제가 있었다)
 
 function todayIso(): string {
   const d = new Date();
@@ -49,8 +46,8 @@ function loadDoc(): EmailDocState {
             templateId: parsed.templateId,
             fieldValues,
             bodyHtml: parsed.bodyHtml ?? '',
-            // 기존 저장본에 subject 없으면 패턴으로 시드 (무손실 마이그레이션)
-            subject: parsed.subject ?? seedSubject(parsed.templateId, fieldValues),
+            // subject 없으면 자동 모드 유지 — 렌더 시 패턴에 필드값 실시간 반영
+            subject: parsed.subject,
           };
         }
       } catch {
@@ -63,7 +60,7 @@ function loadDoc(): EmailDocState {
     templateId: DEFAULT_TEMPLATE_ID,
     fieldValues,
     bodyHtml: '',
-    subject: seedSubject(DEFAULT_TEMPLATE_ID, fieldValues),
+    subject: undefined, // 자동 모드
   };
 }
 
@@ -101,7 +98,7 @@ export function useEmailDoc(): EmailDocApi {
 
   const setTemplateId = useCallback((id: string) => {
     const fieldValues = initialValues(id);
-    setDoc({ templateId: id, fieldValues, bodyHtml: '', subject: seedSubject(id, fieldValues) });
+    setDoc({ templateId: id, fieldValues, bodyHtml: '', subject: undefined }); // 자동 모드로 시작
     setBodyKey((k) => k + 1);
   }, []);
 
@@ -114,18 +111,17 @@ export function useEmailDoc(): EmailDocApi {
   }, []);
 
   const setSubject = useCallback((subject: string) => {
-    setDoc((d) => ({ ...d, subject }));
+    // 직접 입력 = 수동 고정, 전부 지우면 자동 모드 복귀
+    setDoc((d) => ({ ...d, subject: subject === '' ? undefined : subject }));
   }, []);
 
+  /** 자동 모드 복귀 — 이후 제목은 패턴에 필드값이 실시간 반영 */
   const regenerateSubject = useCallback(() => {
-    setDoc((d) => ({ ...d, subject: seedSubject(d.templateId, d.fieldValues) }));
+    setDoc((d) => ({ ...d, subject: undefined }));
   }, []);
 
   const loadDocState = useCallback((next: EmailDocState) => {
-    setDoc({
-      ...next,
-      subject: next.subject ?? seedSubject(next.templateId, next.fieldValues ?? {}),
-    });
+    setDoc({ ...next, subject: next.subject }); // undefined = 자동 모드
     setBodyKey((k) => k + 1);
   }, []);
 

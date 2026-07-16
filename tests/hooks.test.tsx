@@ -74,7 +74,7 @@ describe('useDocType', () => {
 });
 
 describe('useEmailDoc', () => {
-  it('기존 저장본에 subject 없으면 패턴으로 시드 (마이그레이션)', () => {
+  it('subject 미지정 = 자동 모드 유지 — 필드 입력이 제목에 실시간 반영', () => {
     store.set(
       'tb:email-doc:v1',
       JSON.stringify({
@@ -84,7 +84,21 @@ describe('useEmailDoc', () => {
       }),
     );
     const { result } = renderHook(() => useEmailDoc());
-    expect(result.current.doc.subject).toBe('[예시IT] BMS 문의 문의 (ABZ+)');
+    expect(result.current.doc.subject).toBeUndefined(); // 자동 모드
+    // 자동 모드에서 topic 변경 → 렌더 제목이 그대로 따라감 (renderEmail 폴백)
+    act(() => result.current.setField('topic', '웹 점검 이벤트'));
+    expect(result.current.doc.subject).toBeUndefined();
+  });
+
+  it('제목 직접 입력 = 수동 고정, 전부 지우면 자동 복귀, regenerate = 자동 복귀', () => {
+    const { result } = renderHook(() => useEmailDoc());
+    act(() => result.current.setSubject('직접 쓴 제목'));
+    expect(result.current.doc.subject).toBe('직접 쓴 제목');
+    act(() => result.current.setSubject(''));
+    expect(result.current.doc.subject).toBeUndefined(); // 빈 값 → 자동
+    act(() => result.current.setSubject('다시 수동'));
+    act(() => result.current.regenerateSubject());
+    expect(result.current.doc.subject).toBeUndefined(); // ↻ → 자동
   });
 
   it('quota 초과 시 toast 경고는 1회만 (작성은 계속)', () => {
