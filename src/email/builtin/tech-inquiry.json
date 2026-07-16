@@ -3,7 +3,7 @@
   "name": "제조사 기술 문의",
   "recipientHint": "support@vendor.example",
   "recipientCc": ["sales@vendor.example", "biz@vendor.example"],
-  "subjectPattern": "[예시IT] {topic} 문의 ({customer})",
+  "subjectPattern": "{topic}",
   "note": "제조사 지원팀에 고객 기술 문의를 전달하는 표준 양식. 표는 폼으로, 요청내용은 본문에 이미지 포함 자유 작성.",
   "sections": [
     {
@@ -11,9 +11,9 @@
       "fields": [
         {
           "key": "topic",
-          "label": "문의 주제(제목용)",
+          "label": "메일 제목",
           "type": "text",
-          "placeholder": "사용자 지정 분류 필드값",
+          "placeholder": "예: [예시IT] 사용자 지정 분류 필드값 문의 (ABZ+)",
           "required": true,
           "subjectOnly": true,
           "wide": true

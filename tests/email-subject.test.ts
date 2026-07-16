@@ -6,24 +6,26 @@ const tech = getTemplate('tech-inquiry')!;
 const access = getTemplate('access-info')!;
 
 describe('buildEmailSubject', () => {
-  it('{topic}·{customer} 치환', () => {
-    const s = buildEmailSubject(tech, { topic: 'BMS customField 필드값', customer: 'ABZ+' });
-    expect(s).toBe('[예시IT] BMS customField 필드값 문의 (ABZ+)');
+  it('제조사지원 제목 = 메일 제목 입력값 그대로 (패턴 래핑 없음)', () => {
+    const s = buildEmailSubject(tech, {
+      topic: "[예시IT] 웹 점검 '응답 본문 키워드 매칭 실패' 이벤트 문의",
+      customer: 'ABZ+', // 제목에 개입하지 않음
+    });
+    expect(s).toBe("[예시IT] 웹 점검 '응답 본문 키워드 매칭 실패' 이벤트 문의");
   });
 
-  it('customer 미입력 시 빈 괄호 제거', () => {
-    const s = buildEmailSubject(tech, { topic: 'BMS customField' });
-    expect(s).toBe('[예시IT] BMS customField 문의');
-    expect(s).not.toContain('()');
+  it('접두사 자동 부착 없음 — 입력하지 않으면 [예시IT]도 없음', () => {
+    const s = buildEmailSubject(tech, { topic: 'BMS customField 문의' });
+    expect(s).toBe('BMS customField 문의');
   });
 
   it('전부 미입력이어도 중복 공백 없이 정리', () => {
     const s = buildEmailSubject(tech, {});
-    expect(s).toBe('[예시IT] 문의');
+    expect(s).toBe('');
     expect(s).not.toMatch(/\s{2,}/);
   });
 
-  it('치환 없는 고정 제목', () => {
+  it('치환 없는 고정 제목 (제목용 필드가 없는 템플릿)', () => {
     expect(buildEmailSubject(access, {})).toBe('[예시IT] 출입 정보 전달드립니다.');
   });
 });

@@ -150,14 +150,14 @@ describe('renderEmail — 제목 override', () => {
     expect(r.subject).toBe('Re: 직접 입력한 제목');
   });
 
-  it('subjectOverride가 비어있으면 패턴으로 폴백', () => {
-    const r = renderEmail(tech, { topic: 'BMS customField', customer: 'ABZ+' }, '', '   ');
-    expect(r.subject).toBe('[예시IT] BMS customField 문의 (ABZ+)');
+  it('subjectOverride가 비어있으면 메일 제목 입력값 그대로 폴백', () => {
+    const r = renderEmail(tech, { topic: 'BMS customField 문의', customer: 'ABZ+' }, '', '   ');
+    expect(r.subject).toBe('BMS customField 문의');
   });
 
-  it('subjectOverride 미전달 시 패턴', () => {
-    const r = renderEmail(tech, { topic: 'BMS customField', customer: 'ABZ+' }, '');
-    expect(r.subject).toBe('[예시IT] BMS customField 문의 (ABZ+)');
+  it('subjectOverride 미전달 시 메일 제목 입력값 그대로', () => {
+    const r = renderEmail(tech, { topic: 'BMS customField 문의', customer: 'ABZ+' }, '');
+    expect(r.subject).toBe('BMS customField 문의');
   });
 });
 
