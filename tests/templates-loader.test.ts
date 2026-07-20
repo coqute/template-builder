@@ -37,7 +37,11 @@ describe('템플릿 로더', () => {
   it('제조사지원 회사 표준(수신자·CC)은 프로필과 무관하게 유지, 제목은 입력값 그대로({topic})', () => {
     const tech = getTemplate('tech-inquiry', P)!;
     expect(tech.recipientHint).toBe('support@vendor.example');
-    expect(tech.recipientCc).toEqual(['sales@vendor.example', 'biz@vendor.example']);
+    expect(tech.recipientCc).toEqual([
+      'sales@vendor.example',
+      'biz@vendor.example',
+      'team@company.example', // 사내 기술지원팀 필수 참조
+    ]);
     expect(tech.subjectPattern).toBe('{topic}'); // 접두사 자동 부착 금지 (사용자 확정)
   });
 

@@ -2,7 +2,7 @@
   "id": "tech-inquiry",
   "name": "제조사 기술 문의",
   "recipientHint": "support@vendor.example",
-  "recipientCc": ["sales@vendor.example", "biz@vendor.example"],
+  "recipientCc": ["sales@vendor.example", "biz@vendor.example", "team@company.example"],
   "subjectPattern": "{topic}",
   "note": "제조사 지원팀에 고객 기술 문의를 전달하는 표준 양식. 표는 폼으로, 요청내용은 본문에 이미지 포함 자유 작성.",
   "sections": [
