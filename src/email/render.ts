@@ -47,7 +47,8 @@ const TD_LABEL = `${TD}background:#DCE3F2;font-weight:600;color:#111827;white-sp
 const TD_SECTION = `${TD}background:#B0C2E2;font-weight:700;color:#111827;text-align:center;vertical-align:middle;white-space:nowrap;`;
 
 // 본문 내 표·코드·리스트를 Gmail/미리보기에서 보이도록 인라인 스타일 주입 (contenteditable은 테두리 미포함)
-const BODY_TABLE_STYLE = 'border-collapse:collapse;';
+// 표는 본문 셀 전폭 사용 — 내용 폭만큼 좁게 고정되지 않도록 (에디터 CSS와 동일)
+const BODY_TABLE_STYLE = 'border-collapse:collapse;width:100%;';
 // 삽입 표 셀은 가로·세로 중앙 정렬 — 좌상단 고정으로 보이던 문제 해소
 const BODY_CELL_STYLE = `border:${MAIL_BORDER};padding:6px 9px;text-align:center;vertical-align:middle;`;
 const BODY_TH_EXTRA = 'background:#DCE3F2;font-weight:600;';

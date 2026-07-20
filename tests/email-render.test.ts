@@ -69,10 +69,11 @@ describe('renderEmailPlain', () => {
 });
 
 describe('decorateBodyHtml', () => {
-  it('td에 border 인라인 스타일 주입', () => {
+  it('td에 border 인라인 스타일 주입 + 표는 본문 전폭(width:100%)', () => {
     const out = decorateBodyHtml('<table><tr><td>셀</td></tr></table>');
     expect(out).toMatch(/<td style="[^"]*border:/);
     expect(out).toContain('border-collapse');
+    expect(out).toMatch(/<table style="[^"]*width:100%/);
   });
 
   it('pre에 monospace 인라인 스타일 주입', () => {
