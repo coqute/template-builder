@@ -170,10 +170,12 @@ export function renderEmailHtml(
     return `<div style="${MAIL_TEXT}">${greeting}${closing}</div>`;
   }
 
+  // 라벨 컬럼만 고정, 내용 컬럼은 가변(잔여 폭 전부) + 표는 컨테이너 전폭 —
+  // 요청내용이 좁은 고정폭(430px)에서 줄바꿈되던 불편 해소. Gmail에서도 메일 폭에 맞춰 확장
   const colgroup = hasSections
-    ? `<colgroup><col style="width:90px"/><col style="width:150px"/><col style="width:430px"/></colgroup>`
-    : `<colgroup><col style="width:150px"/><col style="width:470px"/></colgroup>`;
-  const table = `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:${MAIL_BORDER};">${colgroup}<tbody>${trs.join('')}</tbody></table>`;
+    ? `<colgroup><col style="width:90px"/><col style="width:150px"/><col/></colgroup>`
+    : `<colgroup><col style="width:150px"/><col/></colgroup>`;
+  const table = `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:${MAIL_BORDER};width:100%;">${colgroup}<tbody>${trs.join('')}</tbody></table>`;
 
   return `<div style="${MAIL_TEXT}">${greeting}${table}${closing}</div>`;
 }
