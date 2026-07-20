@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, dialog, Menu, shell } from 'electron';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -252,6 +252,16 @@ ipcMain.handle('templates:open-dir', async () => {
   await fs.mkdir(dir, { recursive: true });
   await shell.openPath(dir);
   return { ok: true, dir };
+});
+
+// HTML+plain 클립보드 쓰기 — 네이티브 경로 (renderer navigator.clipboard의 포커스/권한 제약 회피)
+ipcMain.handle('clipboard:write-html', (_evt, payload: { html: string; plain: string }) => {
+  try {
+    clipboard.write({ html: String(payload?.html ?? ''), text: String(payload?.plain ?? '') });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 });
 
 // 최근 파일 열기 — 다이얼로그 없이 경로 직접 읽기. .md만 허용 (임의 파일 읽기 차단)

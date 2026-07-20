@@ -225,7 +225,8 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
                             onRemoveBlock={(ci) => apply(removeContentBlock(report, di, bi, ii, ci))}
                           />
                         ))}
-                        {/* 추가 버튼 — 다음 넘버럴을 옅게 예고 */}
+                        {/* 추가 버튼 — 다음 넘버럴 예고는 마지막 블록에만
+                            (중간 블록에 표시하면 다음 블록 첫 작업 번호와 중복돼 보임) */}
                         <button
                           type="button"
                           onClick={() => apply(addItem(report, di, bi))}
@@ -234,7 +235,9 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
                           }`}
                         >
                           <span className="work-numeral" aria-hidden="true">
-                            {String(offsets[bi] + block.items.length + 1).padStart(2, '0')}
+                            {bi === day.blocks.length - 1
+                              ? String(offsets[bi] + block.items.length + 1).padStart(2, '0')
+                              : ''}
                           </span>
                           <span className="ms-add py-1">
                             <Plus size={12} /> 작업 추가

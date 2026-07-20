@@ -29,6 +29,10 @@ const api = {
   setDirty: (dirty: boolean) => {
     ipcRenderer.send('app:set-dirty', dirty);
   },
+  copyHtml: (html: string, plain: string) =>
+    ipcRenderer.invoke('clipboard:write-html', { html, plain }) as Promise<
+      { ok: true } | { ok: false; error: string }
+    >,
   loadTemplates: (teamDir?: string) =>
     ipcRenderer.invoke('templates:load', teamDir) as Promise<{
       team: Array<{ name: string; raw: unknown }>;

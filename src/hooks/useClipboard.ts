@@ -4,6 +4,13 @@ export interface CopyHtmlInput {
 }
 
 export async function copyHtmlToClipboard({ html, plain }: CopyHtmlInput): Promise<void> {
+  // 데스크탑: Electron 네이티브 클립보드 우선 — 문서 포커스/권한 조건 무관하게 항상 성공
+  const native = typeof window !== 'undefined' ? window.reportApi?.copyHtml : undefined;
+  if (native) {
+    const r = await native(html, plain);
+    if (r.ok) return;
+    // 네이티브 실패 시 아래 웹 경로로 폴백
+  }
   if (typeof navigator === 'undefined' || !navigator.clipboard) {
     throw new Error('이 환경에서는 클립보드 API를 사용할 수 없습니다.');
   }
