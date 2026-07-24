@@ -13,6 +13,11 @@ function fieldDisplay(values: Record<string, string>, key: string, def?: string)
   return fieldValue(values, key, def) || '-';
 }
 
+/** 표에 렌더하지 않는 필드 — 제목전용/본문서두/도입문장 */
+function isOffTable(f: { subjectOnly?: boolean; bodyLead?: boolean; introLead?: boolean }): boolean {
+  return !!(f.subjectOnly || f.bodyLead || f.introLead);
+}
+
 /** bodyLead 필드 → 요청내용 서두 굵은 줄 `{label} : {value}` (값 있을 때만). 미입력이면 빈 문자열 */
 function buildBodyLead(template: EmailTemplate, values: Record<string, string>): string {
   return template.sections
@@ -22,6 +27,21 @@ function buildBodyLead(template: EmailTemplate, values: Record<string, string>):
       const v = fieldValue(values, f.key, f.default);
       return v
         ? `<div style="${MAIL_TEXT}font-weight:600;margin:0 0 8px;">${escapeHtml(f.label)} : ${escapeHtml(v).replace(/\n/g, '<br/>')}</div>`
+        : '';
+    })
+    .filter(Boolean)
+    .join('');
+}
+
+/** introLead 필드 → 인사말 아래·표 위 문단 (라벨 없이 값만, 값 있을 때만) */
+function buildIntroLead(template: EmailTemplate, values: Record<string, string>): string {
+  return template.sections
+    .flatMap((s) => s.fields)
+    .filter((f) => f.introLead)
+    .map((f) => {
+      const v = fieldValue(values, f.key, f.default);
+      return v
+        ? `<p style="${MAIL_TEXT}margin:0 0 14px;">${escapeHtml(v).replace(/\n/g, '<br/>')}</p>`
         : '';
     })
     .filter(Boolean)
@@ -109,11 +129,13 @@ export function renderEmailHtml(
   const greetingP = `<p style="${MAIL_TEXT}margin:0 0 14px;">${escapeHtml(template.greeting).replace(/\n/g, '<br/>')}</p>`;
   const closingP = `<p style="${MAIL_TEXT}margin:14px 0 0;">${escapeHtml(template.closing).replace(/\n/g, '<br/>')}</p>`;
 
+  const introP = buildIntroLead(template, values);
+
   // bullets 스타일 — 출입정보 등 실제 글머리 리스트 메일과 일치
   if (template.renderStyle === 'bullets') {
     const items = template.sections
       .flatMap((s) => s.fields)
-      .filter((f) => !f.subjectOnly && !f.bodyLead)
+      .filter((f) => !isOffTable(f))
       .map(
         (f) =>
           `<li style="${MAIL_TEXT}margin:0 0 2px;">${escapeHtml(f.label)}: ${escapeHtml(
@@ -126,14 +148,23 @@ export function renderEmailHtml(
       template.hasBody && bodyHtml.trim()
         ? `<div style="${MAIL_TEXT}margin:12px 0 0;">${decorateBodyHtml(sanitizeBodyHtml(bodyHtml))}</div>`
         : '';
-    return `<div style="${MAIL_TEXT}">${greetingP}${list}${bodyBlock}${closingP}</div>`;
+    return `<div style="${MAIL_TEXT}">${greetingP}${introP}${list}${bodyBlock}${closingP}</div>`;
   }
 
   const hasSections = template.sections.some((s) => s.title);
   const trs: string[] = [];
 
+  // 표 헤더 행 [구분 | 상세내용] — hasSections면 구분 컬럼이 있으므로 2번째 헤더가 colspan=2
+  if (template.tableHeader) {
+    const [h1, h2] = template.tableHeader;
+    trs.push(
+      `<tr><td style="${TD_SECTION}">${escapeHtml(h1)}</td>` +
+        `<td style="${TD_SECTION}"${hasSections ? ' colspan="2"' : ''}>${escapeHtml(h2)}</td></tr>`,
+    );
+  }
+
   for (const section of template.sections) {
-    const visible = section.fields.filter((f) => !f.subjectOnly && !f.bodyLead);
+    const visible = section.fields.filter((f) => !isOffTable(f));
     visible.forEach((field, idx) => {
       const cells: string[] = [];
       if (hasSections) {
@@ -162,12 +193,12 @@ export function renderEmailHtml(
     );
   }
 
-  const greeting = `<p style="${MAIL_TEXT}margin:0 0 14px;">${escapeHtml(template.greeting).replace(/\n/g, '<br/>')}</p>`;
-  const closing = `<p style="${MAIL_TEXT}margin:14px 0 0;">${escapeHtml(template.closing).replace(/\n/g, '<br/>')}</p>`;
+  const greeting = greetingP;
+  const closing = closingP;
 
   // 표 행이 하나도 없으면(전부 subjectOnly + 본문 없음) 표 생략
   if (trs.length === 0) {
-    return `<div style="${MAIL_TEXT}">${greeting}${closing}</div>`;
+    return `<div style="${MAIL_TEXT}">${greeting}${introP}${closing}</div>`;
   }
 
   // 라벨 컬럼만 고정, 내용 컬럼은 가변(잔여 폭 전부) + 표는 컨테이너 전폭 —
@@ -177,7 +208,7 @@ export function renderEmailHtml(
     : `<colgroup><col style="width:150px"/><col/></colgroup>`;
   const table = `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:${MAIL_BORDER};width:100%;">${colgroup}<tbody>${trs.join('')}</tbody></table>`;
 
-  return `<div style="${MAIL_TEXT}">${greeting}${table}${closing}</div>`;
+  return `<div style="${MAIL_TEXT}">${greeting}${introP}${table}${closing}</div>`;
 }
 
 export function renderEmailPlain(
@@ -186,8 +217,14 @@ export function renderEmailPlain(
   bodyHtml: string,
 ): string {
   const lines: string[] = [template.greeting, ''];
+  // 도입 문장 (표 위)
+  for (const f of template.sections.flatMap((s) => s.fields).filter((f) => f.introLead)) {
+    const v = fieldValue(values, f.key, f.default);
+    if (v) lines.push(v, '');
+  }
+  if (template.tableHeader) lines.push(`[${template.tableHeader[0]} / ${template.tableHeader[1]}]`);
   for (const section of template.sections) {
-    const visible = section.fields.filter((f) => !f.subjectOnly && !f.bodyLead);
+    const visible = section.fields.filter((f) => !isOffTable(f));
     if (visible.length === 0) continue;
     if (section.title) lines.push(`[${section.title}]`);
     for (const field of visible) {

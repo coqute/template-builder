@@ -137,11 +137,54 @@ describe('이슈 서두 (bodyLead)', () => {
   });
 
   it('plain에도 이슈 서두가 본문 앞에 들어감', () => {
-    const plain = renderEmailPlain(tech, { issue: 'CSV 실패' }, '<p>상세</p>');
+    const plain = renderEmailPlain(tech, { issue: 'CSV 실패' }, '<p>본문상세설명</p>');
     const idxIssue = plain.indexOf('이슈 : CSV 실패');
-    const idxBody = plain.indexOf('상세');
+    const idxBody = plain.indexOf('본문상세설명');
     expect(idxIssue).toBeGreaterThan(-1);
     expect(idxIssue).toBeLessThan(idxBody);
+  });
+});
+
+describe('제조사지원 실측 형식 (도입 문장 · 표 헤더)', () => {
+  it('도입 문장은 인사말 아래·표 위에 문단으로, 표에는 안 나옴', () => {
+    const html = renderEmailHtml(
+      tech,
+      { intro: '제트플러스 지원 중 개선 요청사항이 있어 메일 드립니다.', customer: '제트플러스' },
+      '',
+    );
+    expect(html).toContain('제트플러스 지원 중 개선 요청사항이 있어 메일 드립니다.');
+    const idxIntro = html.indexOf('제트플러스 지원 중');
+    const idxTable = html.indexOf('<table');
+    expect(idxIntro).toBeLessThan(idxTable); // 표 앞
+    // 도입 문장은 표 행(라벨 셀)으로는 안 나옴
+    expect(html).not.toMatch(/<td[^>]*>도입 문장<\/td>/);
+  });
+
+  it('도입 문장 미입력 시 문단 생략', () => {
+    const html = renderEmailHtml(tech, { customer: '제트플러스' }, '');
+    expect(html).not.toContain('도입 문장');
+  });
+
+  it('표 최상단에 [구분 | 상세내용] 헤더 행', () => {
+    const html = renderEmailHtml(tech, { customer: '제트플러스' }, '');
+    expect(html).toContain('구분');
+    expect(html).toContain('상세내용');
+    const idxHeader = html.indexOf('상세내용');
+    const idxFirstField = html.indexOf('요청일자');
+    expect(idxHeader).toBeLessThan(idxFirstField); // 헤더가 첫 필드보다 위
+  });
+
+  it('계약 유형에 "계약" 옵션 존재', () => {
+    const opts = tech.sections
+      .flatMap((s) => s.fields)
+      .find((f) => f.key === 'contractType')?.options;
+    expect(opts).toContain('계약');
+  });
+
+  it('문의 제품은 자유 입력(text) + 추천 옵션', () => {
+    const product = tech.sections.flatMap((s) => s.fields).find((f) => f.key === 'product');
+    expect(product?.type).toBe('text');
+    expect(product?.options).toContain('이벤트');
   });
 });
 

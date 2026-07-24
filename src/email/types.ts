@@ -14,6 +14,8 @@ export interface EmailField {
   wide?: boolean;
   /** true면 표 행이 아니라 요청내용 본문 셀 서두에 `{label} : {value}` 굵게 렌더 (예: 이슈 요약) */
   bodyLead?: boolean;
+  /** true면 표 위(인사말 아래)에 문단으로 렌더 — 라벨 없이 값만 (예: 기술 문의 도입 문장) */
+  introLead?: boolean;
 }
 
 /** 표의 섹션 그룹 — title이 있으면 rowspan 좌측 라벨 셀 생성 */
@@ -41,6 +43,8 @@ export interface EmailTemplate {
   note?: string;
   /** 자주 쓰는 본문 문구 — 본문 에디터 드롭다운으로 삽입 (팀 표준 문구 전파용) */
   bodyPresets?: string[];
+  /** 표 최상단 헤더 행 [tableHeader[0] | tableHeader[1]] (예: ['구분','상세내용']). 생략 시 헤더 없음 */
+  tableHeader?: [string, string];
 }
 
 /** 템플릿 JSON 원본 — greeting/closing 생략 시 로더가 프로필 파생값 주입 */

@@ -51,6 +51,7 @@ function Field({
         {field.label}
         {field.subjectOnly && <span className="text-fg-faint"> · 제목용</span>}
         {field.bodyLead && <span className="text-fg-faint"> · 본문 서두</span>}
+        {field.introLead && <span className="text-fg-faint"> · 표 위 문단</span>}
         {field.required && <span style={{ color: 'var(--stamp-red)' }}> *</span>}
       </span>
       {field.type === 'select' ? (
@@ -78,13 +79,24 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
         />
       ) : (
-        <input
-          type="text"
-          className={inputCls}
-          placeholder={field.placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        // text — options가 있으면 datalist로 자유입력+추천 (문의 제품처럼 값이 다양한 필드)
+        <>
+          <input
+            type="text"
+            className={inputCls}
+            placeholder={field.placeholder}
+            value={value}
+            list={field.options ? `dl-${field.key}` : undefined}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {field.options && (
+            <datalist id={`dl-${field.key}`}>
+              {field.options.map((opt) => (
+                <option key={opt} value={opt} />
+              ))}
+            </datalist>
+          )}
+        </>
       )}
     </label>
   );
