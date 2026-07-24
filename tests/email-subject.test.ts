@@ -3,7 +3,7 @@ import { buildEmailSubject } from '../src/email/render';
 import { getTemplate } from '../src/email/templates';
 
 const tech = getTemplate('tech-inquiry')!;
-const access = getTemplate('access-info')!;
+const license = getTemplate('license-delivery')!;
 
 describe('buildEmailSubject', () => {
   it('제조사지원 제목 = 메일 제목 입력값 그대로 (패턴 래핑 없음)', () => {
@@ -25,7 +25,9 @@ describe('buildEmailSubject', () => {
     expect(s).not.toMatch(/\s{2,}/);
   });
 
-  it('치환 없는 고정 제목 (제목용 필드가 없는 템플릿)', () => {
-    expect(buildEmailSubject(access, {})).toBe('[예시IT] 출입 정보 전달드립니다.');
+  it('라이선스 전달도 제목 = 입력값 그대로 ({topic})', () => {
+    expect(buildEmailSubject(license, { topic: '수집서버 라이선스 전달드립니다.' })).toBe(
+      '수집서버 라이선스 전달드립니다.',
+    );
   });
 });

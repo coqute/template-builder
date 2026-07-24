@@ -34,8 +34,10 @@ export interface EmailTemplate {
   greeting: string;
   closing: string;
   sections: EmailSection[];
-  /** 고정 필드 렌더 방식 — 'table'(구분/상세 표, 기본) | 'bullets'(글머리 리스트, 출입정보 등) */
+  /** 고정 필드 렌더 방식 — 'table'(구분/상세 표, 기본) | 'bullets'(글머리 리스트) */
   renderStyle?: 'table' | 'bullets';
+  /** true면 고정 필드 표를 아예 렌더하지 않고 인사말+도입문장+본문+맺음말만 (설치파일 전달 등 자유 본문 메일) */
+  bodyOnly?: boolean;
   hasBody: boolean; // 자유 본문(요청내용) 영역 노출
   bodyLabel?: string; // 본문 행 라벨 (기본 '요청내용')
   bodyPlaceholder?: string;

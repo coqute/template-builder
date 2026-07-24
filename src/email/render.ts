@@ -151,6 +151,15 @@ export function renderEmailHtml(
     return `<div style="${MAIL_TEXT}">${greetingP}${introP}${list}${bodyBlock}${closingP}</div>`;
   }
 
+  // bodyOnly — 표 없이 인사말 + 도입문장 + 본문 + 맺음말 (설치파일 전달 등)
+  if (template.bodyOnly) {
+    const bodyBlock =
+      template.hasBody && bodyHtml.trim()
+        ? `<div style="${MAIL_TEXT}margin:0 0 4px;">${decorateBodyHtml(sanitizeBodyHtml(bodyHtml))}</div>`
+        : '';
+    return `<div style="${MAIL_TEXT}">${greetingP}${introP}${bodyBlock}${closingP}</div>`;
+  }
+
   const hasSections = template.sections.some((s) => s.title);
   const trs: string[] = [];
 
@@ -221,6 +230,12 @@ export function renderEmailPlain(
   for (const f of template.sections.flatMap((s) => s.fields).filter((f) => f.introLead)) {
     const v = fieldValue(values, f.key, f.default);
     if (v) lines.push(v, '');
+  }
+  // bodyOnly — 표 생략, 본문만
+  if (template.bodyOnly) {
+    if (template.hasBody) lines.push(htmlToPlain(bodyHtml));
+    lines.push('', template.closing);
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n');
   }
   if (template.tableHeader) lines.push(`[${template.tableHeader[0]} / ${template.tableHeader[1]}]`);
   for (const section of template.sections) {

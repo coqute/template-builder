@@ -1,23 +1,45 @@
 {
   "id": "license-delivery",
   "name": "라이선스 키 전달",
-  "subjectPattern": "[예시IT] 제조사 수집서버 라이선스 키 전달 ({customer})",
-  "note": "발급된 제조사 수집서버 라이선스 키를 고객에게 전달. 본문에 추가 안내가 필요하면 작성.",
+  "subjectPattern": "{topic}",
+  "note": "발급된 제조사 수집서버 라이선스 키를 고객에게 전달. 유형/최종고객/기간/IP 표 + 라이선스 키. 간단히 보낼 땐 표 값 없이 라이선스만 채워도 됨.",
   "sections": [
+    {
+      "title": "",
+      "fields": [
+        {
+          "key": "topic",
+          "label": "메일 제목",
+          "type": "text",
+          "placeholder": "예: 수집서버 라이선스 전달드립니다.",
+          "required": true,
+          "subjectOnly": true,
+          "wide": true
+        },
+        {
+          "key": "intro",
+          "label": "도입 문장",
+          "type": "text",
+          "placeholder": "예: 제조사 수집서버 라이선스키가 발급되어 전달드립니다. 수집서버 설치에 필요하오니 복사가 가능하도록 부탁드립니다.",
+          "introLead": true,
+          "wide": true
+        }
+      ]
+    },
     {
       "title": "",
       "fields": [
         { "key": "licenseType", "label": "유형", "type": "text", "default": "POC용" },
         { "key": "customer", "label": "최종고객", "type": "text", "placeholder": "에이비제트플러스", "required": true },
-        { "key": "project", "label": "프로젝트명", "type": "text", "placeholder": "IDC서비스운영팀(PoC)" },
+        { "key": "project", "label": "프로젝트명", "type": "text", "placeholder": "관제개발팀(PoC)", "wide": true },
         { "key": "startDate", "label": "시작일", "type": "date" },
         { "key": "endDate", "label": "종료일", "type": "date" },
         { "key": "serverIp", "label": "수집서버 IP", "type": "text", "wide": true },
-        { "key": "licenseKey", "label": "라이선스", "type": "textarea", "required": true, "placeholder": "라이선스 키 문자열", "wide": true }
+        { "key": "licenseKey", "label": "라이선스", "type": "textarea", "required": true, "placeholder": "xxxx...-xxxx...-(발급된 라이선스 키 문자열)", "wide": true }
       ]
     }
   ],
   "hasBody": true,
   "bodyLabel": "안내사항",
-  "bodyPlaceholder": "예: 수집서버 설치에 필요하오니 복사가 가능하도록 부탁드립니다."
+  "bodyPlaceholder": "추가 안내가 필요하면 작성 (예: MariaDB 설치 시 필요한 .md 파일도 함께 업로드 부탁드립니다.)"
 }

@@ -7,8 +7,7 @@ import type { UserProfile } from '../src/email/profile';
 const P: UserProfile = { name: '김테스트', email: 'tester@company.example', company: '예시아이티' };
 
 const tech = getTemplate('tech-inquiry', P)!;
-const access = getTemplate('access-info', P)!;
-const tech = getTemplate('tech-answer', P)!;
+const install = getTemplate('install-delivery', P)!;
 
 describe('renderEmailHtml', () => {
   it('인사말·맺음말은 프로필에서 파생', () => {
@@ -41,20 +40,24 @@ describe('renderEmailHtml', () => {
     expect(html).not.toContain('<script>');
   });
 
-  it('전부 subjectOnly + hasBody면 표 없이 본문만 (tech-answer)', () => {
-    const html = renderEmailHtml(tech, { customer: 'ABZ+', topic: '안내' }, '<p>답변 내용</p>');
-    // 고객사/제목 표 행이 없어야 함
-    expect(html).not.toMatch(/<td[^>]*>고객사<\/td>/);
-    expect(html).toContain('답변 내용');
+  it('설치파일 전달(bodyOnly): 표 없이 도입문장+본문만', () => {
+    const html = renderEmailHtml(
+      install,
+      { intro: '요청주신 설치파일 전달드립니다.' },
+      '<p>제조사 수집서버 설치파일 전달 드립니다.<br/>- 다운링크 : https://x</p>',
+    );
+    expect(html).not.toContain('<table'); // 표 없음
+    expect(html).toContain('요청주신 설치파일 전달드립니다.'); // 도입 문장
+    expect(html).toContain('제조사 수집서버 설치파일 전달 드립니다.'); // 본문
+    // 순서: 인사말 → 도입 → 본문 → 맺음말
+    expect(html.indexOf('요청주신')).toBeLessThan(html.indexOf('다운링크'));
   });
 
-  it('access-info: bullets 렌더 (표 아님 — 실제 메일과 일치)', () => {
-    const html = renderEmailHtml(access, { name: '박민수', company: '예시아이티' }, '');
-    expect(html).toContain('<ul');
-    expect(html).toContain('<li');
-    expect(html).not.toContain('<table');
-    expect(html).toContain('회사: 예시아이티');
-    expect(html).toContain('이름: 박민수');
+  it('설치파일 전달: bodyPresets 제품별 전달 문구 6종 존재', () => {
+    expect(install.bodyPresets?.length).toBe(6);
+    expect(install.bodyPresets?.some((p) => p.includes('수집서버 설치파일'))).toBe(true);
+    expect(install.bodyPresets?.some((p) => p.includes('서버모니터링 에이전트'))).toBe(true);
+    expect(install.bodyPresets?.some((p) => p.includes('MariaDB'))).toBe(true);
   });
 });
 

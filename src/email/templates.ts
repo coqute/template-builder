@@ -14,18 +14,8 @@ import {
 import creInquiry from './builtin/tech-inquiry.json';
 import licenseDelivery from './builtin/license-delivery.json';
 import installDelivery from './builtin/install-delivery.json';
-import accessInfo from './builtin/access-info.json';
-import techAnswer from './builtin/tech-answer.json';
-import partnerAccount from './builtin/partner-account.json';
 
-const BUILTIN_RAW: unknown[] = [
-  creInquiry,
-  licenseDelivery,
-  installDelivery,
-  accessInfo,
-  techAnswer,
-  partnerAccount,
-];
+const BUILTIN_RAW: unknown[] = [creInquiry, licenseDelivery, installDelivery];
 
 export const DEFAULT_TEMPLATE_ID = 'tech-inquiry';
 

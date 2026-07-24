@@ -14,24 +14,18 @@ const P: UserProfile = { name: '김테스트', email: 't@company.example', compa
 afterEach(() => setTemplateOverlays([], []));
 
 describe('템플릿 로더', () => {
-  it('내장 6종이 전부 로드되고 기본 템플릿이 존재한다', () => {
+  it('내장 3종이 전부 로드되고 기본 템플릿이 존재한다', () => {
     const all = getTemplates(P);
     expect(all.map((t) => t.id).sort()).toEqual(
-      ['access-info', 'tech-inquiry', 'install-delivery', 'license-delivery', 'partner-account', 'tech-answer'].sort(),
+      ['tech-inquiry', 'install-delivery', 'license-delivery'].sort(),
     );
     expect(getTemplate(DEFAULT_TEMPLATE_ID, P)).toBeDefined();
   });
 
-  it('프로필 토큰이 필드 기본값·인사말에 치환된다 (출입정보/파트너계정)', () => {
-    const access = getTemplate('access-info', P)!;
-    const fields = access.sections[0].fields;
-    expect(fields.find((f) => f.key === 'name')?.default).toBe('김테스트');
-    expect(fields.find((f) => f.key === 'email')?.default).toBe('t@company.example');
-    expect(fields.find((f) => f.key === 'company')?.default).toBe('예시아이티');
-    expect(access.greeting).toContain('김테스트');
-
-    const partner = getTemplate('partner-account', P)!;
-    expect(partner.sections[0].fields.find((f) => f.key === 'contact')?.default).toBe('김테스트');
+  it('프로필 토큰이 인사말에 치환된다', () => {
+    const tech = getTemplate('tech-inquiry', P)!;
+    expect(tech.greeting).toContain('김테스트');
+    expect(tech.greeting).toContain('예시아이티');
   });
 
   it('제조사지원 회사 표준(수신자·CC)은 프로필과 무관하게 유지, 제목은 입력값 그대로({topic})', () => {
@@ -71,7 +65,7 @@ describe('템플릿 로더', () => {
       id: 'quote-request', name: '견적 요청', subjectPattern: '[예시IT] 견적', hasBody: true, sections: [],
     };
     const personalHijack: EmailTemplateData = {
-      id: 'tech-answer', name: '개인 변조 시도', subjectPattern: 'x', hasBody: false, sections: [],
+      id: 'install-delivery', name: '개인 변조 시도', subjectPattern: 'x', hasBody: false, sections: [],
     };
     const personalNew: EmailTemplateData = {
       id: 'my-memo', name: '개인 메모', subjectPattern: 'm', hasBody: true, sections: [],
@@ -81,7 +75,7 @@ describe('템플릿 로더', () => {
     const all = getTemplates(P);
     expect(all.find((t) => t.id === 'tech-inquiry')?.name).toBe('팀 개정 제조사지원'); // 팀 > 내장
     expect(all.find((t) => t.id === 'quote-request')).toBeDefined(); // 팀 신규
-    expect(all.find((t) => t.id === 'tech-answer')?.name).toBe('고객 기술 답변/안내'); // 개인의 내장 교체 차단
+    expect(all.find((t) => t.id === 'install-delivery')?.name).toBe('설치파일·에이전트 전달'); // 개인의 내장 교체 차단
     expect(all.find((t) => t.id === 'my-memo')).toBeDefined(); // 개인 신규 허용
   });
 });
