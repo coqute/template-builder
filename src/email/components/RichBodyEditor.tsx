@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Bold, Code, Image as ImageIcon, Italic, Link2, List, ListOrdered, Table, Underline } from 'lucide-react';
 import { sanitizeBodyHtml } from '../sanitize';
+import { normalizeUrl } from '../url';
 import { escapeHtml } from '../../lib/html';
 
 interface Props {
@@ -94,8 +95,38 @@ export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOver
   };
 
   const onInsertLink = () => {
-    const url = window.prompt('링크 URL을 입력하세요 (https:// 또는 mailto:)');
-    if (url) exec('createLink', url);
+    // prompt가 뜨면 에디터 선택이 흐려질 수 있어 Range를 미리 저장했다가 복원.
+    // 단, 에디터(ref.current) 내부 선택만 신뢰 — 문서 다른 곳의 선택을 복원하면 링크가 밖에 삽입/유실됨
+    const selObj = window.getSelection();
+    const rawRange = selObj && selObj.rangeCount > 0 ? selObj.getRangeAt(0) : null;
+    const inEditor =
+      !!rawRange && !!ref.current && ref.current.contains(rawRange.commonAncestorContainer);
+    const savedRange = inEditor ? rawRange.cloneRange() : null;
+    const hadSelection = !!savedRange && !savedRange.collapsed;
+
+    const raw = window.prompt('링크 URL을 입력하세요 (예: docs.example.com · https://… · mailto:name@example.com)');
+    if (!raw || !raw.trim()) return;
+    const url = normalizeUrl(raw); // 스킴 없으면 https:// 부착. 지원 안 하는 스킴이면 '' → 삽입 안 함
+    if (!url) return; // javascript:/data: 등 위험·미지원 스킴 — 링크 만들지 않음
+
+    ref.current?.focus();
+    if (savedRange) {
+      const s = window.getSelection();
+      s?.removeAllRanges();
+      s?.addRange(savedRange);
+    }
+    if (hadSelection) {
+      // 선택 텍스트를 링크로 감쌈
+      document.execCommand('createLink', false, url);
+    } else {
+      // 선택 없음 → URL 텍스트를 링크로 삽입 (커서 위치)
+      document.execCommand(
+        'insertHTML',
+        false,
+        `<a href="${escapeHtml(url)}">${escapeHtml(raw.trim())}</a>&nbsp;`,
+      );
+    }
+    emit();
   };
 
   const insertHtmlAtCursor = (html: string) => {
@@ -115,8 +146,11 @@ export function RichBodyEditor({ initialHtml, onChange, placeholder, onImageOver
   };
 
   const onInsertCode = () => {
+    // 선택 텍스트는 반드시 escape — 명령어에 흔한 <, >, & (리다이렉트 2>&1, <logfile> 등)가
+    // HTML 태그로 파싱돼 소실되던 문제 차단. pre는 개행을 보존하므로 \n은 그대로 둔다.
     const sel = window.getSelection()?.toString() ?? '';
-    insertHtmlAtCursor(`<pre>${sel || '명령어 / 코드'}</pre><p><br/></p>`);
+    const inner = sel ? escapeHtml(sel) : '명령어 / 코드';
+    insertHtmlAtCursor(`<pre>${inner}</pre><p><br/></p>`);
   };
 
   return (

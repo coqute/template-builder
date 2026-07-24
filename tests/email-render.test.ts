@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderEmailHtml, renderEmailPlain, decorateBodyHtml, renderEmail } from '../src/email/render';
+import { sanitizeBodyHtml } from '../src/email/sanitize';
 import { getTemplate } from '../src/email/templates';
 import type { UserProfile } from '../src/email/profile';
 
@@ -120,6 +121,44 @@ describe('decorateBodyHtml', () => {
   it('blockquote 좌측 보더 스타일 주입', () => {
     const out = decorateBodyHtml('<blockquote>인용</blockquote>');
     expect(out).toMatch(/<blockquote style="[^"]*border-left:3px solid/);
+  });
+
+  it('링크(a)에 색·밑줄 인라인 스타일 주입 (클라이언트 편차 없이 링크로 보이도록)', () => {
+    const out = decorateBodyHtml('<a href="https://example.com">제조사</a>');
+    expect(out).toMatch(/<a[^>]*style="[^"]*color:#2563eb/);
+    expect(out).toMatch(/<a[^>]*style="[^"]*text-decoration:underline/);
+    expect(out).toContain('href="https://example.com"');
+  });
+
+  it('href 없는 <a>는 스타일 미적용 (위험 스킴 제거 후 가짜 파란 링크 방지)', () => {
+    // sanitize가 javascript: href를 제거하면 <a target="_blank">텍스트</a>만 남는데
+    // 여기에 링크 스타일을 칠하면 클릭되는 것처럼 보이는 가짜 링크가 됨 → 제외
+    const out = decorateBodyHtml('<a target="_blank">결제</a>');
+    expect(out).not.toMatch(/color:#2563eb/);
+    expect(out).not.toMatch(/text-decoration:underline/);
+  });
+
+  it('코드 블록: <, >, & 포함 명령이 보존 (escape된 입력을 pre가 그대로 표시)', () => {
+    // 에디터 onInsertCode는 escape 후 삽입 → 렌더 단계에서 텍스트가 소실되지 않아야 함.
+    // 대비: <logfile>를 escape 없이 넣으면 태그로 파싱돼 sanitize에서 통째 소실되던 버그.
+    const escaped = '<pre>java -jar a.jar &gt; out 2&gt;&amp;1 &amp;&amp; tail -f &lt;logfile&gt;</pre>';
+    const clean = sanitizeBodyHtml(escaped);
+    const out = decorateBodyHtml(clean);
+    // pre 보존 + monospace 스타일
+    expect(out).toMatch(/<pre style="[^"]*monospace/);
+    // 렌더된 텍스트(디코드) 기준 특수문자 보존 — 파싱 소실 없음
+    const plain = new DOMParser().parseFromString(out, 'text/html').body.textContent ?? '';
+    expect(plain).toContain('2>&1');
+    expect(plain).toContain('<logfile>');
+    expect(plain).toContain('&& tail -f');
+  });
+
+  it('코드 블록 회귀 방어: <...>를 escape 없이 넣으면 소실됨 (버그 재현 — escape 필수 근거)', () => {
+    // escape하지 않은 경우 sanitize가 <logfile>를 비허용 태그로 보고 제거 → 데이터 손실
+    const unescaped = '<pre>tail -f <logfile></pre>';
+    const clean = sanitizeBodyHtml(unescaped);
+    const plain = new DOMParser().parseFromString(clean, 'text/html').body.textContent ?? '';
+    expect(plain).not.toContain('logfile'); // 소실 확인 → onInsertCode의 escape가 필요한 이유
   });
 });
 
