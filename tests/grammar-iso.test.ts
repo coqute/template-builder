@@ -18,12 +18,17 @@ const CASES: Array<[keyof typeof GRAMMAR, string, string]> = [
   ['loc', '@LOC 한강 제트플러스 4F', 'tok-loc'],
   ['cus', '@CUS 한강 SRE', 'tok-loc'],
   ['holiday', '@HOLIDAY 근로자의 날', 'tok-holiday'],
-  ['client', '@SUM [ABZ+] (이영희/메일) 수집서버 설치', 'tok-client'],
+  ['halfday', '@HALFDAY 오후 반차', 'tok-holiday'],
+  ['client', '@SUM [ABZ+] (홍길동/메일) 수집서버 설치', 'tok-client'],
   ['client', '## [ABZ+] legacy 헤더', 'tok-client'],
   ['num', '1) 관리 콘솔 설치', 'tok-num'],
   ['dash', '- 세부 항목', 'tok-dash'],
-  ['qaQ', '<- 사용자 문의', 'tok-qaq'],
-  ['qaA', '-> 답변', 'tok-qaa'],
+  ['turnOut', '<- 안내 전달', 'tok-out'],
+  ['turnIn', '-> 고객 문의', 'tok-in'],
+  ['pending', '*<- 제조사 문의 예정', 'tok-pending'],
+  ['pending', '*-> 회신 대기', 'tok-pending'],
+  ['conclusion', '*==> 대응 절차 정리 필요', 'tok-conclusion'],
+  ['plan', '@PLAN 2026-05-19 10:00 MX(주간미팅)', 'tok-next'],
   ['note', '> 보조 설명', 'tok-note'],
 ];
 
@@ -35,13 +40,11 @@ describe('grammar 동형성 — 파서 수용 ⊆ 하이라이트 매치', () =>
     });
   }
 
-  it('@SUM 헤더 3종은 parser·importer가 같은 캡처를 공유한다', () => {
-    const ch = '[ABZ+] (이영희/유선&메일) 문의'.match(GRAMMAR.clientChannel)!;
-    expect([ch[1], ch[2], ch[3], ch[4]]).toEqual(['ABZ+', '이영희', '유선&메일', '문의']);
-    const nw = '[ABZ+] (이영희) 작업'.match(GRAMMAR.clientNew)!;
-    expect([nw[1], nw[2], nw[3]]).toEqual(['ABZ+', '이영희', '작업']);
-    const bare = '[ABZ+] 일반 지원'.match(GRAMMAR.clientBare)!;
-    expect([bare[1], bare[2]]).toEqual(['ABZ+', '일반 지원']);
+  it('들여쓴 본문 줄도 같은 클래스로 칠해진다 (들여쓰기 = 계층)', () => {
+    expect(highlightClassFor('  -> 고객 문의')).toBe('tok-in');
+    expect(highlightClassFor('   <- 안내')).toBe('tok-out');
+    expect(highlightClassFor('    1) 세부 단계')).toBe('tok-num');
+    expect(highlightClassFor('  *==> 결론')).toBe('tok-conclusion');
   });
 
   it('비문법 라인은 하이라이트되지 않는다', () => {
