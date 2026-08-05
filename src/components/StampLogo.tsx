@@ -19,7 +19,7 @@ export function StampLogo({ theme, size = 28 }: Props) {
   return (
     <span
       role="img"
-      aria-label="ExampleIT Template Builder"
+      aria-label="Template Builder"
       style={{
         display: 'inline-flex',
         alignItems: 'center',

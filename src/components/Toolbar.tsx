@@ -1,5 +1,4 @@
 import { HelpCircle } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
 import { DocTypeSwitch, type DocTypeOption } from './DocTypeSwitch';
 import { StampLogo } from './StampLogo';
 import { Btn } from './ToolbarButton';
@@ -9,28 +8,23 @@ interface ToolbarProps {
   options: readonly DocTypeOption[];
   docType: string;
   onDocTypeChange: (id: string) => void;
-  /** 활성 모듈의 배지 텍스트 */
-  badge: string;
   /** 활성 모듈이 버튼을 포털로 렌더할 슬롯 엘리먼트 전달 */
   onToolbarSlot: (el: HTMLDivElement | null) => void;
   onToggleHelp: () => void;
   theme: Theme;
-  onThemeChange: (theme: Theme) => void;
 }
 
 /**
- * 툴바 셸 — 문서 타입을 모른다. 좌측(로고/스위치)과 우측 공통(도움말/테마)만 소유하고,
+ * 툴바 셸 — 문서 타입을 모른다. 좌측(로고/스위치)과 우측 공통(도움말·설정)만 소유하고,
  * 모드별 액션 버튼은 슬롯(onToolbarSlot)에 활성 DocType 모듈이 포털로 렌더한다.
  */
 export function Toolbar({
   options,
   docType,
   onDocTypeChange,
-  badge,
   onToolbarSlot,
   onToggleHelp,
   theme,
-  onThemeChange,
 }: ToolbarProps) {
   const isMono = theme === 'mono';
   return (
@@ -46,11 +40,8 @@ export function Toolbar({
             isMono ? 'text-sm font-semibold' : 'font-display text-base',
           ].join(' ')}
         >
-          {isMono ? '$ template-builder' : 'ExampleIT Template Builder'}
+          {isMono ? '$ template-builder' : 'Template Builder'}
         </h1>
-        <span className="ml-1 hidden whitespace-nowrap rounded-sharp border border-rule px-2 py-0.5 text-[10px] uppercase text-fg-muted 2xl:inline-block">
-          {badge}
-        </span>
         <span className="mx-1 h-5 w-px shrink-0 bg-rule" />
         <DocTypeSwitch options={options} docType={docType} onChange={onDocTypeChange} />
       </div>
@@ -59,9 +50,7 @@ export function Toolbar({
         {/* 활성 모듈의 액션 버튼 슬롯 */}
         <div ref={onToolbarSlot} className="flex shrink-0 items-center gap-1.5" />
         <span className="mx-1 h-5 w-px bg-rule" />
-        <Btn label="도움말" shortcut="F1" icon={<HelpCircle size={14} />} onClick={onToggleHelp} />
-        <span className="mx-1 h-5 w-px bg-rule" />
-        <ThemeToggle theme={theme} onChange={onThemeChange} />
+        <Btn label="도움말" shortcut="F1 · 설정·가이드" icon={<HelpCircle size={14} />} onClick={onToggleHelp} />
       </div>
     </header>
   );
