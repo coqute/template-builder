@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { safeSetItem } from '../lib/storage';
 
 /** 문서 타입 id — doctypes 레지스트리의 모듈 id (플러그인 개방형이라 string) */
 export type DocType = string;
@@ -17,9 +18,7 @@ export function useDocType(validIds: readonly string[]): {
   });
 
   useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(KEY, docType);
-    }
+    safeSetItem(KEY, docType);
   }, [docType]);
 
   const setDocType = useCallback(

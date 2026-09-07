@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { readWithFallback } from '../lib/storage';
+import { readWithFallback, safeSetItem } from '../lib/storage';
 
 export type Theme = 'paper' | 'mono';
 
@@ -34,9 +34,7 @@ export function useTheme(): {
     if (typeof document !== 'undefined') {
       document.documentElement.dataset.theme = theme;
     }
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(KEY, theme);
-    }
+    safeSetItem(KEY, theme);
   }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {

@@ -10,6 +10,8 @@ export class OAuthError extends Error {
 
 // access token 메모리 캐시 (token.json은 절대 쓰지 않음 — 발급 도구가 파일 소유)
 let cached: { value: string; exp: number } | null = null;
+// 진행 중인 갱신 — 동시 호출(두 초안 요청이 같이 401)은 같은 프라미스를 공유 (single-flight)
+let refreshing: Promise<string> | null = null;
 
 /**
  * access token 획득. token.json의 access_token이 유효하면 재사용,
@@ -27,6 +29,15 @@ export async function getAccessToken(creds: GmailCreds, forceRefresh = false): P
     }
   }
 
+  if (!refreshing) {
+    refreshing = refreshAccessToken(creds).finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+}
+
+async function refreshAccessToken(creds: GmailCreds): Promise<string> {
   let res: Response;
   try {
     res = await fetch(creds.tokenUri, {
@@ -49,6 +60,6 @@ export async function getAccessToken(creds: GmailCreds, forceRefresh = false): P
   if (!json.access_token) {
     throw new OAuthError('refresh-failed', '토큰 응답에 access_token 없음');
   }
-  cached = { value: json.access_token, exp: now + (json.expires_in ?? 3600) * 1000 };
+  cached = { value: json.access_token, exp: Date.now() + (json.expires_in ?? 3600) * 1000 };
   return json.access_token;
 }
