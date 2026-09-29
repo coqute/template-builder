@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 import {
   autocompletion,
@@ -21,6 +21,8 @@ interface Props {
 export interface MarkdownEditorHandle {
   /** 1-based 라인으로 커서 이동 + 스크롤 + 포커스 (StatusBar 진단 클릭 점프용) */
   jumpToLine(line: number): void;
+  /** 커서가 있는 1-based 라인 (모드 전환 시 같은 위치를 비주얼에서 열기 위해) */
+  cursorLine(): number;
 }
 
 /**
@@ -37,7 +39,7 @@ function tabComplete(view: EditorView): boolean {
   const pos = view.state.selection.main.head;
   const line = view.state.doc.lineAt(pos);
   const before = line.text.slice(0, pos - line.from);
-  if (/^@\w*$/.test(before) || /^#\s*$/.test(before)) {
+  if (/^\s*@\w*$/.test(before) || /^#\s*$/.test(before)) {
     return startCompletion(view);
   }
   return false;
@@ -63,6 +65,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
         view.dispatch({ selection: { anchor: l.from }, scrollIntoView: true });
         view.focus();
       },
+      cursorLine() {
+        const view = viewRef.current;
+        if (!view) return 0;
+        return view.state.doc.lineAt(view.state.selection.main.head).number;
+      },
     }),
     [],
   );
@@ -77,14 +84,17 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
         highlightActiveLine(),
         highlightActiveLineGutter(),
         history(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        // Ctrl+Enter는 앱 전역 단축키(임시보관함) — CodeMirror 기본의 "빈 줄 삽입"과 겹치지 않게 뺀다
+        keymap.of([...defaultKeymap.filter((b) => b.key !== 'Mod-Enter'), ...historyKeymap]),
         EditorView.lineWrapping,
         reportSyntaxHighlight,
         lintGutter(),
         reportLinter(),
         autocompletion({ override: [reportCompletions] }),
-        // Tab으로 자동완성 확정/오픈 (defaultKeymap·completionKeymap보다 우선)
+        // Tab으로 자동완성 확정/오픈 (defaultKeymap·completionKeymap보다 우선).
+        // 자동완성 대상이 아니면 Tab/Shift+Tab = 2칸 들여쓰기/내어쓰기 (대화 이력 계층)
         Prec.highest(keymap.of([{ key: 'Tab', run: tabComplete }])),
+        keymap.of([indentWithTab]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const next = update.state.doc.toString();

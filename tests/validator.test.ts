@@ -29,13 +29,14 @@ describe('validator', () => {
     expect(r.issues.some((i) => i.severity === 'warning' && i.message.includes('요일'))).toBe(true);
   });
 
-  it('## 없는 일자는 warning', () => {
+  it('아직 쓰지 않은 평일은 경고가 아닌 정보로 안내 (작성 중 소음 방지)', () => {
     const md = `@PREV 2026-04-27 ~ 2026-05-03
 @CURRENT 2026-05-04 ~ 2026-05-08
 
 # 2026-04-27(월)
 `;
     const r = validate(parse(md));
-    expect(r.issues.some((i) => i.severity === 'warning')).toBe(true);
+    expect(r.issues.some((i) => i.severity === 'warning')).toBe(false);
+    expect(r.issues.some((i) => i.severity === 'info' && /아직 작성하지 않은 날/.test(i.message))).toBe(true);
   });
 });

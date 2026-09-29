@@ -46,7 +46,7 @@ describe('edit 리듀서 — 불변성', () => {
     toggleHoliday(r, 1);
     addDay(r, '2026-05-13');
     updateItemFields(r, 0, 0, 0, { workType: '변경' });
-    addContentBlock(r, 0, 0, 0, 'qa');
+    addContentBlock(r, 0, 0, 0, 'dialog');
     expect(JSON.stringify(r)).toBe(snapshot);
   });
 });
@@ -79,10 +79,10 @@ describe('edit 리듀서 — 일자/휴무', () => {
     expect(removeDay(r, 9)).toBe(r);
   });
 
-  it('setWeekByPrevMonday — @PREV 월~일 + @CURRENT 다음주 월~금', () => {
+  it('setWeekByPrevMonday — @PREV 월~일 + @CURRENT 다음주 월~일 (일정 예정 범위)', () => {
     const r = setWeekByPrevMonday(base(), '2026-06-22');
     expect(r.prevWeekRange).toEqual({ start: '2026-06-22', end: '2026-06-28' });
-    expect(r.currentWeekRange).toEqual({ start: '2026-06-29', end: '2026-07-03' });
+    expect(r.currentWeekRange).toEqual({ start: '2026-06-29', end: '2026-07-05' });
   });
 });
 
@@ -120,13 +120,13 @@ describe('edit 리듀서 — 블록/항목', () => {
 });
 
 describe('edit 리듀서 — 콘텐츠 블록', () => {
-  it('addContentBlock: numbered index 자동 증가, qa/bullets 시드', () => {
+  it('addContentBlock: numbered index 자동 증가, dialog/bullets 시드', () => {
     let r = addContentBlock(base(), 0, 0, 0, 'numbered');
     let content = r.days[0].blocks[0].items[0].content;
     expect(content[1]).toEqual({ kind: 'numbered', index: 2, title: '', details: [] });
-    r = addContentBlock(r, 0, 0, 0, 'qa');
+    r = addContentBlock(r, 0, 0, 0, 'dialog');
     content = r.days[0].blocks[0].items[0].content;
-    expect(content[2]).toEqual({ kind: 'qa', question: '', answers: [] });
+    expect(content[2]).toEqual({ kind: 'dialog', indent: 1, turns: [{ kind: 'in', text: '' }] });
   });
 
   it('updateContentBlock 교체 + moveContentBlock 순서 변경', () => {
@@ -145,11 +145,10 @@ describe('edit 리듀서 — serialize 왕복 프로퍼티', () => {
   it('리듀서 편집 결과는 serialize→parse 후에도 동일 구조', () => {
     let r = base();
     r = addDay(r, '2026-05-13');
+    // ensureBlock은 빈 항목 1개를 품은 골격 행을 만든다 — 그 항목을 채우고 골격 대화 이력을 목록으로 바꾼다
     r = ensureBlock(r, 2);
     r = updateBlockFields(r, 2, 0, { locations: ['남산'], customer: '남산 IDC' });
-    r = addItem(r, 2, 0);
     r = updateItemFields(r, 2, 0, 0, { client: 'ABZ+', contact: '담당', channel: '유선', workType: '정기 점검' });
-    r = addContentBlock(r, 2, 0, 0, 'bullets');
     r = updateContentBlock(r, 2, 0, 0, 0, { kind: 'bullets', items: ['점검 완료', '> 이상 없음'] });
     r = toggleHoliday(r, 1);
     r = updateHolidayReason(r, 1, '대체 휴무');
