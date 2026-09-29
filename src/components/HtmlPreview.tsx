@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CANVAS_WIDTH } from '@core/index';
 
-export type ZoomMode = 'fit' | '50' | '75' | '100';
+/** Fit(화면 맞춤) / 100%(실제 크기) — 50%·75%는 쓰임이 없어 정리 */
+export type ZoomMode = 'fit' | '100';
 
 interface Props {
   html: string;
@@ -36,6 +37,7 @@ const PREVIEW_SHELL = (body: string, scale: number, width: number) => `<!doctype
     letter-spacing: -0.01em;
     word-break: keep-all;
     overflow-wrap: break-word;
+    font-variant-ligatures: none; /* 문법 마커(-> <-)를 원문 그대로 */
     zoom: ${scale};
   }
   .canvas {
@@ -85,10 +87,6 @@ export function HtmlPreview({ html, emptyHint, zoom, canvasWidth = CANVAS_WIDTH 
     switch (zoom) {
       case 'fit':
         return Math.max(0.4, fitScale);
-      case '50':
-        return 0.5;
-      case '75':
-        return 0.75;
       case '100':
       default:
         return 1;
@@ -164,8 +162,6 @@ interface ZoomToggleProps {
 
 const ZOOM_OPTIONS: Array<{ value: ZoomMode; label: string }> = [
   { value: 'fit', label: 'Fit' },
-  { value: '50', label: '50%' },
-  { value: '75', label: '75%' },
   { value: '100', label: '100%' },
 ];
 

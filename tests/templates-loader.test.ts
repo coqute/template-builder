@@ -8,8 +8,9 @@ import {
 } from '../src/email/templates';
 import type { EmailTemplateData } from '../src/email/types';
 import type { UserProfile } from '../src/email/profile';
+import TECH_JSON from '../src/email/builtin/tech-inquiry.json';
 
-const P: UserProfile = { name: '김테스트', email: 't@company.example', company: '예시아이티' };
+const P: UserProfile = { name: '김테스트', email: 't@company.example', company: '예시IT' };
 
 afterEach(() => setTemplateOverlays([], []));
 
@@ -25,17 +26,15 @@ describe('템플릿 로더', () => {
   it('프로필 토큰이 인사말에 치환된다', () => {
     const tech = getTemplate('tech-inquiry', P)!;
     expect(tech.greeting).toContain('김테스트');
-    expect(tech.greeting).toContain('예시아이티');
+    expect(tech.greeting).toContain('예시IT');
   });
 
   it('제조사지원 회사 표준(수신자·CC)은 프로필과 무관하게 유지, 제목은 입력값 그대로({topic})', () => {
     const tech = getTemplate('tech-inquiry', P)!;
-    expect(tech.recipientHint).toBe('support@vendor.example');
-    expect(tech.recipientCc).toEqual([
-      'sales@vendor.example',
-      'biz@vendor.example',
-      'team@company.example', // 사내 기술지원팀 필수 참조
-    ]);
+    // 실제 받는 사람·참조(사내 기술지원팀 필수 참조 포함)는 서식 파일에만 있다 — 서식 파일 값과 같고 프로필로 바뀌지 않는지만 본다
+    expect(tech.recipientHint).toBe(TECH_JSON.recipientHint);
+    expect(tech.recipientCc).toEqual(TECH_JSON.recipientCc);
+    expect(tech.recipientCc).toHaveLength(3);
     expect(tech.subjectPattern).toBe('{topic}'); // 접두사 자동 부착 금지 (사용자 확정)
   });
 

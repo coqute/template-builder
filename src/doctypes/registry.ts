@@ -24,7 +24,5 @@ export interface DocTypeModule {
   label: string;
   switchIcon?: ReactNode;
   switchHint?: string;
-  /** 툴바 좌측 배지 텍스트 */
-  badge: string;
   Workspace: ComponentType<DocTypeWorkspaceProps>;
 }

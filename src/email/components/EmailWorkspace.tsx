@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Allotment } from 'allotment';
 import { toast } from 'sonner';
-import { FileText, PencilLine, RotateCcw } from 'lucide-react';
+import { AlertCircle, FileText, PencilLine, RotateCcw } from 'lucide-react';
 import { HtmlPreview, ZoomToggle, type ZoomMode } from '../../components/HtmlPreview';
-import { getTemplates } from '../templates';
 import type { EmailRenderResult, EmailTemplate, EmailDocState } from '../types';
 import { EmailFieldForm } from './EmailFieldForm';
 import { RichBodyEditor } from './RichBodyEditor';
 import type { Theme } from '../../hooks/useTheme';
 
 interface Props {
+  /** 현재 doc.templateId가 해석된 템플릿 — 오버레이 미로드/삭제 시 undefined */
   template?: EmailTemplate;
+  /** 드롭다운 목록 (호출부가 프로필·오버레이 버전으로 memo) */
+  templates: EmailTemplate[];
   doc: EmailDocState;
   bodyKey: number;
   rendered?: EmailRenderResult;
+  /** 템플릿 해석/렌더 실패 메시지 */
+  error?: string;
   onTemplateChange: (id: string) => void;
   onField: (key: string, value: string) => void;
   onBody: (html: string) => void;
@@ -28,9 +32,11 @@ const EMAIL_CANVAS_WIDTH = 680;
 
 export function EmailWorkspace({
   template,
+  templates,
   doc,
   bodyKey,
   rendered,
+  error,
   onTemplateChange,
   onField,
   onBody,
@@ -42,27 +48,28 @@ export function EmailWorkspace({
 }: Props) {
   const isMono = theme === 'mono';
   const [leftTab, setLeftTab] = useState<'fields' | 'body'>('fields');
-  if (!template) {
-    return (
-      <div className="flex h-full items-center justify-center text-fg-muted">
-        템플릿을 찾을 수 없습니다.
-      </div>
-    );
-  }
   // hasBody=false 템플릿(출입정보 등)은 본문 탭 없음 → 입력항목 강제
-  const effectiveTab: 'fields' | 'body' = template.hasBody ? leftTab : 'fields';
+  const effectiveTab: 'fields' | 'body' = template?.hasBody ? leftTab : 'fields';
+  const templateMissing = !templates.some((t) => t.id === doc.templateId);
 
   return (
     <div className="flex h-full flex-col">
-      {/* 컴포즈 헤더 — 템플릿 선택 + 제목 직접 입력 */}
+      {/* 컴포즈 헤더 — 템플릿 선택 + 제목 직접 입력.
+          템플릿을 해석하지 못해도 항상 렌더 — 오버레이 reload로 현재 템플릿이 사라졌을 때
+          드롭다운까지 사라져 복구 경로가 없던 고착 상태 방지 */}
       <div className="flex shrink-0 flex-nowrap items-center gap-2 border-b border-rule bg-bg-deep px-3 py-1.5">
         <span className="shrink-0 text-[11px] font-medium text-fg-muted">템플릿</span>
         <select
-          value={template.id}
+          value={doc.templateId}
           onChange={(e) => onTemplateChange(e.target.value)}
-          className="w-40 shrink-0 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-accent"
+          className="w-40 shrink-0 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-fg"
         >
-          {getTemplates().map((t) => (
+          {templateMissing && (
+            <option value={doc.templateId} disabled>
+              (찾을 수 없음) {doc.templateId}
+            </option>
+          )}
+          {templates.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
@@ -83,7 +90,7 @@ export function EmailWorkspace({
               : '직접 입력한 제목 (전부 지우면 자동으로 복귀)'
           }
           className={[
-            'min-w-0 flex-1 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs outline-none focus:border-accent',
+            'min-w-0 flex-1 rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs outline-none focus:border-fg',
             doc.subject === undefined ? 'text-fg-soft' : 'text-fg',
           ].join(' ')}
         />
@@ -109,7 +116,7 @@ export function EmailWorkspace({
             <span className="hidden lg:inline">자동으로</span>
           </button>
         )}
-        {template.recipientHint && (
+        {template?.recipientHint && (
           <span
             className="hidden shrink-0 rounded-sharp border border-rule px-2 py-0.5 text-[10px] text-fg-muted xl:inline-block"
             title={
@@ -124,72 +131,86 @@ export function EmailWorkspace({
         )}
       </div>
 
-      <main className="min-h-0 flex-1">
-        <Allotment defaultSizes={[44, 56]}>
-          {/* 좌측: [입력항목]↔[본문] 탭 — 선택 탭이 전체 높이 사용 */}
-          <Allotment.Pane minSize={360}>
-            <div className="flex h-full flex-col">
-              <div className="flex h-8 shrink-0 items-center gap-1 border-b border-rule bg-bg-deep px-2">
-                <TabBtn
-                  active={effectiveTab === 'fields'}
-                  onClick={() => setLeftTab('fields')}
-                  icon={<FileText size={12} />}
-                  label={isMono ? 'fields' : '입력항목'}
-                />
-                {template.hasBody && (
+      {!template ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-fg-muted">
+          <AlertCircle size={20} style={{ color: 'var(--stamp-red)' }} />
+          <p className="text-sm text-fg">템플릿을 찾을 수 없습니다: <code className="font-mono">{doc.templateId}</code></p>
+          <p className="text-[11px] leading-relaxed">
+            {error ?? '팀/개인 템플릿이 아직 로드되지 않았거나 폴더에서 제거되었습니다.'}
+            <br />
+            위 드롭다운에서 다른 템플릿을 고르거나, 도움말(F1)에서 템플릿 폴더를 확인하고 [다시 불러오기]를 누르세요.
+            현재 입력값은 그대로 보존됩니다.
+          </p>
+        </div>
+      ) : (
+        <main className="min-h-0 flex-1">
+          <Allotment defaultSizes={[44, 56]}>
+            {/* 좌측: [입력항목]↔[본문] 탭 — 선택 탭이 전체 높이 사용 */}
+            <Allotment.Pane minSize={360}>
+              <div className="flex h-full flex-col">
+                <div className="flex h-8 shrink-0 items-center gap-1 border-b border-rule bg-bg-deep px-2">
                   <TabBtn
-                    active={effectiveTab === 'body'}
-                    onClick={() => setLeftTab('body')}
-                    icon={<PencilLine size={12} />}
-                    label={template.bodyLabel ?? (isMono ? 'body' : '본문')}
+                    active={effectiveTab === 'fields'}
+                    onClick={() => setLeftTab('fields')}
+                    icon={<FileText size={12} />}
+                    label={isMono ? 'fields' : '입력항목'}
                   />
-                )}
-                {effectiveTab === 'body' && (
-                  <span className="ml-1 hidden truncate text-[10px] text-fg-faint lg:inline">
-                    이미지·표·글머리 자유 작성
-                  </span>
-                )}
+                  {template.hasBody && (
+                    <TabBtn
+                      active={effectiveTab === 'body'}
+                      onClick={() => setLeftTab('body')}
+                      icon={<PencilLine size={12} />}
+                      label={template.bodyLabel ?? (isMono ? 'body' : '본문')}
+                    />
+                  )}
+                  {effectiveTab === 'body' && (
+                    <span className="ml-1 hidden truncate text-[10px] text-fg-faint lg:inline">
+                      이미지·표·글머리 자유 작성
+                    </span>
+                  )}
+                </div>
+                <div className="min-h-0 flex-1">
+                  {effectiveTab === 'fields' ? (
+                    <div className="scrollbar-thin h-full overflow-auto px-3 py-2.5">
+                      <EmailFieldForm template={template} values={doc.fieldValues} onChange={onField} />
+                    </div>
+                  ) : (
+                    <RichBodyEditor
+                      key={bodyKey}
+                      initialHtml={doc.bodyHtml}
+                      onChange={onBody}
+                      placeholder={template.bodyPlaceholder}
+                      presets={template.bodyPresets}
+                      onImageOversize={() =>
+                        toast.warning('이미지가 1.5MB를 초과합니다. Gmail에서 직접 첨부를 권장합니다.')
+                      }
+                      onImageError={(reason) => toast.error(`이미지를 넣지 못했습니다: ${reason}`)}
+                    />
+                  )}
+                </div>
               </div>
-              <div className="min-h-0 flex-1">
-                {effectiveTab === 'fields' ? (
-                  <div className="scrollbar-thin h-full overflow-auto px-3 py-2.5">
-                    <EmailFieldForm template={template} values={doc.fieldValues} onChange={onField} />
-                  </div>
-                ) : (
-                  <RichBodyEditor
-                    key={bodyKey}
-                    initialHtml={doc.bodyHtml}
-                    onChange={onBody}
-                    placeholder={template.bodyPlaceholder}
-                    presets={template.bodyPresets}
-                    onImageOversize={() =>
-                      toast.warning('이미지가 1.5MB를 초과합니다. Gmail에서 직접 첨부를 권장합니다.')
-                    }
-                  />
-                )}
-              </div>
-            </div>
-          </Allotment.Pane>
+            </Allotment.Pane>
 
-          {/* 우측: 이메일 미리보기 */}
-          <Allotment.Pane minSize={380}>
-            <div className="flex h-full flex-col">
-              <div className="flex h-8 shrink-0 items-center justify-between border-b border-rule bg-bg-deep px-3 text-[11px]">
-                <span className="text-fg-muted">{isMono ? 'PREVIEW.eml' : '이메일 미리보기'}</span>
-                <ZoomToggle zoom={zoom} onZoomChange={onZoomChange} />
+            {/* 우측: 이메일 미리보기 */}
+            <Allotment.Pane minSize={380}>
+              <div className="flex h-full flex-col">
+                <div className="flex h-8 shrink-0 items-center justify-between border-b border-rule bg-bg-deep px-3 text-[11px]">
+                  <span className="text-fg-muted">{isMono ? 'PREVIEW.eml' : '이메일 미리보기'}</span>
+                  <ZoomToggle zoom={zoom} onZoomChange={onZoomChange} />
+                </div>
+                <div className="h-[calc(100%-32px)]">
+                  <HtmlPreview
+                    html={rendered?.html ?? ''}
+                    zoom={zoom}
+                    canvasWidth={EMAIL_CANVAS_WIDTH}
+                    emptyHint={error ? `렌더 오류: ${error}` : '템플릿을 선택하고 항목을 입력하면 이메일이 나타납니다.'}
+                  />
+                </div>
               </div>
-              <div className="h-[calc(100%-32px)]">
-                <HtmlPreview
-                  html={rendered?.html ?? ''}
-                  zoom={zoom}
-                  canvasWidth={EMAIL_CANVAS_WIDTH}
-                  emptyHint="템플릿을 선택하고 항목을 입력하면 이메일이 나타납니다."
-                />
-              </div>
-            </div>
-          </Allotment.Pane>
-        </Allotment>
-      </main>
+            </Allotment.Pane>
+          </Allotment>
+        </main>
+      )}
     </div>
   );
 }

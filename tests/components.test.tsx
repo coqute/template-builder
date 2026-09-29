@@ -55,7 +55,6 @@ describe('doctypes 레지스트리', () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const m of DOC_TYPE_MODULES) {
       expect(m.label).toBeTruthy();
-      expect(m.badge).toBeTruthy();
       expect(typeof m.Workspace).toBe('function');
     }
   });
@@ -63,5 +62,39 @@ describe('doctypes 레지스트리', () => {
   it('getDocTypeModule은 미등록 id에 첫 모듈로 폴백', () => {
     expect(getDocTypeModule('ghost').id).toBe(DOC_TYPE_MODULES[0].id);
     expect(getDocTypeModule('email').id).toBe('email');
+  });
+});
+
+describe('MoreMenu (⋯ 더보기)', () => {
+  it('열면 항목이 보이고, 누르면 실행 후 닫힌다', async () => {
+    const { MoreMenu } = await import('../src/components/ToolbarButton');
+    const run = vi.fn();
+    render(<MoreMenu items={[{ label: 'Gmail 본문 가져오기', shortcut: 'Ctrl+Shift+I', onClick: run }]} />);
+    expect(screen.queryByRole('menu')).toBeNull();
+    fireEvent.click(screen.getByLabelText('더보기'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Gmail 본문 가져오기/ }));
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+});
+
+describe('StatusBar 미결 목록', () => {
+  it('미결 N을 누르면 목록, 행을 누르면 onJumpPending(항목)', async () => {
+    const { StatusBar } = await import('../src/components/StatusBar');
+    const onJump = vi.fn();
+    const item = { key: '0-1-0', line: 12, label: '09-21 [MX] 에이전트 IP', text: '제조사 문의 예정' };
+    render(
+      <StatusBar
+        validation={{ ok: true, issues: [], stats: { days: 7, locations: 3, clientItems: 4, contentBlocks: 6, pending: 1 } }}
+        diagnostics={[]}
+        pending={1}
+        pendingItems={[item]}
+        onJumpPending={onJump}
+        theme="paper"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /미결 1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /09-21 \[MX\]/ }));
+    expect(onJump).toHaveBeenCalledWith(item);
   });
 });

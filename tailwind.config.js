@@ -38,6 +38,7 @@ export default {
       // border-rule은 색상 전용으로 유지한다.
       boxShadow: {
         themed: 'var(--shadow)',
+        pop: 'var(--shadow-pop)',
       },
       spacing: {
         '4.5': '1.125rem',

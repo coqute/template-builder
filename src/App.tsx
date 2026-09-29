@@ -8,7 +8,7 @@ import { useUserProfile } from './hooks/useUserProfile';
 import { useTheme } from './hooks/useTheme';
 import { useDocType } from './hooks/useDocType';
 import { useTemplateOverlays } from './email/useTemplateOverlays';
-import { readWithFallback } from './lib/storage';
+import { readWithFallback, safeSetItem } from './lib/storage';
 import { DOC_TYPE_MODULES, getDocTypeModule } from './doctypes';
 import { DocTypeHostProvider, type DocTypeHandlers, type DocTypeHostValue } from './doctypes/DocTypeHost';
 
@@ -18,7 +18,8 @@ const LEGACY_KEY_ZOOM = 'weekly-report-builder:preview-zoom';
 function loadZoom(): ZoomMode {
   if (typeof localStorage === 'undefined') return 'fit';
   const v = readWithFallback(STORAGE_KEY_ZOOM, LEGACY_KEY_ZOOM);
-  return v === 'fit' || v === '50' || v === '75' || v === '100' ? v : 'fit';
+  // 50%·75%는 정리됨 — 이전 저장값은 Fit으로
+  return v === '100' ? '100' : 'fit';
 }
 
 const DOC_TYPE_IDS = DOC_TYPE_MODULES.map((m) => m.id);
@@ -61,9 +62,7 @@ export function App() {
   );
 
   useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_ZOOM, zoom);
-    }
+    safeSetItem(STORAGE_KEY_ZOOM, zoom);
   }, [zoom]);
 
   // 네이티브 메뉴 → 활성 모듈 핸들러 위임 (menu:help만 전역)
@@ -81,6 +80,8 @@ export function App() {
   // 단축키 → 활성 모듈 위임. F1(도움말)만 전역
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // 키 리핏(누른 채 유지) 무시 — Ctrl+Enter(임시보관함 생성) 등 부수효과 단축키의 다중 실행 방지
+      if (e.repeat) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (!ctrl) {
         if (e.key === 'F1') {
@@ -105,11 +106,9 @@ export function App() {
           options={SWITCH_OPTIONS}
           docType={active.id}
           onDocTypeChange={setDocType}
-          badge={active.badge}
           onToolbarSlot={setToolbarSlot}
           onToggleHelp={() => setHelpOpen((v) => !v)}
           theme={theme}
-          onThemeChange={setTheme}
         />
       </div>
 
@@ -134,7 +133,12 @@ export function App() {
         onProfileChange={setProfile}
         onReloadTemplates={overlays.reload}
         theme={theme}
+        onThemeChange={setTheme}
         docType={active.id}
+        onCommand={(channel) => {
+          setHelpOpen(false);
+          handlersStore.current?.current.menu[channel]?.();
+        }}
       />
       {needsOnboarding && <OnboardingModal onSubmit={setProfile} />}
       <Toaster

@@ -17,7 +17,7 @@ vi.stubGlobal('localStorage', {
   removeItem: (k: string) => void store.delete(k),
 });
 
-const P: UserProfile = { name: '김테스트', email: 't@company.example', company: '예시아이티' };
+const P: UserProfile = { name: '김테스트', email: 't@company.example', company: '예시IT' };
 
 describe('userProfile', () => {
   beforeEach(() => store.clear());
@@ -31,7 +31,14 @@ describe('userProfile', () => {
     store.set('tb:author', '홍길동');
     const p = loadUserProfile();
     expect(p.name).toBe('홍길동');
-    expect(p.company).toBe('예시아이티'); // 기본 회사
+    expect(p.company).toBe('예시IT'); // 기본 회사
+  });
+
+  it('옛 기본 회사(예시IT)로 저장된 프로필은 새 기본값(예시IT)으로 읽는다', () => {
+    store.set('tb:user-profile:v1', JSON.stringify({ name: '홍길동', email: '', company: '예시아이티' }));
+    expect(loadUserProfile().company).toBe('예시IT');
+    store.set('tb:user-profile:v1', JSON.stringify({ name: '홍길동', email: '', company: '타사' }));
+    expect(loadUserProfile().company).toBe('타사'); // 직접 입력한 회사는 그대로
   });
 
   it('손상된 저장값은 기본 프로필로', () => {
@@ -40,8 +47,8 @@ describe('userProfile', () => {
   });
 
   it('greeting/closing 파생 + override 우선', () => {
-    expect(buildGreeting(P)).toBe('안녕하세요.\n예시아이티 김테스트입니다.');
-    expect(buildGreeting({ ...P, name: '' })).toBe('안녕하세요.\n예시아이티입니다.');
+    expect(buildGreeting(P)).toBe('안녕하세요.\n예시IT 김테스트입니다.');
+    expect(buildGreeting({ ...P, name: '' })).toBe('안녕하세요.\n예시IT입니다.');
     expect(buildGreeting({ name: '', email: '', company: '' })).toBe('안녕하세요.');
     expect(buildGreeting({ ...P, greetingOverride: '커스텀 인사' })).toBe('커스텀 인사');
     expect(buildClosing(P)).toBe('감사합니다.');
@@ -50,6 +57,6 @@ describe('userProfile', () => {
 
   it('프로필 토큰 치환 — 필드 토큰({topic})은 건드리지 않음', () => {
     const s = applyProfileTokens('{company} {userName} <{userEmail}> — {topic}', P);
-    expect(s).toBe('예시아이티 김테스트 <t@company.example> — {topic}');
+    expect(s).toBe('예시IT 김테스트 <t@company.example> — {topic}');
   });
 });

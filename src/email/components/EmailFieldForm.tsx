@@ -43,15 +43,15 @@ function Field({
   onChange: (v: string) => void;
 }) {
   const fullWidth = field.wide || field.type === 'textarea';
-  const inputCls =
-    'w-full rounded-sharp border border-rule bg-bg-elevated px-2 py-1 text-xs text-fg outline-none focus:border-accent';
+  // 주간보고 비주얼 편집기와 같은 입력(ms-input·ms-area)·캡션(ms-caption) — 두 모드의 인상을 통일
+  const inputCls = 'ms-input w-full';
   return (
     <label className={['flex flex-col gap-0.5', fullWidth ? 'col-span-2' : ''].join(' ')}>
-      <span className="text-[10px] font-medium text-fg-soft">
+      <span className="ms-caption">
         {field.label}
-        {field.subjectOnly && <span className="text-fg-faint"> · 제목용</span>}
-        {field.bodyLead && <span className="text-fg-faint"> · 본문 서두</span>}
-        {field.introLead && <span className="text-fg-faint"> · 표 위 문단</span>}
+        {field.subjectOnly && <span className="text-fg-muted"> · 제목용</span>}
+        {field.bodyLead && <span className="text-fg-muted"> · 본문 서두</span>}
+        {field.introLead && <span className="text-fg-muted"> · 표 위 문단</span>}
         {field.required && <span style={{ color: 'var(--stamp-red)' }}> *</span>}
       </span>
       {field.type === 'select' ? (
@@ -72,7 +72,7 @@ function Field({
         />
       ) : field.type === 'textarea' ? (
         <textarea
-          className={`${inputCls} resize-y`}
+          className="ms-area"
           rows={2}
           placeholder={field.placeholder}
           value={value}

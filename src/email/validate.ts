@@ -1,4 +1,5 @@
 import { buildEmailSubject } from './render';
+import { josa } from '../lib/josa';
 import type { EmailTemplate } from './types';
 
 export interface EmailIssue {
@@ -24,7 +25,7 @@ export function validateEmail(
       const raw = (values[field.key] ?? field.default ?? '').trim();
       const v = raw === 'today' ? '' : raw;
       if (!v) {
-        issues.push({ severity: 'warning', message: `${field.label}이(가) 비어 있습니다.` });
+        issues.push({ severity: 'warning', message: `${josa(field.label, '이/가')} 비어 있습니다.` });
       }
     }
   }

@@ -3,6 +3,7 @@
  * 템플릿 로더(templates.ts)와 React 훅(hooks/useUserProfile.ts)이 공유한다.
  */
 
+import { site } from '../core/site-config';
 export interface UserProfile {
   name: string;
   email: string;
@@ -13,12 +14,15 @@ export interface UserProfile {
   closingOverride?: string;
 }
 
-export const DEFAULT_COMPANY = '예시아이티';
+/** 회사 기본값 — site-config.ts의 값(실제 값은 그 파일에만) */
+export function defaultCompany(): string {
+  return site().company;
+}
 const KEY = 'tb:user-profile:v1';
 const LEGACY_AUTHOR_KEY = 'tb:author';
 
 export function defaultProfile(): UserProfile {
-  return { name: '', email: '', company: DEFAULT_COMPANY };
+  return { name: '', email: '', company: defaultCompany() };
 }
 
 function safeGet(key: string): string | null {
@@ -38,7 +42,10 @@ export function loadUserProfile(): UserProfile {
       return {
         name: typeof p.name === 'string' ? p.name : '',
         email: typeof p.email === 'string' ? p.email : '',
-        company: typeof p.company === 'string' && p.company.trim() ? p.company : DEFAULT_COMPANY,
+        company:
+          typeof p.company === 'string' && p.company.trim() && p.company.trim() !== site().legacyCompany
+            ? p.company
+            : defaultCompany(),
         greetingOverride: typeof p.greetingOverride === 'string' ? p.greetingOverride : undefined,
         closingOverride: typeof p.closingOverride === 'string' ? p.closingOverride : undefined,
       };

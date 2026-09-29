@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DEFAULT_COMPANY, type UserProfile } from '../email/profile';
+import { defaultCompany, type UserProfile } from '../email/profile';
 
 interface Props {
   onSubmit: (profile: UserProfile) => void;
@@ -9,12 +9,12 @@ interface Props {
 export function OnboardingModal({ onSubmit }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [company, setCompany] = useState(DEFAULT_COMPANY);
+  const [company, setCompany] = useState(defaultCompany());
   const canSubmit = name.trim().length > 0;
 
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit({ name: name.trim(), email: email.trim(), company: company.trim() || DEFAULT_COMPANY });
+    onSubmit({ name: name.trim(), email: email.trim(), company: company.trim() || defaultCompany() });
   };
 
   return (
@@ -27,7 +27,7 @@ export function OnboardingModal({ onSubmit }: Props) {
         <div className="mt-4 space-y-2.5">
           <Field label="이름 *" value={name} placeholder="홍길동" onChange={setName} autoFocus onEnter={submit} />
           <Field label="이메일" value={email} placeholder="hong@company.example" onChange={setEmail} onEnter={submit} />
-          <Field label="회사" value={company} placeholder={DEFAULT_COMPANY} onChange={setCompany} onEnter={submit} />
+          <Field label="회사" value={company} placeholder={defaultCompany()} onChange={setCompany} onEnter={submit} />
         </div>
         <div className="mt-5 flex justify-end">
           <button
@@ -72,7 +72,7 @@ function Field({
         onKeyDown={(e) => {
           if (e.key === 'Enter') onEnter();
         }}
-        className="min-w-0 flex-1 rounded-sharp border border-rule bg-bg-deep px-2 py-1.5 text-xs text-fg outline-none focus:border-accent"
+        className="min-w-0 flex-1 rounded-sharp border border-rule bg-bg-deep px-2 py-1.5 text-xs text-fg outline-none focus:border-fg"
       />
     </label>
   );

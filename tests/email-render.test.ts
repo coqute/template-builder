@@ -5,7 +5,7 @@ import { getTemplate } from '../src/email/templates';
 import type { UserProfile } from '../src/email/profile';
 
 // 테스트 전용 프로필 — 인사말·기본값이 프로필에서 파생됨을 함께 검증
-const P: UserProfile = { name: '김테스트', email: 'tester@company.example', company: '예시아이티' };
+const P: UserProfile = { name: '김테스트', email: 'tester@company.example', company: '예시IT' };
 
 const tech = getTemplate('tech-inquiry', P)!;
 const install = getTemplate('install-delivery', P)!;
@@ -13,7 +13,7 @@ const install = getTemplate('install-delivery', P)!;
 describe('renderEmailHtml', () => {
   it('인사말·맺음말은 프로필에서 파생', () => {
     const html = renderEmailHtml(tech, {}, '');
-    expect(html).toContain('예시아이티 김테스트입니다');
+    expect(html).toContain('예시IT 김테스트입니다');
     expect(html).toContain('감사합니다');
   });
 
