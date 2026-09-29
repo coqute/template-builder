@@ -1,18 +1,19 @@
 import type {
   ClientItem,
-  ContentBlock,
   DateRange,
   DayEntry,
   Diagnostic,
   LocationBlock,
-  NumberedBlock,
   ParseOutcome,
-  QaBlock,
+  PlanEntry,
   Severity,
   Weekday,
   WeekReport,
 } from './types';
-import { getWeekday, normalizeChannelValue, NOTE_PREFIX, WEEKDAYS } from './types';
+import { getWeekday, isRealIsoDate, splitLocations, WEEKDAYS } from './types';
+import { GRAMMAR } from './grammar';
+import { appendContentLine, appendPlainText, indentLevel, matchContentLine, type ContentCursor } from './content';
+import { parseItemHeader } from './item-header';
 
 export class ParseError extends Error {
   readonly line: number;
@@ -23,34 +24,27 @@ export class ParseError extends Error {
 }
 
 // ── 문법 정규식 — 단일 소스는 grammar.ts (Grammar Registry). 로컬 별칭만 유지 ──
-import { GRAMMAR } from './grammar';
-
 const RE_PREV = GRAMMAR.prev;
 const RE_CURRENT = GRAMMAR.current;
 const RE_AUTHOR = GRAMMAR.author;
+const RE_PLAN = GRAMMAR.plan;
 const RE_DAY_FLEX = GRAMMAR.day;
 const RE_LOC = GRAMMAR.loc;
 const RE_CUS = GRAMMAR.cus;
 const RE_HOLIDAY = GRAMMAR.holiday;
+const RE_HALFDAY = GRAMMAR.halfday;
 const RE_CLIENT = GRAMMAR.client;
-const RE_NUM = GRAMMAR.num;
-const RE_DASH = GRAMMAR.dash;
-const RE_QA_Q = GRAMMAR.qaQ;
-const RE_QA_A = GRAMMAR.qaA;
-const RE_NOTE = GRAMMAR.note;
-const RE_CLIENT_CHANNEL = GRAMMAR.clientChannel;
-const RE_CLIENT_NEW = GRAMMAR.clientNew;
-const RE_CLIENT_BARE = GRAMMAR.clientBare;
 
 interface ParseContext {
   prevWeekRange?: DateRange;
   currentWeekRange?: DateRange;
   authorName: string;
   days: DayEntry[];
+  plans: PlanEntry[];
   currentDay?: DayEntry;
   currentBlock?: LocationBlock;
   currentItem?: ClientItem;
-  currentContent?: ContentBlock;
+  cursor: ContentCursor;
   diagnostics: Diagnostic[];
 }
 
@@ -67,6 +61,8 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
   const ctx: ParseContext = {
     authorName: options.defaultAuthor ?? '작성자',
     days: [],
+    plans: [],
+    cursor: {},
     diagnostics: [],
   };
 
@@ -80,8 +76,15 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
     ctx.diagnostics.push({ line, severity, message, hint, source: 'parser', code });
   };
 
+  /** token은 조사 포함 (예: '@SUM이') */
+  const beforeDay = (lineNo: number, token: string, code: string): boolean => {
+    if (ctx.currentDay) return false;
+    diag(lineNo, 'warning', `${token} # 일자 앞에 있어 건너뜁니다.`, '`# YYYY-MM-DD(요일)` 일자 행 뒤에 선언하세요.', code);
+    return true;
+  };
+
   /**
-   * 본문 라인(1)/-/<-/->/>)이 @SUM 없이 시작될 때 암묵 항목 생성.
+   * 본문 라인이 @SUM 없이 시작될 때 암묵 항목 생성.
    * currentDay조차 없으면 null 반환 (날짜를 지어낼 수 없음 → 호출자가 스킵).
    */
   const ensureItem = (lineNo: number): ClientItem | null => {
@@ -108,10 +111,34 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
       lineNo,
       'warning',
       '본문이 @SUM 없이 시작되어 빈 고객사 항목을 생성했습니다.',
-      '`@SUM [고객사] 작업 설명` 헤더를 추가하세요.',
+      '`@SUM [고객사] 제목` 헤더를 추가하세요.',
       'content-no-sum',
     );
     return implicit;
+  };
+
+  const resetBlockContext = () => {
+    ctx.currentItem = undefined;
+    ctx.cursor = {};
+  };
+
+  /**
+   * 휴일(@HOLIDAY)로 표시한 날에 내용이 있다 — 표·검증은 휴일 행만 보고, 비주얼 편집의 저장(serialize)도
+   * 휴일 날의 블록을 쓰지 않는다. 말없이 두면 주말 근무 기록이 메일에서 빠지고, 비주얼 모드에서 한 번
+   * 고친 뒤 저장하면 .md에서도 사라진다. 날마다 한 번만 알린다(유실 가드 LOSSY_CODES에 포함).
+   */
+  const holidayWarned = new Set<DayEntry>();
+  const warnOnHoliday = (lineNo: number) => {
+    const day = ctx.currentDay;
+    if (!day?.holiday || holidayWarned.has(day)) return;
+    holidayWarned.add(day);
+    diag(
+      lineNo,
+      'warning',
+      `${day.date}은 휴일(@HOLIDAY)로 표시되어 있어 이 날의 내용은 표에 나오지 않습니다.`,
+      '이 날 한 일을 보고하려면 @HOLIDAY 줄을 지우세요. 쉬는 날이 맞으면 아래 내용을 지우세요.',
+      'content-on-holiday',
+    );
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -120,7 +147,7 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
     const line = raw.trim();
 
     if (line === '') {
-      ctx.currentContent = undefined;
+      ctx.cursor = {};
       continue;
     }
 
@@ -138,6 +165,15 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
       ctx.authorName = m[1];
       continue;
     }
+    if ((m = line.match(RE_PLAN))) {
+      const date = normalizeDate(m[1]);
+      if (!isValidIso(date)) {
+        diag(lineNo, 'warning', `@PLAN 일자 "${m[1]}"가 유효하지 않아 건너뜁니다.`, undefined, 'plan-invalid-date');
+        continue;
+      }
+      ctx.plans.push({ date, text: m[2], srcLine: lineNo });
+      continue;
+    }
 
     if ((m = line.match(RE_DAY_FLEX))) {
       const date = normalizeDate(m[1]);
@@ -153,29 +189,18 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
       const rawWd = (m[2] ?? '').trim();
       let computed: Weekday | null = null;
       try {
-        computed = getWeekday(date);
+        // 달력에 없는 날짜(2026-04-31)는 Date가 다음 달로 넘겨 요일까지 계산해 준다 — 유효하지 않은 날짜로 알린다
+        computed = isRealIsoDate(date) ? getWeekday(date) : null;
       } catch {
         computed = null;
       }
       let weekday: Weekday;
       if (!computed) {
-        diag(
-          lineNo,
-          'warning',
-          `일자 "${date}"가 유효하지 않은 날짜입니다.`,
-          undefined,
-          'invalid-date',
-        );
+        diag(lineNo, 'warning', `일자 "${date}"가 유효하지 않은 날짜입니다.`, undefined, 'invalid-date');
         weekday = (WEEKDAYS as readonly string[]).includes(rawWd) ? (rawWd as Weekday) : '월';
       } else if (!rawWd) {
         weekday = computed;
-        diag(
-          lineNo,
-          'info',
-          `요일이 생략되어 (${computed})로 보충했습니다.`,
-          undefined,
-          'day-no-weekday',
-        );
+        diag(lineNo, 'info', `요일이 생략되어 (${computed})로 보충했습니다.`, undefined, 'day-no-weekday');
       } else if (!(WEEKDAYS as readonly string[]).includes(rawWd)) {
         weekday = computed;
         diag(
@@ -193,74 +218,45 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
       ctx.days.push(day);
       ctx.currentDay = day;
       ctx.currentBlock = undefined;
-      ctx.currentItem = undefined;
-      ctx.currentContent = undefined;
+      resetBlockContext();
       continue;
     }
 
     if ((m = line.match(RE_HOLIDAY))) {
-      if (!ctx.currentDay) {
-        diag(
-          lineNo,
-          'warning',
-          '@HOLIDAY가 # 일자 앞에 있어 건너뜁니다.',
-          '`# YYYY-MM-DD(요일)` 일자 행 뒤에 선언하세요.',
-          'holiday-before-day',
-        );
-        continue;
-      }
-      const reason = (m[1] ?? '').trim();
-      ctx.currentDay.holiday = { reason };
+      if (beforeDay(lineNo, '@HOLIDAY가', 'holiday-before-day')) continue;
+      ctx.currentDay!.holiday = { reason: (m[1] ?? '').trim() };
+      // 내용을 쓴 뒤 @HOLIDAY를 붙인 경우 — 위에 쓴 블록이 버려진다
+      if (ctx.currentDay!.blocks.length > 0) warnOnHoliday(lineNo);
       ctx.currentBlock = undefined;
-      ctx.currentItem = undefined;
-      ctx.currentContent = undefined;
+      resetBlockContext();
+      continue;
+    }
+
+    if ((m = line.match(RE_HALFDAY))) {
+      if (beforeDay(lineNo, '@HALFDAY가', 'halfday-before-day')) continue;
+      // 부분 근태 — 근무일 유지: 블록 컨텍스트를 리셋하지 않는다
+      ctx.currentDay!.partial = { label: (m[1] ?? '').trim() };
       continue;
     }
 
     if ((m = line.match(RE_LOC))) {
-      if (!ctx.currentDay) {
-        diag(
-          lineNo,
-          'warning',
-          '@LOC가 # 일자 앞에 있어 건너뜁니다.',
-          '`# YYYY-MM-DD(요일)` 일자 행 뒤에 선언하세요.',
-          'loc-before-day',
-        );
-        continue;
-      }
-      // 공백 둘러싼 슬래시(` / `)만 줄바꿈 — "8080/443"·"한강/서원" 등 공백 없는 슬래시는 단어로 보존
-      const locations = m[1]
-        .split(/\s+\/\s+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const block: LocationBlock = { locations, customer: '', items: [], srcLine: lineNo };
-      ctx.currentDay.blocks.push(block);
+      if (beforeDay(lineNo, '@LOC가', 'loc-before-day')) continue;
+      warnOnHoliday(lineNo);
+      // 값 생략(`@LOC` 단독)은 장소 미정 새 블록 — 비주얼 에디터의 빈 장소 블록이 직전 @LOC를 상속하지 않도록
+      const block: LocationBlock = { locations: splitLocations(m[1] ?? ''), customer: '', items: [], srcLine: lineNo };
+      ctx.currentDay!.blocks.push(block);
       ctx.currentBlock = block;
-      ctx.currentItem = undefined;
-      ctx.currentContent = undefined;
+      resetBlockContext();
       continue;
     }
 
     if ((m = line.match(RE_CUS))) {
-      if (!ctx.currentDay) {
-        diag(
-          lineNo,
-          'warning',
-          '@CUS가 # 일자 앞에 있어 건너뜁니다.',
-          '`# YYYY-MM-DD(요일)` 일자 행 뒤에 선언하세요.',
-          'cus-before-day',
-        );
-        continue;
-      }
-      const customerText = m[1].trim();
+      if (beforeDay(lineNo, '@CUS가', 'cus-before-day')) continue;
+      warnOnHoliday(lineNo);
+      const customerText = (m[1] ?? '').trim();
       if (!ctx.currentBlock) {
-        const block: LocationBlock = {
-          locations: [],
-          customer: customerText,
-          items: [],
-          srcLine: lineNo,
-        };
-        ctx.currentDay.blocks.push(block);
+        const block: LocationBlock = { locations: [], customer: customerText, items: [], srcLine: lineNo };
+        ctx.currentDay!.blocks.push(block);
         ctx.currentBlock = block;
       } else if (ctx.currentBlock.customer || ctx.currentBlock.items.length > 0) {
         // 같은 @LOC 아래 두 번째 @CUS — 새 sub-row block 생성 (장소 상속)
@@ -271,131 +267,43 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
           inheritLocation: true,
           srcLine: lineNo,
         };
-        ctx.currentDay.blocks.push(newBlock);
+        ctx.currentDay!.blocks.push(newBlock);
         ctx.currentBlock = newBlock;
       } else {
         ctx.currentBlock.customer = customerText;
       }
-      ctx.currentItem = undefined;
-      ctx.currentContent = undefined;
+      resetBlockContext();
       continue;
     }
 
     if ((m = line.match(RE_CLIENT))) {
-      if (!ctx.currentDay) {
-        diag(
-          lineNo,
-          'warning',
-          '@SUM이 # 일자 앞에 있어 건너뜁니다.',
-          '`# YYYY-MM-DD(요일)` 일자 행 뒤에 선언하세요.',
-          'sum-before-day',
-        );
-        continue;
-      }
+      if (beforeDay(lineNo, '@SUM이', 'sum-before-day')) continue;
+      warnOnHoliday(lineNo);
       if (!ctx.currentBlock) {
         const auto: LocationBlock = { locations: [], customer: '', items: [], srcLine: lineNo };
-        ctx.currentDay.blocks.push(auto);
+        ctx.currentDay!.blocks.push(auto);
         ctx.currentBlock = auto;
       }
-      const item = parseClientHeader(m[1], lineNo, diag);
-      item.srcLine = lineNo;
+      const { header, issues } = parseItemHeader(m[1] ?? '', ctx.currentBlock.locations);
+      for (const is of issues) diag(lineNo, is.severity, is.message, is.hint, is.code);
+      const item: ClientItem = { ...header, content: [], srcLine: lineNo };
       ctx.currentBlock.items.push(item);
       ctx.currentItem = item;
-      ctx.currentContent = undefined;
+      ctx.cursor = {};
       continue;
     }
 
-    if ((m = line.match(RE_NUM))) {
+    const content = matchContentLine(line);
+    if (content) {
       const item = ensureItem(lineNo);
       if (!item) continue;
-      const block: NumberedBlock = {
-        kind: 'numbered',
-        index: Number.parseInt(m[1], 10),
-        title: m[2],
-        details: [],
-      };
-      item.content.push(block);
-      ctx.currentContent = block;
-      continue;
-    }
-
-    if ((m = line.match(RE_QA_Q))) {
-      const item = ensureItem(lineNo);
-      if (!item) continue;
-      const block: QaBlock = { kind: 'qa', question: m[1] || undefined, answers: [] };
-      item.content.push(block);
-      ctx.currentContent = block;
-      continue;
-    }
-
-    if ((m = line.match(RE_QA_A))) {
-      const item = ensureItem(lineNo);
-      if (!item) continue;
-      let target = ctx.currentContent;
-      if (!target || target.kind !== 'qa') {
-        target = { kind: 'qa', answers: [] };
-        item.content.push(target);
-        ctx.currentContent = target;
-      }
-      (target as QaBlock).answers.push(m[1]);
-      continue;
-    }
-
-    if ((m = line.match(RE_DASH))) {
-      const item = ensureItem(lineNo);
-      if (!item) continue;
-      const target = ctx.currentContent;
-      if (target && target.kind === 'numbered') {
-        target.details.push(m[1]);
-      } else {
-        let bullets = target && target.kind === 'bullets' ? target : undefined;
-        if (!bullets) {
-          bullets = { kind: 'bullets', items: [] };
-          item.content.push(bullets);
-          ctx.currentContent = bullets;
-        }
-        bullets.items.push(m[1]);
-      }
-      continue;
-    }
-
-    if ((m = line.match(RE_NOTE))) {
-      const item = ensureItem(lineNo);
-      if (!item) continue;
-      // 기존 catch-all과 동일하게 마지막 콘텐츠 블록에 부착 — 레거시 파일 AST 동일성 보장
-      const noteLine = `${NOTE_PREFIX}${m[1]}`;
-      const last = item.content[item.content.length - 1];
-      if (last && last.kind === 'numbered') {
-        last.details.push(noteLine);
-      } else if (last && last.kind === 'qa') {
-        last.answers.push(noteLine);
-      } else if (last && last.kind === 'bullets') {
-        last.items.push(noteLine);
-      } else {
-        const bullets: ContentBlock = { kind: 'bullets', items: [noteLine] };
-        item.content.push(bullets);
-        ctx.currentContent = bullets;
-      }
+      warnOnHoliday(lineNo);
+      appendContentLine(item, ctx.cursor, content, indentLevel(raw));
       continue;
     }
 
     if (ctx.currentItem) {
-      const last = ctx.currentItem.content[ctx.currentItem.content.length - 1];
-      if (last && last.kind === 'numbered') {
-        last.details.push(line);
-        continue;
-      }
-      if (last && last.kind === 'qa') {
-        last.answers.push(line);
-        continue;
-      }
-      if (last && last.kind === 'bullets') {
-        last.items.push(line);
-        continue;
-      }
-      const bullets: ContentBlock = { kind: 'bullets', items: [line] };
-      ctx.currentItem.content.push(bullets);
-      ctx.currentContent = bullets;
+      appendPlainText(ctx.currentItem, ctx.cursor, line, indentLevel(raw));
       continue;
     }
 
@@ -403,7 +311,7 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
       lineNo,
       'warning',
       `구문을 인식할 수 없어 건너뜁니다: ${line.slice(0, 60)}`,
-      '디렉티브(@LOC/@CUS/@SUM)·본문(1)/-/<-/->/>) 형식을 확인하세요.',
+      '디렉티브(@LOC/@CUS/@SUM)·본문(1)/-/->/<-/*<-/*==>/>) 형식을 확인하세요.',
       'unknown-syntax',
     );
   }
@@ -422,15 +330,14 @@ export function parseTolerant(md: string, options: ParseOptions = {}): ParseOutc
     ctx.currentWeekRange = inferNextWeek(ctx.prevWeekRange);
   }
 
-  return {
-    report: {
-      prevWeekRange: ctx.prevWeekRange,
-      currentWeekRange: ctx.currentWeekRange,
-      authorName: ctx.authorName,
-      days: ctx.days,
-    },
-    diagnostics: ctx.diagnostics,
+  const report: WeekReport = {
+    prevWeekRange: ctx.prevWeekRange,
+    currentWeekRange: ctx.currentWeekRange,
+    authorName: ctx.authorName,
+    days: ctx.days,
   };
+  if (ctx.plans.length > 0) report.plans = ctx.plans;
+  return { report, diagnostics: ctx.diagnostics };
 }
 
 /**
@@ -454,61 +361,15 @@ type DiagFn = (
   code?: string,
 ) => void;
 
-/** @SUM 헤더 파싱 — throw하지 않고 진단 수집. 브래킷 없는 텍스트도 수용 */
-function parseClientHeader(text: string, lineNo: number, diag: DiagFn): ClientItem {
-  let m: RegExpMatchArray | null;
-  if ((m = text.match(RE_CLIENT_CHANNEL))) {
-    const [, client, contact, channelRaw, workType] = m;
-    const channel = normalizeChannel(channelRaw.trim(), lineNo, diag);
-    return { client, contact, channel, workType, content: [] };
-  }
-  if ((m = text.match(RE_CLIENT_NEW))) {
-    const [, client, contact, workType] = m;
-    return { client, contact, workType, content: [] };
-  }
-  if ((m = text.match(RE_CLIENT_BARE))) {
-    const [, client, workType] = m;
-    return { client, workType, content: [] };
-  }
-  // [고객사] 브래킷 없는 자유 텍스트 — 전체를 workType으로 수용
-  diag(
-    lineNo,
-    'warning',
-    `@SUM에 [고객사] 표기가 없습니다: ${text.slice(0, 40)}`,
-    '`@SUM [고객사] (담당자) 작업 설명` 형식을 권장합니다.',
-    'sum-no-bracket',
-  );
-  return { client: '', workType: text, content: [] };
-}
-
-/** 채널 정규화 진단 래퍼 — 규칙 자체는 normalizeChannelValue(types.ts, importer와 공유) */
-function normalizeChannel(channelRaw: string, lineNo: number, diag: DiagFn): string {
-  const r = normalizeChannelValue(channelRaw);
-  if (r.normalized) {
-    diag(
-      lineNo,
-      'info',
-      `채널 "${channelRaw}"를 "${r.value}"로 정규화했습니다.`,
-      undefined,
-      'channel-normalized',
-    );
-  } else if (!r.known) {
-    diag(
-      lineNo,
-      'warning',
-      `채널 "${channelRaw}"는 표준 값(메일/유선/유선&메일)이 아닙니다. 입력값 그대로 사용합니다.`,
-      undefined,
-      'unknown-channel',
-    );
-  }
-  return r.value;
-}
-
 /** `2026.5.1` / `2026/05/01` → `2026-05-01` ISO 정규화 */
 function normalizeDate(s: string): string {
   const m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
   if (!m) return s;
   return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+}
+
+function isValidIso(s: string): boolean {
+  return isRealIsoDate(s);
 }
 
 function normalizeRange(
@@ -532,14 +393,15 @@ function normalizeRange(
   return { start, end };
 }
 
+function fmt(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** @PREV 누락 시 추정 — 첫 일자 행이 속한 주의 월~일, 일자도 없으면 오늘 기준 지난주 */
 function estimatePrevRange(days: DayEntry[]): DateRange {
-  const fmt = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
   let base: Date | null = null;
   if (days.length > 0) {
     const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
@@ -557,18 +419,11 @@ function estimatePrevRange(days: DayEntry[]): DateRange {
   return { start: fmt(monday), end: fmt(sunday) };
 }
 
+/** @CURRENT 누락 시 — 보고 주 + 7일 (월~일 길이 보존) */
 function inferNextWeek(prevWeekRange: DateRange): DateRange {
-  const startDate = new Date(`${prevWeekRange.start}T00:00:00`);
-  const endDate = new Date(`${prevWeekRange.end}T00:00:00`);
-  const nextStart = new Date(startDate);
-  nextStart.setDate(startDate.getDate() + 7);
-  const nextEnd = new Date(endDate);
-  nextEnd.setDate(endDate.getDate() + 7);
-  const fmt = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  const nextStart = new Date(`${prevWeekRange.start}T00:00:00`);
+  nextStart.setDate(nextStart.getDate() + 7);
+  const nextEnd = new Date(`${prevWeekRange.end}T00:00:00`);
+  nextEnd.setDate(nextEnd.getDate() + 7);
   return { start: fmt(nextStart), end: fmt(nextEnd) };
 }

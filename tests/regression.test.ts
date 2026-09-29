@@ -27,7 +27,7 @@ describe('실사용 파일 회귀', () => {
   it('렌더가 성공하고 노트 이중 마커가 없다', () => {
     const { report } = parseTolerant(REAL);
     const html = renderHtml(report);
-    expect(html).toContain('■ 주간 보고서');
+    expect(html).toContain('■ 주간 보고');
     expect(html).not.toMatch(/- &gt; /);
     // `>` 노트가 보조 스타일로 출력됨
     expect(html).toContain('margin-left:16px;color:#6B7280;');

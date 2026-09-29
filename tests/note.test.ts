@@ -89,10 +89,10 @@ describe('`>` 보조 설명(노트) 라인', () => {
 > 사용방법은 README 참고
 `;
     const r = parse(md);
-    const qa = r.days[0].blocks[0].items[0].content[0];
-    expect(qa.kind).toBe('qa');
-    if (qa.kind === 'qa') {
-      expect(qa.answers).toContain('> 추가 로그 경로: logs/collector.log');
+    const dialog = r.days[0].blocks[0].items[0].content[0];
+    expect(dialog.kind).toBe('dialog');
+    if (dialog.kind === 'dialog') {
+      expect(dialog.turns.at(-1)).toEqual({ kind: 'note', text: '추가 로그 경로: logs/collector.log' });
     }
     const bullets = r.days[0].blocks[0].items[1].content[0];
     expect(bullets.kind).toBe('bullets');

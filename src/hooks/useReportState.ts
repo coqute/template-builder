@@ -34,7 +34,7 @@ export function useReportState(md: string): ReportState {
       const validation = validate(report);
       // 진단이 있어도 렌더는 항상 best-effort 실행 — 미리보기 빈 화면 방지
       const rendered = render(report);
-      const subject = buildSubject(report.prevWeekRange, report.authorName);
+      const subject = buildSubject(report.prevWeekRange);
       const diagnostics: Diagnostic[] = [
         ...parseDiags,
         ...validation.issues.map((i) => ({

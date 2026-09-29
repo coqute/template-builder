@@ -70,21 +70,40 @@ describe('roundtrip', () => {
     expect(warnings.filter((w) => w.includes('알 수 없는 채널'))).toHaveLength(0);
   });
 
-  it('미등록 채널은 재임포트에서도 raw로 보존된다 (소실 금지) + 경고', () => {
+  it('미등록 채널은 재임포트에서도 괄호 원문 그대로 보존된다 (소실 금지) + 경고', () => {
     const md = [
       '@PREV 2026-05-11 ~ 2026-05-17',
       '@CURRENT 2026-05-18 ~ 2026-05-24',
       '',
       '# 2026-05-11(월)',
-      '@SUM [ABZ+] (이영희/카톡) 비표준 채널 문의',
+      '@SUM [ABZ+] (홍길동/화상회의) 비표준 채널 문의',
       '- 내용',
       '',
     ].join('\n');
     const a = parse(md);
-    expect(a.days[0].blocks[0].items[0].channel).toBe('카톡');
+    expect(a.days[0].blocks[0].items[0].contact).toBe('홍길동/화상회의');
 
     const { report: imported, warnings } = importFromHtml(renderHtml(a));
-    expect(imported.days[0].blocks[0].items[0].channel).toBe('카톡');
-    expect(warnings.some((w) => w.includes('알 수 없는 채널'))).toBe(true);
+    expect(imported.days[0].blocks[0].items[0].contact).toBe('홍길동/화상회의');
+    expect(warnings.some((w) => w.includes('표준 채널'))).toBe(true);
+  });
+
+  it('v2 표준 채널(슬랙·문자·카톡)은 경고 없이 담당자/채널로 나뉜다', () => {
+    const md = [
+      '@PREV 2026-05-11 ~ 2026-05-17',
+      '',
+      '# 2026-05-11(월)',
+      '@SUM [가나스토어] (홍길동/슬랙) 로그 조회 방법 안내',
+      '@SUM [XYZ] (담당A/카톡) 에이전트 전달',
+      '@SUM [제트플러스] (담당B/문자) 장비 등록 요청',
+      '',
+    ].join('\n');
+    const items = parse(md).days[0].blocks[0].items;
+    expect(items.map((i) => [i.contact, i.channel])).toEqual([
+      ['홍길동', '슬랙'],
+      ['담당A', '카톡'],
+      ['담당B', '문자'],
+    ]);
+    expect(importFromHtml(renderHtml(parse(md))).warnings).toEqual([]);
   });
 });

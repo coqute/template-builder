@@ -76,14 +76,14 @@ describe('parser', () => {
     }
   });
 
-  it('<- / -> Q&A 패턴을 파싱한다', () => {
+  it('<- / -> 대화 이력을 시간순 턴으로 파싱한다', () => {
     const r = parse(SAMPLE);
     const item = r.days[1].blocks[0].items[0];
-    const qa = item.content.find((c) => c.kind === 'qa');
-    expect(qa).toBeDefined();
-    if (qa && qa.kind === 'qa') {
-      expect(qa.question).toContain('재시작 전/후');
-      expect(qa.answers).toHaveLength(2);
+    const dialog = item.content.find((c) => c.kind === 'dialog');
+    expect(dialog).toBeDefined();
+    if (dialog && dialog.kind === 'dialog') {
+      expect(dialog.turns.map((t) => t.kind)).toEqual(['out', 'in', 'in']);
+      expect(dialog.turns[0].text).toContain('재시작 전/후');
     }
   });
 

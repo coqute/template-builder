@@ -9,17 +9,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = readFileSync(path.join(__dirname, 'fixtures/sample-week-04-27.md'), 'utf8');
 
 describe('renderer', () => {
-  it('헤더에 ■ 주간 보고서와 □ Date(PREV 주차)를 포함한다', () => {
+  it('헤더에 ■ 주간 보고와 □ Date(PREV 주차, `YYYY. MM. DD`)를 포함한다', () => {
     const html = renderHtml(parse(SAMPLE));
-    expect(html).toContain('■ 주간 보고서');
-    expect(html).toContain('□ Date : 2026.04.27~ 2026.05.03');
+    expect(html).toContain('■ 주간 보고');
+    expect(html).not.toContain('주간 보고서');
+    expect(html).toContain('□ Date : 2026. 04. 27 ~ 2026. 05. 03');
   });
 
   it('표 컬럼 헤더 5개를 포함한다', () => {
     const html = renderHtml(parse(SAMPLE));
     expect(html).toContain('일자');
     expect(html).toContain('지원장소');
-    expect(html).toContain('고객사 / 작업구분');
+    expect(html).toContain('고객사|작업구분');
     expect(html).toContain('내용');
     expect(html).toContain('기타');
   });
@@ -86,8 +87,8 @@ describe('renderer', () => {
   it('plain 출력은 탭 구분 표 형식이다', () => {
     const plain = renderPlain(parse(SAMPLE));
     const lines = plain.split('\n');
-    expect(lines[0]).toBe('■ 주간 보고서');
-    expect(plain).toContain('일자\t지원장소\t고객사 / 작업구분\t내용\t기타');
+    expect(lines[0]).toBe('■ 주간 보고');
+    expect(plain).toContain('일자\t지원장소\t고객사|작업구분\t내용\t기타');
     expect(plain).toContain('2026-04-27(월)');
   });
 

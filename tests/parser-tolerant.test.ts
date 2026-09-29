@@ -69,7 +69,9 @@ describe('parseTolerant — 복구 정책', () => {
 @SUM [ABZ+] (강하늘/화상회의) 작업
 - 내용
 `);
-    expect(report.days[0].blocks[0].items[0].channel).toBe('화상회의');
+    // v2: 표준 채널(메일·유선·슬랙·문자·카톡)이 아니면 나누지 않고 괄호 원문을 담당자로 보존 (소실 금지)
+    expect(report.days[0].blocks[0].items[0].contact).toBe('강하늘/화상회의');
+    expect(report.days[0].blocks[0].items[0].channel).toBeUndefined();
     expect(diagnostics.some((d) => d.code === 'unknown-channel' && d.severity === 'warning')).toBe(
       true,
     );
