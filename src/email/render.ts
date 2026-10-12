@@ -1,6 +1,7 @@
 import { escapeHtml, MAIL_BORDER, MAIL_TEXT } from '../lib/html';
 import { sanitizeBodyHtml, htmlToPlain } from './sanitize';
 import type { EmailRenderResult, EmailTemplate } from './types';
+import { normalizeImageSizing } from './imageSize';
 
 /** date 필드의 'today' 기본값은 표/제목에 노출하지 않음 (실제 값 없을 때) */
 function fieldValue(values: Record<string, string>, key: string, def?: string): string {
@@ -53,10 +54,12 @@ export function buildEmailSubject(
   template: EmailTemplate,
   values: Record<string, string>,
 ): string {
-  let s = template.subjectPattern.replace(/\{(\w+)\}/g, (_m, key: string) => {
-    const v = (values[key] ?? '').trim();
-    return v === 'today' ? '' : v; // 'today' 토큰 누출 방어 (date 기본값)
-  });
+  // 표·검증·폼(fieldDisplay/validateEmail/EmailFieldForm)과 동일하게 field.default를 폴백 — 제목만 기본값을 무시해
+  // 사용자 템플릿에서 `{product}` 같은 기본값 필드가 제목에서 빈 문자열로 잘리던 불일치 해소
+  const defaults = new Map(template.sections.flatMap((s) => s.fields).map((f) => [f.key, f.default] as const));
+  let s = template.subjectPattern.replace(/\{(\w+)\}/g, (_m, key: string) =>
+    fieldValue(values, key, defaults.get(key)), // 'today' 토큰 누출 방어 포함
+  );
   s = s.replace(/\(\s*\)/g, ''); // 빈 괄호 제거
   s = s.replace(/\s{2,}/g, ' ').trim();
   return s;
@@ -119,6 +122,8 @@ export function decorateBodyHtml(safeHtml: string): string {
   doc.querySelectorAll('ol').forEach((el) => mergeStyle(el, BODY_OL_STYLE));
   doc.querySelectorAll('li').forEach((el) => mergeStyle(el, BODY_LI_STYLE));
   doc.querySelectorAll('blockquote').forEach((el) => mergeStyle(el, BODY_BLOCKQUOTE_STYLE));
+  // 이미지 — 편집기에서 정한 폭(width 속성)을 받는 쪽 CSS로도 고정, 좁은 화면에서는 비율 유지로 줄어든다
+  doc.querySelectorAll('img').forEach((el) => normalizeImageSizing(el));
   // href가 있는 앵커만 링크 스타일 — sanitize가 위험 스킴 href를 제거해 남은 href 없는 <a>를
   // 파란 밑줄로 칠하면 '클릭되는 것처럼 보이는' 가짜 링크가 되므로 제외
   doc.querySelectorAll('a').forEach((el) => {

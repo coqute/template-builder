@@ -2,6 +2,7 @@
  * 본문 rich HTML 새니타이즈 — contenteditable/paste로 유입되는 임의 HTML을 allowlist로 정리.
  * DOMParser 트리 워크 (happy-dom 호환).
  */
+import { normalizeImageSizing, pxValue } from './imageSize';
 
 const ALLOWED_TAGS = new Set([
   'P', 'BR', 'DIV', 'SPAN', 'B', 'STRONG', 'I', 'EM', 'U',
@@ -13,6 +14,7 @@ const ALLOWED_TAGS = new Set([
 // 태그별 허용 속성
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
   A: new Set(['href']),
+  // style은 그대로 받지 않는다 — 폭 값만 읽어 imageSize 규칙으로 다시 만든다 (cleanElement)
   IMG: new Set(['src', 'alt', 'width', 'height']),
   SPAN: new Set(['style']),
   DIV: new Set(['style']),
@@ -121,6 +123,12 @@ function cleanElement(el: Element, doc: Document, onDrop?: SanitizeDropHandler):
           continue;
         }
       }
+      // 이미지 크기 — 픽셀 정수만 (100%·auto·CSS 조각은 버리고 정규화 style이 화면 폭에 맞춘다)
+      if (tag === 'IMG' && (name === 'width' || name === 'height')) {
+        const px = pxValue(attr.value);
+        if (px > 0) fresh.setAttribute(name, String(px));
+        continue;
+      }
       if (DIGIT_ATTRS.has(name)) {
         const v = attr.value.trim();
         if (!RE_DIGITS.test(v)) continue;
@@ -136,6 +144,14 @@ function cleanElement(el: Element, doc: Document, onDrop?: SanitizeDropHandler):
     }
   }
   if (tag === 'A') fresh.setAttribute('target', '_blank');
+  if (tag === 'IMG') {
+    // Gmail·웹에서 붙여넣은 이미지는 크기를 style(width:320px)로만 가진 경우가 많다 — 폭 속성으로 옮겨 보존
+    if (!fresh.getAttribute('width')) {
+      const m = /(?:^|;)\s*width\s*:\s*(\d{1,4})px/i.exec(el.getAttribute('style') ?? '');
+      if (m && Number(m[1]) > 0) fresh.setAttribute('width', m[1]);
+    }
+    normalizeImageSizing(fresh);
+  }
 
   for (const child of Array.from(el.childNodes)) {
     const cleaned = cleanNode(child, doc, onDrop);
@@ -181,6 +197,12 @@ export function htmlToPlain(html: string): string {
     return html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li)>/gi, '\n').replace(/<[^>]*>/g, '').trim();
   }
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  // 이미지 자리 — Gmail 평문처럼 [이미지: 파일명] (평문만 보는 환경에서 무엇이 빠졌는지 보이게).
+  // 앞뒤 문장과 붙지 않게 줄 단위로
+  doc.querySelectorAll('img').forEach((img) => {
+    const alt = (img.getAttribute('alt') ?? '').trim();
+    img.replaceWith(alt ? `\n[이미지: ${alt}]\n` : '\n[이미지]\n');
+  });
   // li/p/div/br를 줄바꿈으로
   doc.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
   doc.querySelectorAll('li').forEach((li) => {

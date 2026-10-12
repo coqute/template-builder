@@ -40,17 +40,19 @@ describe('buildMimeMessage', () => {
     expect(Buffer.from(b64, 'base64').toString('utf8')).toBe('<p>hi</p>');
   });
 
-  it('이미지 N개 → multipart/related + CID 파트', () => {
+  it('이미지 N개 → multipart/related + Gmail 작성창과 같은 인라인 이미지 파트', () => {
     const mime = buildMimeMessage({
       to: 'tech@vendor.example',
       subject: '문의',
-      html: '<p>본문 <img src="cid:img1"></p>',
-      images: [{ cid: 'img1', mime: 'image/png', base64: 'AAAA' }],
+      html: '<p>본문 <img src="cid:ii_0123456789abcdef"></p>',
+      images: [{ cid: 'ii_0123456789abcdef', mime: 'image/png', base64: 'AAAA', filename: 'image1.png' }],
     });
     expect(mime).toContain('Content-Type: multipart/related; boundary="');
-    expect(mime).toContain('Content-ID: <img1>');
-    expect(mime).toContain('Content-Disposition: inline; filename="img1"');
-    expect(mime).toContain('Content-Type: image/png');
+    expect(mime).toContain('Content-Type: image/png; name="image1.png"');
+    expect(mime).toContain('Content-Disposition: inline; filename="image1.png"');
+    expect(mime).toContain('Content-ID: <ii_0123456789abcdef>');
+    // Gmail이 초안을 다시 열어 편집·저장할 때 인라인 이미지를 첨부와 묶는 키
+    expect(mime).toContain('X-Attachment-Id: ii_0123456789abcdef');
     // 경계가 닫힘
     const boundary = mime.match(/boundary="([^"]+)"/)![1];
     expect(mime.trimEnd().endsWith(`--${boundary}--`)).toBe(true);
@@ -136,6 +138,8 @@ describe('buildMimeMessage', () => {
       ],
     });
     expect(mime).not.toMatch(/\r\nBcc:/);
-    expect(mime).toContain('Content-Type: image/png Bcc: evil@attacker.example');
+    // 허용 목록 밖 형식은 일반 바이너리로 — 주입 문자열이 헤더에 남지 않는다
+    expect(mime).toContain('Content-Type: application/octet-stream; name="image1.png"');
+    expect(mime).not.toMatch(/bcc/i);
   });
 });
