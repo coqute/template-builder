@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, dialog, Menu, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, ipcMain, dialog, Menu, shell } from 'electron';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,10 @@ import { getAccessToken, OAuthError } from './gmail/oauth';
 import { buildMimeMessage, toBase64Url } from './gmail/mime';
 import { upsertDraft } from './gmail/upsert';
 import type { DraftPayload, GmailDraftResult } from './gmail/types';
+import { registerAiIpc } from './ai';
+import { registerWorklogIpc } from './worklog';
+import { writeFileAtomic } from './atomic';
+import { kindOf, rememberDir, startDir } from './dialog-dir';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +19,10 @@ const isDev = !app.isPackaged;
 const VITE_DEV_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
+
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 // renderer가 통지하는 "파일 미저장 변경" 상태 — 창 닫기 전 확인용
 let rendererDirty = false;
@@ -36,7 +44,7 @@ function createWindow(): void {
     height: 820,
     minWidth: 980,
     minHeight: 640,
-    title: 'ExampleIT Template Builder',
+    title: 'Template Builder',
     backgroundColor: '#FFFFFF',
     icon: resolveIconPath(),
     show: false,
@@ -76,7 +84,8 @@ function createWindow(): void {
       cancelId: 1,
       title: '저장되지 않은 변경',
       message: '열려 있는 파일에 저장되지 않은 변경이 있습니다. 그래도 닫을까요?',
-      detail: '초안은 앱에 자동 보관되지만, .md 파일에는 저장되지 않았습니다. (Ctrl+S로 저장)',
+      // 주간보고(.md)·작업일지(.txt) 공용 문구 — 둘 다 저장 전 내용을 앱에 보관한다
+      detail: '저장 전 내용은 앱에 자동 보관되지만, 파일에는 아직 저장되지 않았습니다. (Ctrl+S로 저장)',
     });
     if (choice === 1) {
       e.preventDefault();
@@ -91,31 +100,20 @@ function createWindow(): void {
 }
 
 function buildMenu(): void {
+  const send = (channel: string) => () => mainWindow?.webContents.send(channel);
+  // 새로고침·개발자 도구는 개발 중에만 — 배포본 사용자에게는 혼란·오조작 요인
+  const devItems: Electron.MenuItemConstructorOptions[] = isDev
+    ? [{ type: 'separator' }, { role: 'reload', label: '새로고침' }, { role: 'toggleDevTools', label: '개발자 도구' }]
+    : [];
   const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: '파일',
       submenu: [
-        {
-          label: '새로 만들기',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => mainWindow?.webContents.send('menu:new'),
-        },
-        {
-          label: '샘플 불러오기',
-          accelerator: 'CmdOrCtrl+L',
-          click: () => mainWindow?.webContents.send('menu:load-sample'),
-        },
+        { label: '새로 만들기', accelerator: 'CmdOrCtrl+N', click: send('menu:new') },
+        { label: '열기...', accelerator: 'CmdOrCtrl+O', click: send('menu:open') },
+        { label: '저장', accelerator: 'CmdOrCtrl+S', click: send('menu:save') },
         { type: 'separator' },
-        {
-          label: '열기...',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => mainWindow?.webContents.send('menu:open'),
-        },
-        {
-          label: '저장',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => mainWindow?.webContents.send('menu:save'),
-        },
+        { label: '샘플 보기', accelerator: 'CmdOrCtrl+L', click: send('menu:load-sample') },
         { type: 'separator' },
         { role: 'quit', label: '종료' },
       ],
@@ -133,32 +131,18 @@ function buildMenu(): void {
       ],
     },
     {
-      label: '도구',
+      label: '보내기',
       submenu: [
-        {
-          label: 'Gmail 본문 가져오기',
-          accelerator: 'CmdOrCtrl+Shift+I',
-          click: () => mainWindow?.webContents.send('menu:import-gmail'),
-        },
-        {
-          label: 'HTML 클립보드 복사',
-          accelerator: 'CmdOrCtrl+Shift+C',
-          click: () => mainWindow?.webContents.send('menu:copy-html'),
-        },
+        { label: 'HTML 복사', accelerator: 'CmdOrCtrl+Shift+C', click: send('menu:copy-html') },
+        // Ctrl+Enter는 렌더러가 처리 — 메뉴에는 표시만 (중복 실행 방지)
+        { label: '임시보관함 (Gmail 초안)', accelerator: 'CmdOrCtrl+Enter', registerAccelerator: false, click: send('menu:draft') },
         { type: 'separator' },
-        { role: 'reload', label: '새로고침' },
-        { role: 'toggleDevTools', label: '개발자 도구' },
+        { label: 'Gmail 본문 가져오기', accelerator: 'CmdOrCtrl+Shift+I', click: send('menu:import-gmail') },
       ],
     },
     {
       label: '도움말',
-      submenu: [
-        {
-          label: '키워드 가이드',
-          accelerator: 'F1',
-          click: () => mainWindow?.webContents.send('menu:help'),
-        },
-      ],
+      submenu: [{ label: '도움말 · 설정', accelerator: 'F1', click: send('menu:help') }, ...devItems],
     },
   ];
 
@@ -169,14 +153,28 @@ ipcMain.handle('dialog:open-md', async () => {
   if (!mainWindow) return { canceled: true };
   const result = await dialog.showOpenDialog(mainWindow, {
     title: '.md 파일 열기',
+    // Electron 43부터 defaultPath가 없으면 다운로드 폴더에서 열린다 — 마지막에 쓴 폴더를 넘긴다(dialog-dir.ts)
+    defaultPath: await startDir('md'),
     filters: [{ name: 'Markdown', extensions: ['md'] }],
     properties: ['openFile'],
   });
   if (result.canceled || result.filePaths.length === 0) return { canceled: true };
   const filePath = result.filePaths[0];
-  const content = await fs.readFile(filePath, 'utf8');
-  return { canceled: false, filePath, content };
+  void rememberDir('md', filePath);
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    return { canceled: false, filePath, content };
+  } catch (err) {
+    // 선택 직후 삭제·권한 거부 등 — rejection 대신 판별 가능한 실패로 반환 (renderer가 toast)
+    return { canceled: true, error: `파일을 읽을 수 없습니다: ${errMsg(err)}` };
+  }
 });
+
+const SAVE_META = {
+  md: { ext: 'md', title: '.md 저장', name: 'Markdown' },
+  html: { ext: 'html', title: 'HTML 저장', name: 'HTML' },
+  json: { ext: 'json', title: '이메일 템플릿 저장', name: 'JSON' },
+} as const;
 
 ipcMain.handle(
   'dialog:save',
@@ -185,19 +183,27 @@ ipcMain.handle(
     payload: { defaultName: string; content: string; kind: 'md' | 'html' | 'json' },
   ) => {
     if (!mainWindow) return { canceled: true };
-    const meta = {
-      md: { ext: 'md', title: '.md 저장', name: 'Markdown' },
-      html: { ext: 'html', title: 'HTML 저장', name: 'HTML' },
-      json: { ext: 'json', title: '이메일 템플릿 저장', name: 'JSON' },
-    }[payload.kind];
+    // preload 밖에서 들어올 수 있는 payload — kind/content 검증 (잘못된 kind면 meta undefined로 크래시하던 경로)
+    const meta = SAVE_META[payload?.kind as keyof typeof SAVE_META];
+    if (!meta || typeof payload.content !== 'string') {
+      return { canceled: true, error: '허용되지 않는 저장 요청입니다 (md/html/json).' };
+    }
     const result = await dialog.showSaveDialog(mainWindow, {
       title: meta.title,
-      defaultPath: `${payload.defaultName}.${meta.ext}`,
+      // 파일 이름만 주면 다운로드 폴더에서 열린다(Electron 43+) — 이 종류를 마지막에 저장·연 폴더를 붙인다
+      defaultPath: path.join(await startDir(meta.ext), `${String(payload.defaultName ?? '')}.${meta.ext}`),
       filters: [{ name: meta.name, extensions: [meta.ext] }],
     });
     if (result.canceled || !result.filePath) return { canceled: true };
-    await fs.writeFile(result.filePath, payload.content, 'utf8');
-    return { canceled: false, filePath: result.filePath };
+    void rememberDir(meta.ext, result.filePath);
+    try {
+      // 임시 파일에 쓴 뒤 바꿔치기 — 쓰다 끊겨도(디스크 부족·연결 끊김) 기존 파일이 빈 파일·반쪽 파일로 남지 않는다
+      await writeFileAtomic(result.filePath, payload.content, { fallbackDirect: true });
+      return { canceled: false, filePath: result.filePath };
+    } catch (err) {
+      // 읽기 전용 경로·잠긴 파일 등 — 무통지 실패 대신 renderer가 실패 toast를 띄우도록
+      return { canceled: true, error: `저장하지 못했습니다: ${errMsg(err)}` };
+    }
   },
 );
 
@@ -249,15 +255,24 @@ ipcMain.handle('templates:load', async (_evt, teamDir?: string) => {
 // 개인 템플릿 폴더 열기 (없으면 생성) — 사용자가 JSON을 직접 넣는 진입점
 ipcMain.handle('templates:open-dir', async () => {
   const dir = path.join(app.getPath('userData'), 'templates');
-  await fs.mkdir(dir, { recursive: true });
-  await shell.openPath(dir);
-  return { ok: true, dir };
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const openErr = await shell.openPath(dir); // 실패 시 빈 문자열이 아닌 오류 메시지 반환
+    if (openErr) return { ok: false, dir, error: openErr };
+    return { ok: true, dir };
+  } catch (err) {
+    return { ok: false, dir, error: errMsg(err) };
+  }
 });
 
 // HTML+plain 클립보드 쓰기 — 네이티브 경로 (renderer navigator.clipboard의 포커스/권한 제약 회피)
-ipcMain.handle('clipboard:write-html', (_evt, payload: { html: string; plain: string }) => {
+// Electron 44부터 clipboard는 W3C Clipboard API 모양이다 — ClipboardItem(MIME → 값) 배열을 받고 Promise를 돌려준다.
+// 한 번의 write에 넣은 형식들은 한꺼번에 클립보드에 올라간다(HTML과 평문이 따로 놀지 않는다).
+ipcMain.handle('clipboard:write-html', async (_evt, payload: { html: string; plain: string }) => {
   try {
-    clipboard.write({ html: String(payload?.html ?? ''), text: String(payload?.plain ?? '') });
+    await clipboard.write([
+      new ClipboardItem({ 'text/html': String(payload?.html ?? ''), 'text/plain': String(payload?.plain ?? '') }),
+    ]);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -271,6 +286,7 @@ ipcMain.handle('file:read-path', async (_evt, filePath: string) => {
       return { ok: false, error: '.md 파일만 열 수 있습니다.' };
     }
     const content = await fs.readFile(filePath, 'utf8');
+    void rememberDir('md', filePath);
     return { ok: true, content };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -293,7 +309,10 @@ ipcMain.handle(
       ) {
         return { ok: false, error: '허용되지 않는 저장 경로입니다 (.md/.html/.json 절대경로만).' };
       }
-      await fs.writeFile(filePath, payload.content, 'utf8');
+      if (typeof payload.content !== 'string') return { ok: false, error: '저장할 내용이 없습니다.' };
+      await writeFileAtomic(filePath, payload.content, { fallbackDirect: true });
+      const kind = kindOf(filePath);
+      if (kind) void rememberDir(kind, filePath);
       return { ok: true, filePath };
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -301,24 +320,56 @@ ipcMain.handle(
   },
 );
 
+// 합본용 — 이전 주 .md 여러 개를 한 번에 선택. 파일별 읽기 실패는 errors로 모아 반환 (부분 성공 허용)
+ipcMain.handle('dialog:open-md-multi', async () => {
+  if (!mainWindow) return { canceled: true };
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '합본할 이전 주 .md 선택 (여러 개 가능)',
+    defaultPath: await startDir('md'),
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+    properties: ['openFile', 'multiSelections'],
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+  const files: Array<{ filePath: string; content: string }> = [];
+  const errors: string[] = [];
+  for (const filePath of result.filePaths) {
+    try {
+      files.push({ filePath, content: await fs.readFile(filePath, 'utf8') });
+    } catch (err) {
+      errors.push(`${path.basename(filePath)}: ${errMsg(err)}`);
+    }
+  }
+  return { canceled: false, files, errors };
+});
+
 ipcMain.handle('dialog:open-json', async () => {
   if (!mainWindow) return { canceled: true };
   const result = await dialog.showOpenDialog(mainWindow, {
     title: '이메일 템플릿 열기',
+    defaultPath: await startDir('json'),
     filters: [{ name: 'JSON', extensions: ['json'] }],
     properties: ['openFile'],
   });
   if (result.canceled || result.filePaths.length === 0) return { canceled: true };
   const filePath = result.filePaths[0];
-  const content = await fs.readFile(filePath, 'utf8');
-  return { canceled: false, filePath, content };
+  void rememberDir('json', filePath);
+  try {
+    const content = await fs.readFile(filePath, 'utf8');
+    return { canceled: false, filePath, content };
+  } catch (err) {
+    return { canceled: true, error: `파일을 읽을 수 없습니다: ${errMsg(err)}` };
+  }
 });
 
 ipcMain.handle('shell:open-external', async (_evt, url: string) => {
   // Gmail 작성창만 허용 (피싱/임의 URL 차단)
   if (typeof url === 'string' && url.startsWith('https://mail.google.com/')) {
-    await shell.openExternal(url);
-    return { ok: true };
+    try {
+      await shell.openExternal(url);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: errMsg(err) };
+    }
   }
   return { ok: false };
 });
@@ -343,6 +394,14 @@ ipcMain.handle(
     }
   },
 );
+
+// AI 정돈 — Claude API (키 저장·연결 확인·호출)
+registerAiIpc();
+
+// 작업일지 — 작업일지 폴더의 [YYYY-MM-DD] 제목.txt 읽기·쓰기
+registerWorklogIpc(() => mainWindow);
+
+
 
 ipcMain.handle('asset:load-sample', async () => {
   const samplePath = isDev
