@@ -9,3 +9,4 @@ release/
 .env.local
 *.tsbuildinfo
 coverage/
+.ai-live/
