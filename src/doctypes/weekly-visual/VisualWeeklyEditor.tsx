@@ -1,31 +1,89 @@
-import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { parseTolerant, serialize, type WeekReport } from '@core/index';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import {
+  CalendarPlus,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Plus,
+  Redo2,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  KNOWN_CHANNELS,
+  LOCATION_SEPARATOR,
+  WORK_CATEGORIES,
+  WORK_PLACES,
+  buildingOf,
+  formatItemHeader,
+  isBlankItem,
+  parseTolerant,
+  serialize,
+  type DialogTurn,
+  type WeekReport,
+} from '@core/index';
 import {
   addContentBlock,
   addDay,
   addItem,
   addLocationBlock,
+  addPlan,
+  addTurn,
+  continuationOf,
+  continueItem,
+  convertListLineToTurn,
+  convertTurnToList,
+  fillItemClientsFromRow,
+  fillItemSitesFromRow,
+  fillMissingDays,
+  fillRowCustomerFromItem,
+  isOnLeave,
+  missingDates,
   moveContentBlock,
   moveItem,
+  moveTurn,
+  placeItem,
   removeContentBlock,
   removeDay,
   removeItem,
   removeLocationBlock,
+  removePlan,
+  removeTurn,
+  replaceTurn,
+  setContentIndent,
   setWeekByPrevMonday,
+  toggleHalfday,
   toggleHoliday,
+  toggleLeave,
   updateBlockFields,
-  updateHeader,
+  updateContentBlock,
+  updateHalfdayLabel,
   updateHolidayReason,
   updateItemFields,
-  updateContentBlock,
+  updatePlan,
+  updateTurn,
+  type ItemBody,
 } from '@core/edit';
-import { Field, ItemEditor } from './ItemEditor';
+import { dropCarry, loadCarry, saveCarry, type CarryList } from '../../lib/carryStore';
+import { Chip, Field, ItemEditor, itemStats, useDismiss } from './ItemEditor';
 
 interface Props {
   /** 단일 소스 md — 편집 시 즉시 serialize해 반영 (저장/미리보기/상태바 경로 무변경) */
   md: string;
   onMd: (next: string) => void;
+}
+
+/** 워크스페이스가 비주얼 편집기 안의 위치를 열 때 쓰는 핸들 (미결 바로가기·진단 이동·모드 전환) */
+export interface VisualEditorHandle {
+  /** 항목(`di-bi-ii`)을 펼치고 스크롤·포커스. selector가 있으면 항목 안 그 요소에 포커스 */
+  reveal(key: string, selector?: string): void;
+  /** 일자를 펼치고 스크롤 */
+  revealDay(date: string): void;
+  /** 지금 포커스가 있는 항목 키 (없으면 null) */
+  focusedItemKey(): string | null;
 }
 
 const WEEKDAY_LABEL: Record<string, string> = {
@@ -43,219 +101,810 @@ function formatDayTitle(date: string): string {
   return `${Number(m)}월 ${Number(d)}일`;
 }
 
+function shortDate(date: string, weekday?: string): string {
+  return `${date.slice(5).replace('-', '/')}${weekday ? `(${weekday})` : ''}`;
+}
+
+/** 입력 멈춤이 이 시간보다 길면 되돌리기 단위를 새로 끊는다 (한 글자씩 되돌리지 않게) */
+const UNDO_COALESCE_MS = 1000;
+const UNDO_LIMIT = 200;
+
+interface FocusRequest {
+  id: string;
+  selector?: string;
+}
+
 /**
  * 주간보고서 비주얼 에디터 — "원고지 조판".
- * 에디터 전체가 하나의 연속 문서: 마스트헤드(주간 정보) → 러닝 헤드(날짜) →
- * 고스트 넘버럴(작업) → 밑줄 필드. 카드·박스·컬러 보더 없음.
- * AST를 로컬 상태로 소유하고 매 편집을 serialize→onMd로 동기화한다.
+ * 에디터 전체가 하나의 연속 문서: 마스트헤드(주간 정보·일정 예정·지난주 미결) → 러닝 헤드(날짜) →
+ * 고스트 넘버럴(항목) → 입력 필드·대화 이력.
+ * AST를 로컬 상태로 소유하고 매 편집을 serialize→onMd로 동기화한다. 되돌리기 기록도 여기서 관리한다.
  */
-export function VisualWeeklyEditor({ md, onMd }: Props) {
+export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function VisualWeeklyEditor({ md, onMd }, ref) {
   const [report, setReport] = useState<WeekReport>(() => parseTolerant(md).report);
+  const reportRef = useRef(report);
+  reportRef.current = report;
   const lastSyncedMd = useRef<string>(md);
+  /** 바깥에서 문서가 통째로 바뀐 횟수 — 삭제 [되돌리기]가 다른 문서에 적용되지 않게 비교한다 */
+  const docEpoch = useRef(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [newDate, setNewDate] = useState('');
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(() => new Set());
+  const [collapsedItems, setCollapsedItems] = useState<Set<string>>(() => new Set());
+  const [carry, setCarry] = useState<CarryList | null>(() => loadCarry(report.prevWeekRange.start));
+  // 요일 띠 — 지금 화면 위쪽에 걸린 일자
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const scrollRaf = useRef(0);
+  // 띠를 눌러 그 날로 미끄러져 가는 동안은 누른 날을 붙잡아 둔다 — 지나치는 날로 표시가 흔들리지 않고,
+  // 끝 무렵 날(위까지 못 올라오는 토·일)도 누른 날이 표시된다. 스크롤이 멈추면 놓는다.
+  const pinnedDay = useRef<string | null>(null);
+  const pinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const releasePinLater = (ms: number) => {
+    clearTimeout(pinTimer.current);
+    pinTimer.current = setTimeout(() => {
+      pinnedDay.current = null;
+    }, ms);
+  };
+  const trackActiveDay = () => {
+    if (pinnedDay.current) {
+      releasePinLater(150);
+      return;
+    }
+    cancelAnimationFrame(scrollRaf.current);
+    scrollRaf.current = requestAnimationFrame(() => {
+      const root = rootRef.current;
+      if (!root) return;
+      const top = root.getBoundingClientRect().top + 48;
+      let current: string | null = null;
+      root.querySelectorAll<HTMLElement>('section[id^="vday-"]').forEach((el) => {
+        if (el.getBoundingClientRect().top <= top) current = el.id.slice('vday-'.length);
+      });
+      setActiveDay((prev) => (prev === current ? prev : current));
+    });
+  };
+  const goToDay = (date: string) => {
+    pinnedDay.current = date;
+    setActiveDay(date);
+    // 이미 그 자리라 스크롤이 일어나지 않아도 붙잡은 채로 남지 않게
+    releasePinLater(600);
+    document.getElementById(`vday-${date}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+  useEffect(() => () => clearTimeout(pinTimer.current), []);
+
+  // 좁은 폭에서 띠가 가로로 밀려 있으면 지금 일자가 띠 안에 보이게 — 띠만 가로로 민다.
+  // scrollIntoView는 쓰지 않는다: 편집 영역의 부드러운 스크롤까지 멈춰, 띠를 누르면 한 칸씩만 이동했다(2026-10-22 실측)
+  useEffect(() => {
+    if (!activeDay) return;
+    const strip = rootRef.current?.querySelector<HTMLElement>('.vx-strip-days');
+    const btn = strip?.querySelector<HTMLElement>('.vx-strip-day[aria-current="true"]');
+    if (!strip || !btn) return;
+    const s = strip.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    if (b.left < s.left) strip.scrollLeft -= s.left - b.left;
+    else if (b.right > s.right) strip.scrollLeft += b.right - s.right;
+  }, [activeDay]);
+
+  // 되돌리기 기록 — 구조 편집(추가·삭제·이동)은 한 단계씩, 타이핑은 멈춤 단위로 묶는다
+  const history = useRef({
+    past: [] as WeekReport[],
+    future: [] as WeekReport[],
+    lastAt: 0,
+    lastStructural: true,
+  });
+  const [, setHistoryTick] = useState(0);
+  // 이월 목록은 .md 밖 상태 — 이어쓰기를 되돌리면 목록 항목도 돌아오고, 다시 실행하면 다시 빠지게
+  const carryOnUndo = useRef(new WeakMap<WeekReport, CarryList | null>());
+  const carryOnRedo = useRef(new WeakMap<WeekReport, CarryList | null>());
+  const restoreCarry = (list: CarryList | null, week: string) => {
+    if (list) saveCarry(list);
+    else saveCarry({ week, from: '', items: [] });
+    setCarry(list && list.items.length > 0 ? list : null);
+  };
 
   useEffect(() => {
     if (md !== lastSyncedMd.current) {
-      // 외부에서 md가 바뀜(열기/샘플/새로만들기 등) — AST 재초기화
-      setReport(parseTolerant(md).report);
+      // 외부에서 md가 바뀜(열기/샘플/새 주간보고 등) — AST·되돌리기·접힘 재초기화
+      docEpoch.current++;
+      const next = parseTolerant(md).report;
+      setReport(next);
       lastSyncedMd.current = md;
+      history.current = {
+        past: [],
+        future: [],
+        lastAt: 0,
+        lastStructural: true,
+      };
+      setCollapsedItems(new Set());
+      setCarry(loadCarry(next.prevWeekRange.start));
     }
   }, [md]);
 
-  const apply = (next: WeekReport) => {
+  // 보고 주를 바꾸면 그 주의 이월 목록으로
+  useEffect(() => {
+    setCarry(loadCarry(report.prevWeekRange.start));
+  }, [report.prevWeekRange.start]);
+
+  // 추가·이어쓰기·바로가기 뒤 — 대상으로 스크롤하고 입력칸에 포커스
+  useEffect(() => {
+    if (!focusRequest) return;
+    const el = document.getElementById(focusRequest.id);
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const target = el.querySelector<HTMLElement>(focusRequest.selector ?? 'input[type="text"], textarea');
+    target?.focus({ preventScroll: true });
+    setFocusRequest(null);
+  }, [focusRequest, report, collapsedDays, collapsedItems]);
+
+  const sync = (next: WeekReport) => {
     setReport(next);
+    reportRef.current = next;
     const s = serialize(next);
     lastSyncedMd.current = s;
     onMd(s);
   };
 
+  const commit = (next: WeekReport, structural: boolean) => {
+    const cur = reportRef.current;
+    if (next === cur) return;
+    const h = history.current;
+    const now = Date.now();
+    if (structural || h.lastStructural || now - h.lastAt > UNDO_COALESCE_MS) {
+      h.past.push(cur);
+      if (h.past.length > UNDO_LIMIT) h.past.shift();
+    }
+    h.future = [];
+    h.lastAt = now;
+    h.lastStructural = structural;
+    sync(next);
+    setHistoryTick((t) => t + 1);
+  };
+  /** 타이핑 — 멈춤 단위로 되돌리기 */
+  const apply = (next: WeekReport) => commit(next, false);
+  /** 구조 편집 — 한 번에 한 단계 되돌리기 */
+  const act = (next: WeekReport) => commit(next, true);
+
+  const undo = () => {
+    const h = history.current;
+    const prev = h.past.pop();
+    if (!prev) return;
+    h.future.push(reportRef.current);
+    h.lastStructural = true;
+    sync(prev);
+    if (carryOnUndo.current.has(prev)) restoreCarry(carryOnUndo.current.get(prev) ?? null, prev.prevWeekRange.start);
+    setHistoryTick((t) => t + 1);
+  };
+  const redo = () => {
+    const h = history.current;
+    const next = h.future.pop();
+    if (!next) return;
+    h.past.push(reportRef.current);
+    h.lastStructural = true;
+    sync(next);
+    if (carryOnRedo.current.has(next)) restoreCarry(carryOnRedo.current.get(next) ?? null, next.prevWeekRange.start);
+    setHistoryTick((t) => t + 1);
+  };
+
+  /** 삭제 — 확인 창 대신 토스트의 [되돌리기] (한 번에 여러 개를 지울 때 방해되지 않게) */
+  const removeWithUndo = (next: WeekReport, what: string) => {
+    const before = reportRef.current;
+    const epoch = docEpoch.current;
+    act(next);
+    toast.success(`${what} 삭제했습니다.`, {
+      duration: 6000,
+      action: {
+        label: '되돌리기',
+        onClick: () => {
+          // 그 사이 다른 문서를 열었으면 지운 문서의 내용을 지금 문서에 통째로 덮어쓰게 된다
+          if (docEpoch.current !== epoch) {
+            toast.info('그 사이 다른 문서를 열어 되돌리지 않았습니다.');
+            return;
+          }
+          act(before);
+        },
+      },
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    reveal(key, selector) {
+      const [di, bi, ii] = key.split('-').map(Number);
+      const day = reportRef.current.days[di];
+      if (!day) return;
+      setCollapsedDays((s) => {
+        if (!s.has(day.date)) return s;
+        const n = new Set(s);
+        n.delete(day.date);
+        return n;
+      });
+      setCollapsedItems((s) => {
+        if (!s.has(key)) return s;
+        const n = new Set(s);
+        n.delete(key);
+        return n;
+      });
+      if (Number.isNaN(bi) || Number.isNaN(ii)) return;
+      setFocusRequest({ id: `vitem-${key}`, selector });
+    },
+    revealDay(date) {
+      setCollapsedDays((s) => {
+        if (!s.has(date)) return s;
+        const n = new Set(s);
+        n.delete(date);
+        return n;
+      });
+      setFocusRequest({ id: `vday-${date}` });
+    },
+    focusedItemKey() {
+      const el = document.activeElement?.closest('[id^="vitem-"]');
+      return el ? el.id.slice('vitem-'.length) : null;
+    },
+  }));
+
+  // 입력 추천 — 규격 어휘 + 문서에 이미 쓴 값 (빈 골격은 제외)
+  const suggestions = useMemo(() => {
+    const places = new Set<string>(WORK_PLACES);
+    const customers = new Set<string>(WORK_CATEGORIES);
+    const contacts = new Set<string>();
+    for (const d of report.days)
+      for (const b of d.blocks) {
+        b.locations.forEach((l) => l.trim() && places.add(l));
+        if (b.customer.trim()) customers.add(b.customer);
+        b.items.forEach((it) => {
+          if (it.client.trim()) customers.add(it.client);
+          if (it.contact?.trim()) contacts.add(it.contact);
+        });
+      }
+    for (const c of carry?.items ?? []) {
+      if (c.header.client.trim()) customers.add(c.header.client);
+      if (c.header.contact?.trim()) contacts.add(c.header.contact);
+    }
+    return {
+      places: [...places],
+      customers: [...customers],
+      contacts: [...contacts],
+    };
+  }, [report, carry]);
+
+  const missing = missingDates(report);
+  const plans = report.plans ?? [];
+  const workdays = report.days.filter((d) => !d.holiday);
+  const h = history.current;
+
+  const toggleDay = (date: string) =>
+    setCollapsedDays((s) => {
+      const n = new Set(s);
+      if (n.has(date)) n.delete(date);
+      else n.add(date);
+      return n;
+    });
+  const toggleItem = (key: string) =>
+    setCollapsedItems((s) => {
+      const n = new Set(s);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
+  const anyCollapsed = collapsedDays.size > 0 || collapsedItems.size > 0;
+  const collapseAll = () => setCollapsedDays(new Set(report.days.filter((d) => !d.holiday).map((d) => d.date)));
+  const expandAll = () => {
+    setCollapsedDays(new Set());
+    setCollapsedItems(new Set());
+  };
+
+  /** 이월 목록의 건을 고른 날로 이어 쓰기 */
+  const takeCarry = (idx: number, date: string) => {
+    const c = carry?.items[idx];
+    if (!c || !carry) return;
+    const { report: next, at } = placeItem(report, date, c, continuationOf(c.header));
+    if (next === report) return;
+    const before = report;
+    act(next);
+    const after = dropCarry(carry.week, idx);
+    carryOnUndo.current.set(before, carry);
+    carryOnRedo.current.set(next, after);
+    setCarry(after);
+    if (at)
+      setFocusRequest({
+        id: `vitem-${at.di}-${at.bi}-${at.ii}`,
+        selector: 'textarea[data-turn]',
+      });
+  };
+  const dismissCarry = (idx: number) => {
+    if (!carry) return;
+    setCarry(dropCarry(carry.week, idx));
+  };
+  const dismissAllCarry = () => {
+    if (!carry) return;
+    saveCarry({ ...carry, items: [] });
+    setCarry(null);
+  };
+
+  // 요일 띠 — 일자별 쓴 항목 수·미결 수
+  const dayStats = report.days.map((d) => {
+    const written = d.blocks.flatMap((b) => b.items).filter((it) => !isBlankItem(it));
+    const pending = written.reduce((n, it) => n + itemStats(it).pending, 0);
+    return {
+      date: d.date,
+      weekday: d.weekday,
+      off: !!d.holiday,
+      written: written.length,
+      pending,
+    };
+  });
+
   return (
-    <div className="scrollbar-thin h-full overflow-y-auto bg-bg px-5 py-4">
+    <div
+      ref={rootRef}
+      className="vx scrollbar-thin h-full overflow-y-auto bg-bg px-5 pb-6"
+      onScroll={trackActiveDay}
+      onKeyDownCapture={(e) => {
+        if (e.nativeEvent.isComposing) return;
+        if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+        const k = e.key.toLowerCase();
+        // 입력칸의 기본 되돌리기 대신 문서 단위 되돌리기 — 추가·삭제·이동까지 되돌린다
+        if (k === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+          e.preventDefault();
+          redo();
+        }
+      }}
+    >
+      {/* 요일 띠 — 고정. 어느 날에 무엇이 얼마나 있는지, 누르면 그 날로 */}
+      <div className="vx-strip">
+        <nav className="vx-strip-days" aria-label="일자로 이동">
+          {dayStats.map((d) => (
+            <button
+              key={d.date}
+              type="button"
+              aria-current={activeDay === d.date ? 'true' : undefined}
+              aria-label={
+                d.off
+                  ? `${d.weekday}요일 ${Number(d.date.slice(8))}일 휴일`
+                  : `${d.weekday}요일 ${Number(d.date.slice(8))}일 항목 ${d.written}${d.pending ? ` 미결 ${d.pending}` : ''}`
+              }
+              onClick={() => {
+                setCollapsedDays((cur) => {
+                  if (!cur.has(d.date)) return cur;
+                  const n = new Set(cur);
+                  n.delete(d.date);
+                  return n;
+                });
+                goToDay(d.date);
+              }}
+              title={
+                d.off ? `${d.date} 휴일` : `${d.date} — 항목 ${d.written}${d.pending ? `, 미결 ${d.pending}` : ''}`
+              }
+              className={[
+                'vx-strip-day',
+                d.off ? 'vx-strip-day--off' : '',
+                !d.off && d.written === 0 ? 'vx-strip-day--empty' : '',
+              ].join(' ')}
+            >
+              <span>
+                {d.weekday} {Number(d.date.slice(8))}
+              </span>
+              {d.off ? null : <span className="vx-strip-n">{d.written || '–'}</span>}
+              {/* 미결 수 — 대화 턴의 미결 표지와 같은 채운 모양 */}
+              {d.pending > 0 && <span className="vx-strip-pending">{d.pending}</span>}
+            </button>
+          ))}
+        </nav>
+        <span className="vx-strip-tools">
+          <DocBtn title="되돌리기 (Ctrl+Z)" disabled={h.past.length === 0} onClick={undo}>
+            <Undo2 size={13} />
+          </DocBtn>
+          <DocBtn title="다시 실행 (Ctrl+Shift+Z)" disabled={h.future.length === 0} onClick={redo}>
+            <Redo2 size={13} />
+          </DocBtn>
+          {anyCollapsed ? (
+            <DocBtn title="모두 펼치기" onClick={expandAll}>
+              <ChevronsUpDown size={13} />
+            </DocBtn>
+          ) : (
+            <DocBtn title="모두 접기 — 일자마다 요약 한 줄로" onClick={collapseAll}>
+              <ChevronsDownUp size={13} />
+            </DocBtn>
+          )}
+        </span>
+      </div>
+
       {/* 마스트헤드 — 굵은 룰 아래 주간 정보 */}
-      <header className="border-t-2 pt-3" style={{ borderTopColor: 'var(--fg)' }}>
+      <header className="pt-4">
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
           <Field label="보고 주 — 지난주 월요일">
             <input
               type="date"
               value={report.prevWeekRange.start}
-              onChange={(e) => e.target.value && apply(setWeekByPrevMonday(report, e.target.value))}
-              className="ms-input"
-            />
-          </Field>
-          <Field label="작성자" width="w-28">
-            <input
-              type="text"
-              value={report.authorName}
-              onChange={(e) => apply(updateHeader(report, { authorName: e.target.value }))}
+              onChange={(e) => e.target.value && act(setWeekByPrevMonday(report, e.target.value))}
               className="ms-input"
             />
           </Field>
           <span className="pb-1 text-[11px] leading-relaxed text-fg-muted">
-            보고 대상 {report.prevWeekRange.start} ~ {report.prevWeekRange.end} · 이번 주 계획{' '}
+            보고 대상 {report.prevWeekRange.start} ~ {report.prevWeekRange.end} · 일정 예정{' '}
             {report.currentWeekRange.start} ~ {report.currentWeekRange.end}
           </span>
         </div>
+
+        {/* 일정 예정 (@PLAN) — 다음 주 일정, 표 아래 □ 일정 예정으로 출력 */}
+        <div className="mt-4">
+          <div className="flex items-center gap-3">
+            <span className="ms-caption">일정 예정 — 다음 주 (선택)</span>
+            <button
+              type="button"
+              className="ms-add"
+              onClick={() => {
+                act(addPlan(report));
+                setFocusRequest({
+                  id: `vplan-${plans.length}`,
+                  selector: 'input[type="text"]',
+                });
+              }}
+              title="표 아래 □ 일정 예정에 한 줄 추가"
+            >
+              <CalendarPlus size={11} /> 일정 추가
+            </button>
+          </div>
+          {plans.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {plans.map((p, pi) => (
+                <div key={pi} id={`vplan-${pi}`} className="group/plan flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={p.date}
+                    min={report.currentWeekRange.start}
+                    max={report.currentWeekRange.end}
+                    onChange={(e) => e.target.value && apply(updatePlan(report, pi, { date: e.target.value }))}
+                    className="ms-input w-36"
+                  />
+                  <input
+                    type="text"
+                    value={p.text}
+                    placeholder="10:00 MX(주간미팅) · (종일) 가나스토어 패치 · 휴가"
+                    onChange={(e) => apply(updatePlan(report, pi, { text: e.target.value }))}
+                    className="ms-input min-w-0 flex-1"
+                  />
+                  <button
+                    type="button"
+                    title="일정 삭제"
+                    aria-label="일정 삭제"
+                    tabIndex={-1}
+                    onClick={() => act(removePlan(report, pi))}
+                    className="rounded-sharp p-1 text-fg-muted opacity-50 transition hover:bg-bg-sunken hover:text-fg group-focus-within/plan:opacity-100 group-hover/plan:opacity-100"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 지난주 미결 — 새 주간보고가 지난주 보고서에서 찾은 끝나지 않은 건. .md에는 쓰지 않는다 */}
+        {carry && carry.items.length > 0 && (
+          <section className="mt-5 border-t border-rule pt-3" aria-label="지난주 미결">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="ms-caption" style={{ color: 'var(--tok-pending)' }}>
+                지난주 미결 {carry.items.length}건
+              </span>
+              <span className="text-[11px] text-fg-muted">
+                {carry.from ? `${carry.from}에서 · ` : ''}날짜를 고르면 그날 항목으로 이어 씁니다. 진행이 없던 건은
+                닫으세요.
+              </span>
+              <button type="button" className="ms-add ml-auto" onClick={dismissAllCarry}>
+                모두 닫기
+              </button>
+            </div>
+            <ul className="mt-2 space-y-2">
+              {carry.items.map((c, idx) => (
+                <li key={`${formatItemHeader(c.header)}-${idx}`} className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-semibold text-fg" title={formatItemHeader(c.header)}>
+                      {formatItemHeader(c.header)}
+                    </div>
+                    {c.pending.map((p, k) => (
+                      <div key={k} className="truncate text-[12px]" style={{ color: 'var(--tok-pending)' }}>
+                        {p.kind === 'out' ? '*<-' : '*->'} {p.text}
+                      </div>
+                    ))}
+                    <div className="text-[11px] text-fg-muted">마지막 기록 {shortDate(c.lastDate)}</div>
+                  </div>
+                  <select
+                    value=""
+                    aria-label="이어 쓸 날짜"
+                    onChange={(e) => e.target.value && takeCarry(idx, e.target.value)}
+                    className="ms-input max-w-[120px] py-1 text-[12px]"
+                  >
+                    <option value="">이어쓰기 →</option>
+                    {workdays.map((d) => (
+                      <option key={d.date} value={d.date}>
+                        {shortDate(d.date, d.weekday)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    title="닫기 — 이번 주에 진행이 없던 건"
+                    aria-label="닫기"
+                    onClick={() => dismissCarry(idx)}
+                    className="rounded-sharp p-1 text-fg-muted transition hover:bg-bg-sunken hover:text-fg"
+                  >
+                    <X size={12} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </header>
 
-      {/* 날짜 섹션 — 러닝 헤드 + 작업 목록 */}
-      <div className="mt-8 space-y-9">
+      {/* 일자 — 보고서와 같은 계층: 일자 → 행(지원장소·고객사) → 항목 머리 → 대화 턴 */}
+      <div className="mt-8">
         {report.days.map((day, di) => {
-          const offsets: number[] = [];
-          let acc = 0;
-          for (const b of day.blocks) {
-            offsets.push(acc);
-            acc += b.items.length;
-          }
+          const onLeave = isOnLeave(day);
+          const dayCollapsed = collapsedDays.has(day.date);
+          const continueDates = report.days
+            .filter((d) => d.date !== day.date && !d.holiday)
+            .map((d) => ({
+              date: d.date,
+              label: shortDate(d.date, d.weekday),
+            }));
+          const stat = dayStats[di];
+          const status = day.holiday
+            ? '휴일'
+            : onLeave
+              ? '휴가'
+              : day.partial
+                ? day.partial.label.trim() || '반차'
+                : '';
           return (
             <section
-              key={day.date}
-              className={`group/day day-section ${day.holiday ? 'day-section--holiday' : ''}`}
+              key={`${day.date}-${di}`} // 파서는 중복 일자를 허용(경고)하므로 date만으로는 key가 충돌한다
+              id={`vday-${day.date}`}
+              className={`vx-day ${day.holiday ? 'vx-day--off' : ''}`}
             >
-              {/* 러닝 헤드 — 전폭 굵은 룰(섹션 상단) 아래 날짜 제목 */}
-              <div className="flex items-center gap-3">
+              {/* 일자 제목 — 스크롤해도 요일 띠 아래에 고정 */}
+              <div className="vx-dayhead">
+                {!day.holiday && (
+                  <button
+                    type="button"
+                    onClick={() => toggleDay(day.date)}
+                    aria-expanded={!dayCollapsed}
+                    title={dayCollapsed ? '펼치기' : '접기'}
+                    className="vx-icon -ml-1 self-center"
+                  >
+                    {dayCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                )}
                 <span
-                  className="text-[19px] font-bold tracking-tight"
-                  style={{ color: day.holiday ? 'var(--stamp-red, #DC2626)' : 'var(--fg)' }}
+                  className="vx-daytitle"
+                  style={{
+                    color: day.holiday ? 'var(--stamp-red)' : day.partial ? 'var(--stamp-amber)' : 'var(--fg)',
+                  }}
                 >
                   {formatDayTitle(day.date)}
                 </span>
-                <span className="text-[12px] text-fg-soft">
-                  {WEEKDAY_LABEL[day.weekday] ?? day.weekday}
-                  {day.holiday ? ' · 휴무' : ''} · {day.date}
+                <span className="vx-daymeta">{WEEKDAY_LABEL[day.weekday] ?? day.weekday}</span>
+                {status && <span className="vx-daymeta font-semibold">{status}</span>}
+                {!day.holiday && stat.written > 0 && <span className="vx-daycount">항목 {stat.written}</span>}
+                {!day.holiday && dayCollapsed && stat.written === 0 && (
+                  <span className="vx-daycount">아직 작성 전</span>
+                )}
+                {stat.pending > 0 && (
+                  <span className="vx-daycount font-semibold" style={{ color: 'var(--tok-pending)' }}>
+                    미결 {stat.pending}
+                  </span>
+                )}
+                <span className="vx-daytools">
+                  {/* 근태 — 켜진 것만 진하게. 누르면 켜고 끈다 */}
+                  {!day.holiday && (
+                    <>
+                      <label className="vx-toggle">
+                        <input type="checkbox" checked={onLeave} onChange={() => act(toggleLeave(report, di))} />
+                        휴가
+                      </label>
+                      <label className="vx-toggle">
+                        <input
+                          type="checkbox"
+                          checked={!!day.partial}
+                          onChange={() => act(toggleHalfday(report, di))}
+                        />
+                        반차
+                      </label>
+                    </>
+                  )}
+                  <label className="vx-toggle">
+                    <input type="checkbox" checked={!!day.holiday} onChange={() => act(toggleHoliday(report, di))} />
+                    휴일
+                  </label>
+                  <button
+                    type="button"
+                    title="일자 삭제"
+                    aria-label="일자 삭제"
+                    tabIndex={-1}
+                    onClick={() => removeWithUndo(removeDay(report, di), `${shortDate(day.date, day.weekday)} 일자를`)}
+                    className="vx-icon vx-daydel"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </span>
-                <span className="flex-1" />
-                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-fg-muted opacity-60 transition group-hover/day:opacity-100">
-                  <input
-                    type="checkbox"
-                    checked={!!day.holiday}
-                    onChange={() => apply(toggleHoliday(report, di))}
-                  />
-                  휴무
-                </label>
-                <button
-                  type="button"
-                  title="일자 삭제"
-                  onClick={() => apply(removeDay(report, di))}
-                  className="flex items-center rounded-sharp p-1 text-fg-muted opacity-60 transition hover:bg-bg-sunken hover:text-fg group-hover/day:opacity-100"
-                >
-                  <Trash2 size={13} />
-                </button>
               </div>
 
               {day.holiday ? (
-                <div className="mt-3 pl-[56px]">
-                  <Field label="휴무 사유 — 표의 빨간 행 내용 칸에 표기됩니다">
-                    <input
-                      type="text"
-                      value={day.holiday.reason}
-                      placeholder="예: 근로자의 날"
-                      onChange={(e) => apply(updateHolidayReason(report, di, e.target.value))}
-                      className="ms-input w-full max-w-xs"
-                    />
-                  </Field>
+                <div className="vx-dayline">
+                  <Chip
+                    label="휴일 사유"
+                    field="holiday"
+                    value={day.holiday.reason}
+                    placeholder="주말은 비워 둡니다 — 공휴일만 예: 근로자의 날"
+                    onChange={(v) => apply(updateHolidayReason(report, di, v))}
+                    grow
+                  />
                 </div>
-              ) : (
-                <div className="mt-3 space-y-5">
-                  {day.blocks.map((block, bi) => (
-                    <div key={bi}>
-                      {/* 메타 행 — 장소/구분 (넘버럴 컬럼과 정렬) */}
-                      <div className="flex flex-wrap items-end gap-x-4 gap-y-2 pl-[56px]">
-                        <Field label="지원장소" width="w-56">
-                          <input
-                            type="text"
+              ) : dayCollapsed ? null : (
+                <div>
+                  {day.partial && (
+                    <div className="vx-dayline">
+                      <Chip
+                        label="근태 표기"
+                        field="partial"
+                        ariaLabel="반차/근태 표기"
+                        value={day.partial.label}
+                        placeholder="예: 오후 반차(13:00~18:00) — 표의 날짜 칸 아래 표기"
+                        onChange={(v) => apply(updateHalfdayLabel(report, di, v))}
+                        grow
+                      />
+                    </div>
+                  )}
+                  {day.blocks.map((block, bi) => {
+                    const building = block.locations.map(buildingOf).find(Boolean);
+                    return (
+                      <div key={bi} id={`vrow-${di}-${bi}`} className="vx-row">
+                        {/* 행 머리 — 표의 지원장소 · 고객사|작업구분 칸. 아래 항목들의 머리 띠 */}
+                        <div className="vx-rowhead">
+                          <Chip
+                            label="지원장소"
+                            field="locations"
                             value={block.locations.join(' / ')}
-                            placeholder="예: 한강 제트플러스 4F"
-                            title="여러 장소는 / 로 구분 (표에서 줄바꿈)"
-                            onChange={(e) =>
+                            list="visual-place-options"
+                            title="지원장소 — 현장 방문은 고객사(건물), 원격 대응은 근무 위치(파트너사·회사·외부·휴가). 여러 장소는 ' / '로 구분"
+                            onChange={(v) =>
                               apply(
                                 updateBlockFields(report, di, bi, {
-                                  locations: e.target.value
-                                    .split('/')
-                                    .map((s) => s.trim())
-                                    .filter((s, idx, arr) => s !== '' || idx === arr.length - 1),
+                                  // 파서(@LOC)와 동일 규칙: 공백 둘러싼 슬래시만 구분자. 마지막 빈 조각은 타이핑 중 보존
+                                  locations: v
+                                    .split(LOCATION_SEPARATOR)
+                                    .map((x) => x.trim())
+                                    .filter((x, idx, arr) => x !== '' || idx === arr.length - 1),
                                 }),
                               )
                             }
-                            className="ms-input"
+                            // 현장이면 항목의 빈 건물 칸을 지원장소의 건물명으로
+                            onBlur={() => apply(fillItemSitesFromRow(reportRef.current, di, bi))}
+                            strong
                           />
-                        </Field>
-                        <Field label="고객사 / 작업구분" width="w-44">
-                          <input
-                            type="text"
+                          <Chip
+                            label="고객사|작업구분"
+                            field="customer"
                             value={block.customer}
-                            placeholder="예: 한강 SRE"
-                            onChange={(e) =>
-                              apply(updateBlockFields(report, di, bi, { customer: e.target.value }))
+                            list="visual-customer-options"
+                            title="고객사|작업구분 — 항목의 [고객사]와 같은 약칭, 고객 건이 아니면 제조사문의·미팅·테스트. 항목의 빈 고객사 칸에 자동으로 채워집니다"
+                            onChange={(v) =>
+                              apply(
+                                updateBlockFields(report, di, bi, {
+                                  customer: v,
+                                }),
+                              )
                             }
-                            className="ms-input"
+                            // 같은 값을 두 번 쓰지 않게 — 항목의 빈 고객사 칸을 채운다
+                            onBlur={() => apply(fillItemClientsFromRow(reportRef.current, di, bi))}
+                            strong
                           />
-                        </Field>
-                        <span className="flex-1" />
-                        {day.blocks.length > 1 && (
-                          <button
-                            type="button"
-                            title="이 장소 블록 삭제"
-                            onClick={() => apply(removeLocationBlock(report, di, bi))}
-                            className="ms-add mb-1"
-                          >
-                            <Trash2 size={11} /> 블록 삭제
-                          </button>
-                        )}
-                      </div>
+                          {day.blocks.length > 1 && (
+                            <button
+                              type="button"
+                              title="이 행 삭제"
+                              aria-label="이 행 삭제"
+                              tabIndex={-1}
+                              onClick={() => removeWithUndo(removeLocationBlock(report, di, bi), '행을')}
+                              className="vx-icon vx-rowtool"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
 
-                      {/* 작업 목록 — 고스트 넘버럴, 작업 간 헤어라인 */}
-                      <div className="mt-4">
-                        {block.items.map((item, ii) => (
-                          <ItemEditor
-                            key={ii}
-                            item={item}
-                            order={offsets[bi] + ii + 1}
-                            canMoveUp={ii > 0}
-                            canMoveDown={ii < block.items.length - 1}
-                            onField={(patch) => apply(updateItemFields(report, di, bi, ii, patch))}
-                            onMove={(dir) => apply(moveItem(report, di, bi, ii, dir))}
-                            onRemove={() => apply(removeItem(report, di, bi, ii))}
-                            onAddBlock={(kind) => apply(addContentBlock(report, di, bi, ii, kind))}
-                            onUpdateBlock={(ci, b) =>
-                              apply(updateContentBlock(report, di, bi, ii, ci, b))
-                            }
-                            onMoveBlock={(ci, dir) =>
-                              apply(moveContentBlock(report, di, bi, ii, ci, dir))
-                            }
-                            onRemoveBlock={(ci) => apply(removeContentBlock(report, di, bi, ii, ci))}
-                          />
-                        ))}
-                        {/* 추가 버튼 — 다음 넘버럴 예고는 마지막 블록에만
-                            (중간 블록에 표시하면 다음 블록 첫 작업 번호와 중복돼 보임) */}
-                        <button
-                          type="button"
-                          onClick={() => apply(addItem(report, di, bi))}
-                          className={`work-entry work-entry-add w-full text-left ${
-                            block.items.length > 0 ? 'mt-4 border-t border-rule pt-4' : ''
-                          }`}
-                        >
-                          <span className="work-numeral" aria-hidden="true">
-                            {bi === day.blocks.length - 1
-                              ? String(offsets[bi] + block.items.length + 1).padStart(2, '0')
-                              : ''}
-                          </span>
-                          <span className="ms-add py-1">
-                            <Plus size={12} /> 작업 추가
-                          </span>
-                        </button>
+                        {block.items.map((item, ii) => {
+                          const key = `${di}-${bi}-${ii}`;
+                          return (
+                            <ItemEditor
+                              key={ii}
+                              item={item}
+                              order={ii + 1}
+                              canMoveUp={ii > 0}
+                              canMoveDown={ii < block.items.length - 1}
+                              anchorId={`vitem-${key}`}
+                              continueDates={continueDates}
+                              collapsed={collapsedItems.has(key)}
+                              onToggleCollapse={() => toggleItem(key)}
+                              onField={(patch) => apply(updateItemFields(report, di, bi, ii, patch))}
+                              onClientCommit={() => apply(fillRowCustomerFromItem(reportRef.current, di, bi, ii))}
+                              onMove={(dir) => act(moveItem(report, di, bi, ii, dir))}
+                              onRemove={() =>
+                                isBlankItem(item)
+                                  ? act(removeItem(report, di, bi, ii))
+                                  : removeWithUndo(removeItem(report, di, bi, ii), '항목을')
+                              }
+                              onContinue={(date) => {
+                                const { report: next, at } = continueItem(report, di, bi, ii, date);
+                                if (next === report) return;
+                                act(next);
+                                if (at) {
+                                  setFocusRequest({
+                                    id: `vitem-${at.di}-${at.bi}-${at.ii}`,
+                                    selector: 'textarea[data-turn]',
+                                  });
+                                }
+                              }}
+                              onAddBlock={(kind) => act(addContentBlock(report, di, bi, ii, kind))}
+                              onUpdateBlock={(ci, b) => apply(updateContentBlock(report, di, bi, ii, ci, b))}
+                              onMoveBlock={(ci, dir) => act(moveContentBlock(report, di, bi, ii, ci, dir))}
+                              onRemoveBlock={(ci) =>
+                                removeWithUndo(removeContentBlock(report, di, bi, ii, ci), '블록을')
+                              }
+                              onIndentBlock={(ci, indent) => act(setContentIndent(report, di, bi, ii, ci, indent))}
+                              onAddTurn={(ci, turn, at) => act(addTurn(report, di, bi, ii, ci, turn, at))}
+                              onUpdateTurn={(ci, ti, patch) => apply(updateTurn(report, di, bi, ii, ci, ti, patch))}
+                              onReplaceTurn={(ci, ti, turns: DialogTurn[]) =>
+                                act(replaceTurn(report, di, bi, ii, ci, ti, turns))
+                              }
+                              onRemoveTurn={(ci, ti) => act(removeTurn(report, di, bi, ii, ci, ti))}
+                              onMoveTurn={(ci, ti, dir) => act(moveTurn(report, di, bi, ii, ci, ti, dir))}
+                              onTurnToList={(ci, ti, lines) => {
+                                const { report: next, at } = convertTurnToList(report, di, bi, ii, ci, ti, lines);
+                                act(next);
+                                return at;
+                              }}
+                              onLineToTurn={(ci, li, turns) => {
+                                const { report: next, at } = convertListLineToTurn(report, di, bi, ii, ci, li, turns);
+                                act(next);
+                                return at;
+                              }}
+                            />
+                          );
+                        })}
+                        <AddItemButton
+                          title={building ? `현장(${building}) 항목 추가` : '항목 추가'}
+                          onPick={(body) => {
+                            act(addItem(report, di, bi, body));
+                            // 행에서 고객사를 물려받았으면 제목부터, 아니면 고객사부터
+                            const inherits =
+                              !!block.customer.trim() && !WORK_CATEGORIES.includes(block.customer.trim());
+                            setFocusRequest({
+                              id: `vitem-${di}-${bi}-${block.items.length}`,
+                              selector: `[data-field="${inherits ? 'workType' : 'client'}"]`,
+                            });
+                          }}
+                        />
                       </div>
-                    </div>
-                  ))}
-                  <div className="pl-[56px]">
-                    <button
-                      type="button"
-                      onClick={() => apply(addLocationBlock(report, di))}
-                      className="ms-add"
-                    >
-                      <Plus size={11} />
-                      {day.blocks.length === 0 ? '이 날짜에 작업 추가' : '다른 장소 블록 추가'}
-                    </button>
-                  </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      act(addLocationBlock(report, di));
+                      setFocusRequest({
+                        id: `vrow-${di}-${day.blocks.length}`,
+                        selector: '[data-field="locations"]',
+                      });
+                    }}
+                    className="vx-add mt-2"
+                  >
+                    <Plus size={11} />
+                    {day.blocks.length === 0 ? '이 날짜에 작업 추가' : '다른 지원장소·고객사 행 추가'}
+                  </button>
                 </div>
               )}
             </section>
@@ -267,29 +916,136 @@ export function VisualWeeklyEditor({ md, onMd }: Props) {
       <footer className="mt-10 border-t border-rule pt-4">
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
           <Field label="일자 추가">
-            <input
-              type="date"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="ms-input"
-            />
+            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="ms-input" />
           </Field>
           <button
             type="button"
             disabled={!newDate || report.days.some((d) => d.date === newDate)}
             onClick={() => {
-              apply(addDay(report, newDate));
+              act(
+                addDay(report, newDate, {
+                  weekendHoliday: true,
+                  skeleton: true,
+                }),
+              );
+              setFocusRequest({
+                id: `vday-${newDate}`,
+                selector: '[data-field="locations"]',
+              });
               setNewDate('');
             }}
             className="ms-add mb-1 disabled:opacity-30"
           >
             <Plus size={12} /> 추가
           </button>
+          {missing.length > 0 && (
+            <button
+              type="button"
+              onClick={() => act(fillMissingDays(report))}
+              className="ms-add mb-1"
+              title={`보고 주에서 빠진 일자: ${missing.map((d) => shortDate(d)).join(', ')}`}
+            >
+              <CalendarPlus size={12} /> 빠진 일자 채우기 ({missing.length}일)
+            </button>
+          )}
           <span className="mb-1.5 text-[11px] text-fg-muted">
-            빈 주(월~금) 한 번에 만들기는 툴바의 [템플릿] (Ctrl+T)
+            빈 주(월~일) 한 번에 만들기는 툴바의 [새 주간보고] (Ctrl+N)
           </span>
         </div>
       </footer>
+
+      {/* 자동완성 목록 — 항목마다 렌더하면 id가 중복되므로 문서에 1회만 */}
+      <datalist id="visual-channel-options">
+        {KNOWN_CHANNELS.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+      <datalist id="visual-place-options">
+        {suggestions.places.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+      <datalist id="visual-customer-options">
+        {suggestions.customers.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+      <datalist id="visual-contact-options">
+        {suggestions.contacts.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+    </div>
+  );
+});
+
+/** 문서 단위 아이콘 버튼 — 되돌리기·다시 실행 */
+function DocBtn({
+  title,
+  disabled,
+  onClick,
+  children,
+}: {
+  title: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex items-center rounded-sharp p-1 text-fg-muted transition hover:bg-bg-sunken hover:text-fg disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * 항목 추가 — 본문 모양을 고른다. 목록(`- 한 일` / `> 상세`)이 사용자 보고서의 주된 모양이고,
+ * 대화 이력(`->` 상대 / `<-` 대응)은 문의 ↔ 회신이 핵심인 건에 쓴다.
+ * 전에는 늘 대화 이력으로만 만들어졌다(2026-11-16 사용자 신고). 만든 뒤에도 줄 앞 `- `·`-> `로 바꿀 수 있다.
+ */
+function AddItemButton({ title, onPick }: { title: string; onPick: (body: ItemBody) => void }) {
+  const [open, setOpen] = useState(false);
+  useDismiss(open, () => setOpen(false), 'data-additem-menu');
+  const firstRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (open) firstRef.current?.focus();
+  }, [open]);
+  const pick = (body: ItemBody) => {
+    setOpen(false);
+    onPick(body);
+  };
+  return (
+    <div className="vx-additem" data-additem-menu={open ? '' : undefined}>
+      <button
+        type="button"
+        className="vx-add"
+        title={title}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Plus size={12} /> 항목 추가
+      </button>
+      {open && (
+        <div className="vx-menu" role="menu" aria-label="새 항목의 본문">
+          <div className="vx-menu-h">본문 모양</div>
+          <button ref={firstRef} type="button" role="menuitem" onClick={() => pick('bullets')}>
+            <span className="vx-glyph">-</span>
+            목록 — 한 일 · &gt; 상세
+          </button>
+          <button type="button" role="menuitem" onClick={() => pick('dialog')}>
+            <span className="vx-glyph">-&gt;</span>
+            대화 이력 — 상대 발화 · 내 대응
+          </button>
+        </div>
+      )}
     </div>
   );
 }
