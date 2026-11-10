@@ -13,12 +13,13 @@
 
   --fg:              #0A0A0A;  /* near-black */
   --fg-soft:         #404040;
-  --fg-muted:        #737373;
-  --fg-faint:        #A3A3A3;
+  --fg-muted:        #737373;  /* 본문 보조 — 흰 배경 4.7:1 */
+  --fg-faint:        #8A8A8A;  /* 장식 전용 (구분 기호 등) — 3.4:1. 읽어야 하는 글자는 fg-muted */
 
   --rule:            #E5E5E5;  /* very thin neutral gray */
   --rule-thin:       #F5F5F5;
   --rule-strong:     #D4D4D4;
+  --rule-input:      #949494;  /* 입력 필드 경계 — 흰 배경에서 필드를 알아볼 유일한 단서 (3:1) */
 
   --accent:          #0A0A0A;  /* primary action = pure black */
   --accent-soft:     #404040;
@@ -34,13 +35,17 @@
   --tok-client:      #0A0A0A;  /* 검정 + 굵게 */
   --tok-num:         #404040;  /* 진한 회색 */
   --tok-dash:        #737373;  /* 옅은 회색 */
-  --tok-qaq:         #737373;
-  --tok-qaa:         #525252;
-  --tok-note:        #9CA3AF;  /* > 보조 설명 — 가장 옅은 회색 */
-  --tok-holiday:     #DC2626;  /* @HOLIDAY = 휴무 red */
+  --tok-in:          #737373;  /* -> 상대방 발화 — 옅은 회색 기울임 */
+  --tok-out:         #404040;  /* <- 내 대응 — 진한 회색 */
+  --tok-pending:     #0A0A0A;  /* *<- 미결 — 검정 굵게 + 점선 밑줄 (무채색 원칙) */
+  --tok-conclusion:  #0A0A0A;  /* *==> 결론 — 검정 굵게 */
+  --tok-note:        #767676;  /* > 보조 설명 — 옅은 회색 기울임 (4.5:1) */
+  --tok-holiday:     #DC2626;  /* @HOLIDAY = 휴일 red */
 
   --selection:       rgba(10, 10, 10, 0.12);
   --shadow:          0 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-pop:      0 8px 24px rgba(0, 0, 0, 0.12);  /* 드롭다운·팝오버 */
+  --scrim:           rgba(0, 0, 0, 0.4);
 
   --radius-sharp:    2px;       /* 더 sharp */
   --radius:          4px;
@@ -61,12 +66,13 @@
 
   --fg:              #E8E5DD;
   --fg-soft:         #B5B0A2;
-  --fg-muted:        #666058;
-  --fg-faint:        #3F3B36;
+  --fg-muted:        #8C8678;  /* 캡션·줄번호 — 어두운 배경 5:1 이상 */
+  --fg-faint:        #6A645A;  /* 장식 전용 — 3.2:1 */
 
   --rule:            #2A2622;
   --rule-thin:       #1A1816;
   --rule-strong:     #4A4238;
+  --rule-input:      #6A645A;
 
   --accent:          #FF6B35;
   --accent-soft:     #C04A20;
@@ -82,13 +88,17 @@
   --tok-client:      #E0A83C;
   --tok-num:         #C39EE0;
   --tok-dash:        #B5B0A2;
-  --tok-qaq:         #888070;
-  --tok-qaa:         #B5B0A2;
+  --tok-in:          #888070;
+  --tok-out:         #B5B0A2;
+  --tok-pending:     #E0A83C;  /* *<- 미결 — amber */
+  --tok-conclusion:  #FF6B35;  /* *==> 결론 — accent */
   --tok-note:        #8A857A;  /* > 보조 설명 — 가장 옅은 톤 */
-  --tok-holiday:     #E04848;  /* @HOLIDAY = 휴무 red */
+  --tok-holiday:     #E04848;  /* @HOLIDAY = 휴일 red */
 
   --selection:       rgba(255, 107, 53, 0.22);
   --shadow:          none;
+  --shadow-pop:      none;  /* 콘솔 미감 — 그림자 대신 강한 경계선 */
+  --scrim:           rgba(0, 0, 0, 0.7);  /* 어두운 배경 위에서도 드로어가 떠 보이도록 */
 
   --radius-sharp:    0px;
   --radius:          0px;
@@ -139,6 +149,9 @@ body {
   background-color: var(--bg);
   color: var(--fg);
   font-feature-settings: 'tnum' 1, 'cv11' 1;
+  /* 합자 끄기 — JetBrains Mono·Pretendard가 -> <- ==> 를 화살표(→ ← ⟹)로 바꿔 그리면
+     주간보고 문법 마커가 다른 문자로 보여 사용자가 화살표 문자를 입력하게 된다 */
+  font-variant-ligatures: none;
   font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
     'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;
   position: relative;
@@ -184,6 +197,7 @@ body::before {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-variant-ligatures: none;
 }
 
 /* ==========================================================
@@ -209,6 +223,23 @@ body::before {
 
 button { font: inherit; }
 
+/* 폼 컨트롤은 UA 스타일이 font를 재설정해 body의 합자 해제가 상속되지 않는다 — 명시 */
+input, select, textarea, option, button {
+  font-variant-ligatures: none;
+}
+
+/* 플레이스홀더에 입력 규칙이 담기므로 읽을 수 있는 대비로 — Tailwind preflight(#9CA3AF, 테마 무시) 대체 */
+input::placeholder, textarea::placeholder {
+  color: var(--fg-muted);
+  opacity: 1;
+}
+
+/* 분할선(Allotment) — 라이브러리 기본 VS Code 파랑 대신 테마 색 */
+html[data-theme] {
+  --focus-border: var(--accent);
+  --separator-border: var(--rule);
+}
+
 ::selection { background: var(--selection); }
 
 /* ==========================================================
@@ -221,6 +252,7 @@ button { font: inherit; }
   font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
   font-size: 13px;
   line-height: 1.65;
+  font-variant-ligatures: none;
 }
 
 .cm-editor.cm-focused { outline: none; }
@@ -285,16 +317,29 @@ button { font: inherit; }
 
 .tok-week { color: var(--tok-week); font-weight: 600; }
 .tok-next { color: var(--tok-week); font-weight: 600; opacity: 0.8; }
-.tok-author { color: var(--tok-week); font-weight: 500; opacity: 0.65; }
+.tok-author { color: var(--fg-soft); font-weight: 500; }
 .tok-day { color: var(--tok-day); font-weight: 700; }
 .tok-loc { color: var(--tok-loc); font-weight: 600; }
 .tok-client { color: var(--tok-client); font-weight: 600; }
 .tok-num { color: var(--tok-num); font-weight: 600; }
 .tok-dash { color: var(--tok-dash); }
-.tok-qaq { color: var(--tok-qaq); font-style: italic; }
-.tok-qaa { color: var(--tok-qaa); }
+.tok-in { color: var(--tok-in); font-style: italic; }
+.tok-out { color: var(--tok-out); }
+.tok-pending { color: var(--tok-pending); font-weight: 600; text-decoration: underline dotted; }
+.tok-conclusion { color: var(--tok-conclusion); font-weight: 700; }
 .tok-note { color: var(--tok-note); font-style: italic; }
 .tok-holiday { color: var(--tok-holiday); font-weight: 600; }
+
+/* 작업일지 — 줄 종류 강조 (■ 사안 · ▶ 수행 · - 사실 · > 부연 · ※ 참고/전달물 · 원문) */
+.wl-title { color: var(--tok-day); font-weight: 700; }
+.wl-case { color: var(--tok-client); font-weight: 700; }
+.wl-numbered { color: var(--tok-num); font-weight: 600; }
+.wl-act { color: var(--tok-out); font-weight: 600; }
+.wl-fact { color: var(--tok-dash); }
+.wl-detail { color: var(--tok-note); font-style: italic; }
+.wl-note { color: var(--tok-loc); font-weight: 600; }
+.wl-deliverable { color: var(--tok-num); font-weight: 600; text-decoration: underline dotted; }
+.wl-raw { font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace; font-size: 0.92em; color: var(--fg-soft); background: var(--bg-sunken); }
 
 /* ==========================================================
  * Preview — iframe 내부는 항상 흰 종이 (테마 무관)
@@ -310,11 +355,11 @@ button { font: inherit; }
  * 러닝 헤드(날짜) · 고스트 넘버럴(작업) · 밑줄 필드(입력) · 룰과 여백이 전부.
  * ========================================================== */
 
-/* 밑줄 필드 — 박스 입력 대체. focus 시 잉크색으로 진해짐 */
-/* 박스 입력 유지(사용자 확정) — 중첩 해소는 계층선 제거·캡션 구분·ms-stack 결합이 담당 */
+/* 박스 입력(사용자 확정) — 경계는 --rule-input(3:1), hover 진하게, focus 잉크색.
+   중첩 해소는 계층선 제거·캡션 구분·ms-stack 결합이 담당 */
 .ms-input {
   background: var(--bg-elevated);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-input);
   border-radius: var(--radius-sharp);
   padding: 6px 10px;
   font-size: 13px;
@@ -323,19 +368,20 @@ button { font: inherit; }
   transition: border-color 0.15s ease;
 }
 .ms-input:hover {
-  border-color: var(--rule-strong);
+  border-color: var(--fg-muted);
 }
 .ms-input:focus {
   border-color: var(--fg);
 }
-.ms-input::placeholder {
-  color: var(--fg-faint);
+/* 필수값 누락 — 포커스 중에는 포커스 표시가 우선 */
+.ms-input[aria-invalid='true']:not(:focus) {
+  border-color: var(--stamp-red);
 }
 .ms-area {
   display: block;
   width: 100%;
   background: var(--bg-elevated);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-input);
   border-radius: var(--radius-sharp);
   padding: 6px 10px;
   font-size: 13px;
@@ -350,13 +396,16 @@ button { font: inherit; }
   min-height: 3.4em;
 }
 .ms-area:hover {
-  border-color: var(--rule-strong);
+  border-color: var(--fg-muted);
 }
 .ms-area:focus {
   border-color: var(--fg);
 }
-.ms-area::placeholder {
-  color: var(--fg-faint);
+/* 대화 턴 — 한 줄 높이로 촘촘하게 (유틸리티 min-h-0/py-*는 이 파일보다 먼저 선언돼 덮이므로 전용 수식어) */
+.ms-area--turn {
+  min-height: 0;
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 
 /* 본문 블록의 제목+세부를 한 몸으로 결합 — 블록당 박스 1개 (중첩 해소의 핵심) */
@@ -384,16 +433,6 @@ button { font: inherit; }
   color: var(--fg-muted);
 }
 
-/* 날짜 섹션 — 신문 조판식 전폭 굵은 룰로 시작 (날짜 간 구분의 1차 신호).
-   마스트헤드(2px)와 같은 리듬. 휴무일은 빨간 룰 */
-.day-section {
-  border-top: 2px solid var(--fg);
-  padding-top: 10px;
-}
-.day-section--holiday {
-  border-top-color: var(--stamp-red, #dc2626);
-}
-
 /* 텍스트형 추가 버튼 — 보더 없는 조판 버튼 */
 .ms-add {
   display: inline-flex;
@@ -407,46 +446,651 @@ button { font: inherit; }
 .ms-add:hover {
   color: var(--fg);
 }
-.work-entry {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  column-gap: 12px;
+
+/* ==========================================================
+ * 주간보고 비주얼 편집 (v0.5.1)
+ * 상자 입력(사용자 확정)은 그대로 두고, 많아져도 어디에 무엇이 있는지 구조로 읽히게 한다:
+ * 요일 띠(고정) → 일자(굵은 룰·고정 제목) → 행 띠(지원장소·고객사|작업구분)
+ * → 항목(이름표 칸 한 줄 + 상자 하나: 제목 줄 + 턴) → 턴(표지 + 내용).
+ * 손대도 칸이 생기거나 사라지지 않는다 — 나타나는 것은 도구뿐이고 자리를 밀지 않는다.
+ * ========================================================== */
+.vx {
+  --vx-strip-h: 38px;
+  --vx-mono: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+  --vx-mark-w: 5.4em;
+  overflow-x: hidden;
 }
-.work-entry + .work-entry {
-  border-top: 1px solid var(--rule);
-  margin-top: 18px;
-  padding-top: 18px;
-}
-.work-numeral {
-  padding-top: 1px;
-  text-align: right;
-  font-size: 27px;
-  line-height: 1;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg);
-  opacity: 0.13;
-  transition: opacity 0.18s ease;
+
+/* 문법 기호 */
+.vx-glyph {
+  font-family: var(--vx-mono);
+  font-weight: 400;
+  color: var(--fg-muted);
   user-select: none;
 }
-.work-entry:hover .work-numeral {
+
+/* ── 요일 띠 — 고정. 어느 날에 무엇이 얼마나 있는지 ── */
+.vx-strip {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  height: var(--vx-strip-h);
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+/* 좁은 폭에서는 띠 안에서만 가로로 밀린다 — 편집 영역 전체가 옆으로 밀리지 않게 */
+.vx-strip-days {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.vx-strip-days::-webkit-scrollbar {
+  display: none;
+}
+.vx-strip-tools {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1px;
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid var(--rule);
+}
+.vx-strip-day {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: var(--radius-sharp);
+  font-size: 12px;
+  color: var(--fg-soft);
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+.vx-strip-day:hover {
+  background: var(--bg-sunken);
+}
+.vx-strip-day[aria-current='true'] {
+  background: var(--fg);
+  color: var(--bg);
+}
+.vx-strip-day .vx-strip-n {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+/* 미결 수 — 대화 턴의 미결 표지와 같은 채운 모양 */
+.vx-strip-day .vx-strip-pending {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius);
+  background: var(--tok-pending);
+  color: var(--bg);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.vx-strip-day[aria-current='true'] .vx-strip-pending {
+  background: var(--bg);
+  color: var(--fg);
+}
+.vx-strip-day--off {
+  color: var(--stamp-red);
+}
+.vx-strip-day--empty .vx-strip-n {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+/* ── 일자 — 제목은 띠 아래에 고정 ── */
+.vx-day + .vx-day {
+  margin-top: 36px;
+}
+.vx-dayhead {
+  position: sticky;
+  top: var(--vx-strip-h);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 0 8px;
+  background: var(--bg);
+  border-top: 2px solid var(--fg);
+}
+.vx-day--off .vx-dayhead {
+  border-top-color: var(--stamp-red);
+}
+.vx-daytitle {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.vx-daymeta {
+  font-size: 12px;
+  color: var(--fg-soft);
+  white-space: nowrap;
+}
+.vx-daycount {
+  font-size: 12px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vx-daytools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vx-dayline {
+  display: flex;
+  margin-top: 6px;
+}
+/* 근태 켜고 끄기 — 켜진 것만 진하게 */
+.vx-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.vx-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.vx-toggle:hover {
+  border-color: var(--rule-input);
+  color: var(--fg);
+}
+.vx-toggle:has(input:checked) {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+  font-weight: 600;
+}
+.vx-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
+}
+
+/* ── 이름표 칸 — 상자 안 왼쪽에 칸 이름, 오른쪽에 값 ── */
+.vx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  max-width: 100%;
+  padding: 2px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: text;
+  transition: border-color 0.12s ease;
+}
+.vx-chip:hover {
+  border-color: var(--rule-input);
+}
+.vx-chip:focus-within {
+  border-color: var(--fg);
+}
+/* 쓰기 시작한 항목의 빈 필수 칸 */
+.vx-chip:has([aria-invalid='true']):not(:focus-within) {
+  border-color: var(--stamp-red);
+}
+.vx-chip-k {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+.vx-chip-v {
+  min-width: 2.5em;
+  max-width: 24em;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--fg);
+  font: inherit;
+  field-sizing: content;
+}
+.vx-chip-v--strong {
+  font-weight: 600;
+}
+/* 자동완성 목록이 붙은 칸에 Chromium이 남기는 펼침 표시 자리 */
+.vx-chip-v::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
+.vx-chip--grow {
+  flex: 1 1 auto;
+}
+.vx-chip--grow .vx-chip-v {
+  flex: 1;
+  max-width: none;
+}
+
+/* ── 행 — 지원장소·고객사|작업구분 띠가 아래 항목들의 머리 ── */
+.vx-row {
+  margin-top: 14px;
+}
+.vx-row + .vx-row {
+  margin-top: 24px;
+}
+.vx-rowhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 6px 8px;
+  background: var(--bg-sunken);
+  border-radius: var(--radius);
+}
+.vx-rowtool {
+  margin-left: auto;
+}
+/* 삭제는 그 줄을 만질 때만 — 머리 띠마다 휴지통이 늘어서지 않게 */
+.vx-rowtool,
+.vx-daydel {
+  visibility: hidden;
+}
+.vx-rowhead:hover .vx-rowtool,
+.vx-rowhead:focus-within .vx-rowtool,
+.vx-dayhead:hover .vx-daydel,
+.vx-dayhead:focus-within .vx-daydel {
+  visibility: visible;
+}
+
+/* ── 항목 — 이름표 칸 한 줄 + 상자 하나 ── */
+.vx-item {
+  margin-top: 12px;
+}
+.vx-meta {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-bottom: 5px;
+}
+/* 항목 도구 — 이름표 줄 오른쪽 끝에 겹쳐 뜬다(자리를 차지하지 않아 줄이 밀리지 않음).
+   숨어 있을 때는 눌리지도 않는다 */
+.vx-tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-left: 8px;
+  background: linear-gradient(to right, transparent, var(--bg) 8px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+.vx-item:hover > .vx-meta .vx-tools,
+.vx-item:focus-within > .vx-meta .vx-tools,
+.vx-tools--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.vx-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  transition: border-color 0.12s ease;
+}
+.vx-item:hover .vx-box {
+  border-color: var(--rule-input);
+}
+.vx-item:focus-within .vx-box {
+  border-color: var(--fg);
+}
+.vx-titlebar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+}
+.vx-titlebar:not(:last-child) {
+  border-bottom: 1px solid var(--rule);
+}
+.vx-title {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 7px 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  field-sizing: content;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.vx-title::placeholder {
+  font-weight: 400;
+}
+/* 접힌 항목 — 제목 줄 끝의 요약 (누르면 펼침) */
+.vx-foldsum {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sharp);
+  font-size: 12px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.vx-foldsum:hover {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+.vx-foldsum-pending {
+  font-weight: 600;
+  color: var(--tok-pending);
+}
+.vx-body {
+  padding: 4px 0 5px;
+}
+.vx-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 2px 8px;
+}
+
+/* 본문 블록 — 대화 이력은 들여쓰기 1단계가 기본이라 2단계부터 안쪽으로, 안내선과 함께 */
+.vx-block {
+  position: relative;
+}
+.vx-block + .vx-block {
+  margin-top: 2px;
+}
+.vx-block[data-lvl='2'],
+.vx-block[data-lvl='3'],
+.vx-block[data-lvl='4'] {
+  margin-left: calc((var(--lvl) - 1) * 18px);
+  border-left: 1px solid var(--rule-strong);
+}
+
+/* 한 줄 — 표지 칸 + 내용 */
+.vx-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--vx-mark-w) minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  padding: 0 10px;
+}
+.vx-line:focus-within,
+.vx-titlebar:focus-within {
+  background: var(--accent-glow);
+}
+.vx-text {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 3px 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  field-sizing: content;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+.vx-text--strong {
+  font-weight: 600;
+}
+.vx-text--sub {
+  padding-top: 0;
+  color: var(--fg-soft);
+}
+/* 비어 있는 세부 칸의 안내는 내용보다 한 단계 옅게 — 번호 작업이 많아도 안내 문구가 내용처럼 쌓이지 않게 */
+.vx-text--sub::placeholder {
+  color: var(--fg-faint);
+}
+
+/* 표지 — 기호 + 짧은 이름. 종류마다 모양이 달라 색 없이도 구분된다 */
+.vx-mark {
+  justify-self: start;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sharp);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--fg-soft);
+  cursor: pointer;
+}
+.vx-mark:hover {
+  border-color: var(--rule-strong);
+}
+.vx-mark-glyph {
+  font-family: var(--vx-mono);
+  font-size: 11px;
+}
+.vx-mark-label {
+  font-weight: 600;
+}
+.vx-mark--static {
+  font-family: var(--vx-mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+.vx-turn[data-kind='in'] .vx-mark {
+  color: var(--fg-muted);
+}
+.vx-turn[data-kind='in'] .vx-text {
+  color: var(--fg-soft);
+}
+.vx-turn[data-kind='out'] .vx-mark {
+  color: var(--fg);
+}
+.vx-turn[data-kind='note'] .vx-mark,
+.vx-turn[data-kind='note'] .vx-text {
+  color: var(--tok-note);
+}
+.vx-turn[data-kind='conclusion'] .vx-mark {
+  border-color: var(--tok-conclusion);
+  color: var(--tok-conclusion);
+}
+.vx-turn[data-kind='conclusion'] .vx-text {
+  font-weight: 600;
+}
+/* 미결(*<-)은 채운 표지, 대기(*->)는 점선 표지 — 둘 다 남은 일 */
+.vx-turn[data-pending='true'] .vx-mark {
+  background: var(--tok-pending);
+  border-color: var(--tok-pending);
+  color: var(--bg);
+}
+.vx-turn[data-pending='true'][data-kind='in'] .vx-mark {
+  background: transparent;
+  border-style: dashed;
+  color: var(--tok-pending);
+}
+.vx-turn[data-pending='true'] .vx-text {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+/* 목록(-)·세부 줄 — 줄마다 표지. 노트(>)는 바로 위 줄의 보충 설명이라 들여 옅게 (표 출력과 같은 모양) */
+.vx-li {
+  position: relative;
+}
+.vx-li-mark {
+  color: var(--fg-muted);
+}
+.vx-li[data-kind='note'] .vx-li-mark {
+  margin-left: 1.1em;
+}
+.vx-li[data-kind='note'] .vx-li-mark,
+.vx-li[data-kind='note'] .vx-text {
+  color: var(--tok-note);
+}
+.vx-li[data-kind='note'] .vx-text {
+  padding-left: 1.1em;
+}
+.vx-li--detail {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr);
+  column-gap: 2px;
+  align-items: start;
+}
+.vx-li--detail .vx-mark {
+  margin-top: 0;
+  padding: 0 4px;
+}
+.vx-li--detail[data-kind='note'] .vx-li-mark {
+  margin-left: 0;
+}
+.vx-li--detail[data-kind='note'] {
+  padding-left: 1.1em;
+}
+.vx-li--detail[data-kind='note'] .vx-text {
+  padding-left: 0;
+}
+
+/* 메뉴 — 표지·추가 */
+.vx-menu {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 8px;
+  z-index: 8;
+  min-width: 13.5em;
+  padding: 3px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+}
+.vx-menu--right {
+  top: calc(100% + 4px);
+  left: auto;
+  right: 0;
+}
+.vx-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sharp);
+  font-size: 12px;
+  text-align: left;
+  color: var(--fg);
+}
+.vx-menu button:hover:not(:disabled),
+.vx-menu button[aria-checked='true'] {
+  background: var(--bg-sunken);
+}
+.vx-menu button:disabled {
+  opacity: 0.35;
+}
+.vx-menu .vx-glyph {
+  width: 3.2em;
+}
+.vx-menu svg {
+  width: 3.2em;
+  color: var(--fg-muted);
+}
+.vx-menu hr {
+  margin: 3px 4px;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+.vx-menu-h {
+  padding: 3px 8px 1px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+/* 추가 — 쓰는 자리 가까이, 평소엔 옅게 */
+.vx-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sharp);
+  font-size: 12px;
+  color: var(--fg-muted);
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+.vx-add:hover {
+  color: var(--fg);
+  background: var(--bg-sunken);
+}
+.vx-row > .vx-add {
+  margin-top: 8px;
+}
+/* 항목 추가 — 누르면 본문 모양(목록·대화 이력)을 고르는 메뉴 */
+.vx-additem {
+  position: relative;
+  display: inline-block;
+  margin-top: 4px;
+}
+.vx-additem .vx-menu {
+  min-width: 17em;
+  white-space: nowrap;
+}
+.vx-icon {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: var(--radius-sharp);
+  color: var(--fg-muted);
+}
+.vx-icon:hover {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+.vx-icon:disabled {
   opacity: 0.3;
 }
-.work-entry:focus-within .work-numeral {
-  opacity: 0.92;
-}
-[data-theme='mono'] .work-numeral {
-  font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-/* "작업 추가"도 같은 넘버럴 언어 — 다음 번호가 옅게 예고됨 */
-.work-entry-add .work-numeral {
-  opacity: 0.1;
-}
-.work-entry-add:hover .work-numeral {
-  opacity: 0.35;
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-chip, .vx-box, .vx-tools, .vx-toggle, .vx-add, .vx-strip-day { transition: none; }
 }
 
 /* ==========================================================
@@ -454,7 +1098,7 @@ button { font: inherit; }
  * ========================================================== */
 .email-body-editor:empty::before {
   content: attr(data-placeholder);
-  color: var(--fg-faint);
+  color: var(--fg-muted);
   pointer-events: none;
 }
 /* Tailwind preflight가 list-style을 제거하므로 명시 복원 — 에디터에서도 마커가 보이게 (WYSIWYG) */
@@ -485,8 +1129,11 @@ button { font: inherit; }
   height: auto;
 }
 .email-body-editor a {
-  color: #2563eb;
+  color: #2563eb; /* 발송 렌더와 같은 링크색 (WYSIWYG) */
   text-decoration: underline;
+}
+[data-theme='mono'] .email-body-editor a {
+  color: var(--tok-loc); /* 어두운 배경에서 파랑은 대비 미달 */
 }
 .email-body-editor table {
   border-collapse: collapse;
@@ -516,7 +1163,7 @@ button { font: inherit; }
   font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
   background: var(--bg-sunken);
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius-sharp);
   padding: 8px 10px;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -526,7 +1173,7 @@ button { font: inherit; }
   font-family: 'JetBrains Mono', 'D2Coding', Consolas, monospace;
   background: var(--bg-sunken);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-sharp);
 }
 
 /* ==========================================================
@@ -556,7 +1203,7 @@ button { font: inherit; }
 }
 
 /* ==========================================================
- * 모션 — 사용자 reduced-motion 시 stamp 회전·blink 비활성
+ * 모션 — 사용자 reduced-motion 시 커서 blink 비활성
  * ========================================================== */
 @media (prefers-reduced-motion: reduce) {
   [data-theme='mono'] .cm-cursor { animation: none; }
