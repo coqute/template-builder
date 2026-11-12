@@ -37,6 +37,20 @@ export function validateTemplateData(raw: unknown): TemplateValidation {
   if (typeof t.subjectPattern !== 'string') return fail('subjectPattern 누락');
   if (typeof t.hasBody !== 'boolean') return fail('hasBody 누락');
   if (!Array.isArray(t.sections)) return fail('sections 배열 누락');
+  // 해석(resolveTemplate)·화면이 글자·배열로 믿고 쓰는 칸 — 형식이 다르면 `.replace`·`.map`에서 던져
+  // 이메일 탭·도움말이 통째로 흰 화면이 된다(팀 공유 폴더의 파일 하나가 모두에게 영향). 파일 단위로 걸러 낸다
+  const optionalText = (v: unknown) => v == null || typeof v === 'string';
+  for (const k of ['recipientHint', 'greeting', 'closing', 'bodyLabel', 'bodyPlaceholder', 'note'] as const) {
+    if (!optionalText(t[k])) return fail(`${k}는 글자여야 합니다`);
+  }
+  if (t.renderStyle != null && t.renderStyle !== 'table' && t.renderStyle !== 'bullets') {
+    return fail("renderStyle은 'table' 또는 'bullets'여야 합니다");
+  }
+  if (t.tableHeader != null) {
+    if (!Array.isArray(t.tableHeader) || t.tableHeader.length !== 2 || t.tableHeader.some((h) => typeof h !== 'string')) {
+      return fail('tableHeader는 글자 2개짜리 배열이어야 합니다');
+    }
+  }
   for (const section of t.sections) {
     if (!section || typeof section !== 'object') return fail('section이 객체가 아닙니다');
     const s = section as Record<string, unknown>;
@@ -48,6 +62,14 @@ export function validateTemplateData(raw: unknown): TemplateValidation {
       if (typeof f.label !== 'string') return fail(`field(${f.key}).label 누락`);
       if (typeof f.type !== 'string' || !FIELD_TYPES.has(f.type)) {
         return fail(`field(${f.key}).type이 올바르지 않습니다`);
+      }
+      if (!optionalText(f.default)) return fail(`field(${f.key}).default는 글자여야 합니다`);
+      if (!optionalText(f.placeholder)) return fail(`field(${f.key}).placeholder는 글자여야 합니다`);
+      if (f.options != null && (!Array.isArray(f.options) || f.options.some((o) => typeof o !== 'string'))) {
+        return fail(`field(${f.key}).options는 글자 배열이어야 합니다`);
+      }
+      if (f.ai != null && f.ai !== 'prose' && f.ai !== 'fill' && f.ai !== 'locked') {
+        return fail(`field(${f.key}).ai는 'prose'·'fill'·'locked' 중 하나여야 합니다`);
       }
     }
   }
