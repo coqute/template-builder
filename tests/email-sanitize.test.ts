@@ -84,7 +84,8 @@ describe('sanitizeBodyHtml', () => {
   });
 
   it('td의 onclick/위험 style은 제거하되 셀은 보존', () => {
-    const out = sanitizeBodyHtml('<td onclick="evil()" style="position:fixed;color:red">셀</td>');
+    // 표 안의 셀로 넣는다 — 표 밖의 <td>는 HTML 파서가 태그를 버리고 글자만 남긴다(브라우저도, happy-dom 21도)
+    const out = sanitizeBodyHtml('<table><tr><td onclick="evil()" style="position:fixed;color:red">셀</td></tr></table>');
     expect(out).not.toContain('onclick');
     expect(out).not.toContain('position');
     expect(out).toContain('color: red');
