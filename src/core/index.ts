@@ -3,8 +3,8 @@ export { GRAMMAR, HIGHLIGHT_RULES, DATE_FLEX_SRC, highlightClassFor } from './gr
 export { parse, parseTolerant, ParseError } from './parser';
 export type { ParseOptions } from './parser';
 export { validate } from './validator';
-export { render, renderHtml, renderPlain, CANVAS_WIDTH } from './renderer';
-export type { RenderResult, RenderOptions } from './renderer';
+export { render, renderHtml, renderPlain, renderCombined, CANVAS_WIDTH } from './renderer';
+export type { RenderResult, RenderOptions, CombinedResult } from './renderer';
 export { serialize } from './serializer';
 export type { SerializeOptions } from './serializer';
 export {
@@ -14,9 +14,28 @@ export {
 } from './importer';
 export type { ImportInput, ImportResult } from './importer';
 export {
+  indentLevel,
+  matchContentLine,
+  turnMarker,
+  MAX_INDENT,
+  splitTypedTurn,
+  typedTurnStart,
+  typedListStart,
+  escapeContinuation,
+  unescapeContinuation,
+} from './content';
+export { isBlankBlock, isBlankContent, isBlankDay, isBlankItem, pruneBlank } from './blank';
+export { collectOpenItems, pickPreviousReport } from './carryover';
+export { canonicalClient, customerKey, sameCustomer } from './customer';
+export type { CarryItem } from './carryover';
+export { parseItemHeader, formatItemHeader } from './item-header';
+export type { ItemHeader } from './item-header';
+export {
   buildSubject,
+  buildCombinedSubject,
   buildPlainHeader,
   buildHtmlHeader,
+  buildPlanTitle,
   formatDotDate,
   formatRangeDot,
 } from './templates/header';
