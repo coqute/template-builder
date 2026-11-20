@@ -1,0 +1,1109 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`특성 고정: assets-sample-week > parseTolerant AST + 진단 고정 1`] = `
+{
+  "diagnostics": [],
+  "report": {
+    "authorName": "홍길동",
+    "currentWeekRange": {
+      "end": "2026-10-04",
+      "start": "2026-09-28",
+    },
+    "days": [
+      {
+        "blocks": [
+          {
+            "customer": "MX",
+            "items": [
+              {
+                "client": "MX",
+                "contact": "담당A",
+                "content": [
+                  {
+                    "details": [
+                      "> 야간 백업 작업이 시간 안에 끝나지 않음",
+                      "> 백업 대상 폴더가 늘어 전송량이 두 배로 증가",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "상황 :",
+                  },
+                  {
+                    "details": [
+                      "> 백업 대상을 둘로 나눠 일정 분리",
+                      "> 다음 주 실행 결과 공유 요청",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "조치 및 안내사항 :",
+                  },
+                ],
+                "site": "누리사옥",
+                "srcLine": 11,
+                "workType": "백업 서버 점검으로 방문",
+              },
+            ],
+            "locations": [
+              "MX(누리사옥)",
+            ],
+            "srcLine": 9,
+          },
+          {
+            "customer": "MX",
+            "items": [
+              {
+                "channel": "유선",
+                "client": "MX",
+                "contact": "담당B",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "운영 중 디스크를 늘릴 때 서비스 중단이 필요한지 확인 요청",
+                      },
+                      {
+                        "kind": "out",
+                        "text": "아래와 같이 안내",
+                      },
+                    ],
+                  },
+                  {
+                    "details": [],
+                    "indent": 2,
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "볼륨 확장은 서비스 중단 없이 가능",
+                  },
+                  {
+                    "details": [],
+                    "indent": 2,
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "파일시스템 확장 전 백업 권장",
+                  },
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "conclusion",
+                        "text": "증설 체크리스트 문서화 필요",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 21,
+                "workType": "디스크 증설 절차 문의",
+              },
+              {
+                "channel": "메일",
+                "client": "MX",
+                "contact": "담당C",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "일부 알림 메일이 도착하지 않음",
+                      },
+                      {
+                        "kind": "out",
+                        "text": "메일 서버 수신 기록 공유 요청",
+                      },
+                      {
+                        "kind": "in",
+                        "text": "기록 전달",
+                      },
+                      {
+                        "kind": "out",
+                        "pending": true,
+                        "text": "기록 분석 후 회신 예정",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 27,
+                "workType": "알림 메일 일부 미수신",
+              },
+            ],
+            "locations": [
+              "사무실",
+            ],
+            "srcLine": 19,
+          },
+          {
+            "customer": "제조사문의",
+            "items": [
+              {
+                "channel": "메일",
+                "client": "제조사문의",
+                "contact": "기술지원",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "내보내기 시 빈 파일이 만들어지는 현상 문의",
+                      },
+                      {
+                        "kind": "in",
+                        "text": "다음 정기 릴리스 때 반영 예정",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 35,
+                "workType": "대시보드 내보내기 오류",
+              },
+            ],
+            "locations": [
+              "사무실",
+            ],
+            "srcLine": 33,
+          },
+        ],
+        "date": "2026-09-21",
+        "srcLine": 8,
+        "weekday": "월",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "제트플러스",
+            "items": [
+              {
+                "channel": "메일",
+                "client": "제트플러스",
+                "contact": "담당D",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "담당 조직별 구분을 위한 기능 개선 2건 요청",
+                      },
+                    ],
+                  },
+                  {
+                    "details": [],
+                    "indent": 1,
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "알림 본문에서 별도 변수 처리",
+                  },
+                  {
+                    "indent": 2,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "제조사 문의 예정",
+                      },
+                    ],
+                  },
+                  {
+                    "details": [],
+                    "indent": 1,
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "분류 이름 수정 기능",
+                  },
+                  {
+                    "indent": 2,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "수정 가능 안내",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 42,
+                "workType": "알림 분류 기능 개선 요청",
+              },
+              {
+                "channel": "슬랙",
+                "client": "제트플러스",
+                "contact": "담당E",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "collector-x.y.z.tar.gz 전달",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 48,
+                "workType": "수집 서버 패치 파일 전달",
+              },
+            ],
+            "locations": [
+              "사무실",
+            ],
+            "srcLine": 40,
+          },
+          {
+            "customer": "미팅",
+            "items": [
+              {
+                "client": "미팅",
+                "content": [
+                  {
+                    "details": [],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "응답 지연 알림 기준 논의",
+                  },
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "기준값·설정 확인 요청",
+                      },
+                    ],
+                  },
+                  {
+                    "details": [],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "서버 모니터링 수집 주기",
+                  },
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "최신 버전으로 업데이트 안내",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 53,
+                "workType": "MX·제트플러스 지원 건 내부 회의",
+              },
+            ],
+            "locations": [
+              "사무실",
+            ],
+            "srcLine": 51,
+          },
+        ],
+        "date": "2026-09-22",
+        "srcLine": 39,
+        "weekday": "화",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "",
+            "items": [],
+            "locations": [
+              "휴가",
+            ],
+            "srcLine": 60,
+          },
+        ],
+        "date": "2026-09-23",
+        "srcLine": 59,
+        "weekday": "수",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "테스트",
+            "items": [
+              {
+                "client": "테스트",
+                "content": [
+                  {
+                    "items": [
+                      "다른 문자 인코딩 파일도 매칭 확인",
+                    ],
+                    "kind": "bullets",
+                  },
+                ],
+                "srcLine": 66,
+                "workType": "웹 점검 키워드 알림 테스트",
+              },
+            ],
+            "locations": [
+              "사무실",
+            ],
+            "srcLine": 64,
+          },
+        ],
+        "date": "2026-09-24",
+        "partial": {
+          "label": "오후 반차",
+        },
+        "srcLine": 62,
+        "weekday": "목",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "가나스토어",
+            "items": [
+              {
+                "channel": "메일",
+                "client": "가나스토어",
+                "contact": "담당F",
+                "content": [
+                  {
+                    "indent": 1,
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "9/30 종일 패치 진행 가능 여부 문의",
+                      },
+                      {
+                        "kind": "out",
+                        "text": "가능 안내, 작업 순서 공유",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 72,
+                "workType": "패치 일정 협의",
+              },
+            ],
+            "locations": [
+              "원격",
+            ],
+            "srcLine": 70,
+          },
+        ],
+        "date": "2026-09-25",
+        "srcLine": 69,
+        "weekday": "금",
+      },
+      {
+        "blocks": [],
+        "date": "2026-09-26",
+        "holiday": {
+          "reason": "",
+        },
+        "srcLine": 76,
+        "weekday": "토",
+      },
+      {
+        "blocks": [],
+        "date": "2026-09-27",
+        "holiday": {
+          "reason": "",
+        },
+        "srcLine": 79,
+        "weekday": "일",
+      },
+    ],
+    "plans": [
+      {
+        "date": "2026-09-29",
+        "srcLine": 4,
+        "text": "10:00 MX(주간미팅)",
+      },
+      {
+        "date": "2026-09-30",
+        "srcLine": 5,
+        "text": "(종일) 가나스토어 패치",
+      },
+      {
+        "date": "2026-10-02",
+        "srcLine": 6,
+        "text": "휴가",
+      },
+    ],
+    "prevWeekRange": {
+      "end": "2026-09-27",
+      "start": "2026-09-21",
+    },
+  },
+}
+`;
+
+exports[`특성 고정: assets-sample-week > renderHtml 출력 고정 1`] = `
+"<p style="margin:0 0 12px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">■ 주간 보고</p>
+<p style="margin:0 0 16px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">□ Date : 2026. 09. 21 ~ 2026. 09. 27</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #b7bcc2;width:960px;table-layout:fixed;"><colgroup><col style="width:125px"/><col style="width:130px"/><col style="width:145px"/><col style="width:510px"/><col style="width:50px"/></colgroup><thead><tr><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">일자</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">지원장소</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">고객사|작업구분</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">내용</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">기타</th></tr></thead><tbody><tr><td rowspan="3" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-21(월)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">MX(누리사옥)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">MX</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[MX] (누리사옥) (담당A) 백업 서버 점검으로 방문</div><div>1) 상황 :</div><div style="margin-left:16px;color:#6B7280;">&gt; 야간 백업 작업이 시간 안에 끝나지 않음</div><div style="margin-left:16px;color:#6B7280;">&gt; 백업 대상 폴더가 늘어 전송량이 두 배로 증가</div><div>2) 조치 및 안내사항 :</div><div style="margin-left:16px;color:#6B7280;">&gt; 백업 대상을 둘로 나눠 일정 분리</div><div style="margin-left:16px;color:#6B7280;">&gt; 다음 주 실행 결과 공유 요청</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사무실</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">MX</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[MX] (담당B/유선) 디스크 증설 절차 문의</div><div style="margin-left:16px;">-&gt; 운영 중 디스크를 늘릴 때 서비스 중단이 필요한지 확인 요청</div><div style="margin-left:16px;">&lt;- 아래와 같이 안내</div><div style="margin-left:32px;">1) 볼륨 확장은 서비스 중단 없이 가능</div><div style="margin-left:32px;">2) 파일시스템 확장 전 백업 권장</div><div style="margin-left:16px;font-weight:700;">*==&gt; 증설 체크리스트 문서화 필요</div><div style="height:10px;"></div><div style="font-weight:700;margin-bottom:4px;">[MX] (담당C/메일) 알림 메일 일부 미수신</div><div style="margin-left:16px;">-&gt; 일부 알림 메일이 도착하지 않음</div><div style="margin-left:16px;">&lt;- 메일 서버 수신 기록 공유 요청</div><div style="margin-left:16px;">-&gt; 기록 전달</div><div style="margin-left:16px;color:#B45309;">*&lt;- 기록 분석 후 회신 예정</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사무실</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">제조사문의</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[제조사문의] (기술지원/메일) 대시보드 내보내기 오류</div><div style="margin-left:16px;">&lt;- 내보내기 시 빈 파일이 만들어지는 현상 문의</div><div style="margin-left:16px;">-&gt; 다음 정기 릴리스 때 반영 예정</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="2" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-22(화)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사무실</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">제트플러스</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[제트플러스] (담당D/메일) 알림 분류 기능 개선 요청</div><div style="margin-left:16px;">-&gt; 담당 조직별 구분을 위한 기능 개선 2건 요청</div><div style="margin-left:16px;">1) 알림 본문에서 별도 변수 처리</div><div style="margin-left:32px;">&lt;- 제조사 문의 예정</div><div style="margin-left:16px;">2) 분류 이름 수정 기능</div><div style="margin-left:32px;">&lt;- 수정 가능 안내</div><div style="height:10px;"></div><div style="font-weight:700;margin-bottom:4px;">[제트플러스] (담당E/슬랙) 수집 서버 패치 파일 전달</div><div style="margin-left:16px;">&lt;- collector-x.y.z.tar.gz 전달</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사무실</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">미팅</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[미팅] MX·제트플러스 지원 건 내부 회의</div><div>1) 응답 지연 알림 기준 논의</div><div style="margin-left:16px;">&lt;- 기준값·설정 확인 요청</div><div>2) 서버 모니터링 수집 주기</div><div style="margin-left:16px;">&lt;- 최신 버전으로 업데이트 안내</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-23(수)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">휴가</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-24(목)<br/><span style="color:#C2410C;font-weight:600;">오후 반차</span></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사무실</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">테스트</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[테스트] 웹 점검 키워드 알림 테스트</div><div>- 다른 문자 인코딩 파일도 매칭 확인</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-25(금)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">원격</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">가나스토어</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[가나스토어] (담당F/메일) 패치 일정 협의</div><div style="margin-left:16px;">-&gt; 9/30 종일 패치 진행 가능 여부 문의</div><div style="margin-left:16px;">&lt;- 가능 안내, 작업 순서 공유</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr style="background:#FFCCCC;"><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;color:#B91C1C;font-weight:600;">2026-09-26(토)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td></tr><tr style="background:#FFCCCC;"><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;color:#B91C1C;font-weight:600;">2026-09-27(일)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td></tr></tbody></table>
+<p style="margin:18px 0 10px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">□ 일정 예정 (2026. 09. 28 ~ 2026. 10. 04)</p><table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #b7bcc2;width:525px;table-layout:fixed;"><colgroup><col style="width:125px"/><col/></colgroup><tbody><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-29(화)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">10:00 MX(주간미팅)</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-09-30(수)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">(종일) 가나스토어 패치</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-10-02(금)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">휴가</td></tr></tbody></table>"
+`;
+
+exports[`특성 고정: assets-sample-week > serialize∘parse 고정점 1`] = `
+"@PREV 2026-09-21 ~ 2026-09-27
+@CURRENT 2026-09-28 ~ 2026-10-04
+@AUTHOR 홍길동
+@PLAN 2026-09-29 10:00 MX(주간미팅)
+@PLAN 2026-09-30 (종일) 가나스토어 패치
+@PLAN 2026-10-02 휴가
+
+# 2026-09-21(월)
+@LOC MX(누리사옥)
+@CUS MX
+@SUM [MX] (누리사옥) (담당A) 백업 서버 점검으로 방문
+1) 상황 :
+> 야간 백업 작업이 시간 안에 끝나지 않음
+> 백업 대상 폴더가 늘어 전송량이 두 배로 증가
+2) 조치 및 안내사항 :
+> 백업 대상을 둘로 나눠 일정 분리
+> 다음 주 실행 결과 공유 요청
+
+@LOC 사무실
+@CUS MX
+@SUM [MX] (담당B/유선) 디스크 증설 절차 문의
+  -> 운영 중 디스크를 늘릴 때 서비스 중단이 필요한지 확인 요청
+  <- 아래와 같이 안내
+    1) 볼륨 확장은 서비스 중단 없이 가능
+    2) 파일시스템 확장 전 백업 권장
+  *==> 증설 체크리스트 문서화 필요
+
+@SUM [MX] (담당C/메일) 알림 메일 일부 미수신
+  -> 일부 알림 메일이 도착하지 않음
+  <- 메일 서버 수신 기록 공유 요청
+  -> 기록 전달
+  *<- 기록 분석 후 회신 예정
+
+@LOC 사무실
+@CUS 제조사문의
+@SUM [제조사문의] (기술지원/메일) 대시보드 내보내기 오류
+  <- 내보내기 시 빈 파일이 만들어지는 현상 문의
+  -> 다음 정기 릴리스 때 반영 예정
+
+# 2026-09-22(화)
+@LOC 사무실
+@CUS 제트플러스
+@SUM [제트플러스] (담당D/메일) 알림 분류 기능 개선 요청
+  -> 담당 조직별 구분을 위한 기능 개선 2건 요청
+  1) 알림 본문에서 별도 변수 처리
+    <- 제조사 문의 예정
+  2) 분류 이름 수정 기능
+    <- 수정 가능 안내
+
+@SUM [제트플러스] (담당E/슬랙) 수집 서버 패치 파일 전달
+  <- collector-x.y.z.tar.gz 전달
+
+@LOC 사무실
+@CUS 미팅
+@SUM [미팅] MX·제트플러스 지원 건 내부 회의
+1) 응답 지연 알림 기준 논의
+  <- 기준값·설정 확인 요청
+2) 서버 모니터링 수집 주기
+  <- 최신 버전으로 업데이트 안내
+
+# 2026-09-23(수)
+@LOC 휴가
+
+# 2026-09-24(목)
+@HALFDAY 오후 반차
+@LOC 사무실
+@CUS 테스트
+@SUM [테스트] 웹 점검 키워드 알림 테스트
+- 다른 문자 인코딩 파일도 매칭 확인
+
+# 2026-09-25(금)
+@LOC 원격
+@CUS 가나스토어
+@SUM [가나스토어] (담당F/메일) 패치 일정 협의
+  -> 9/30 종일 패치 진행 가능 여부 문의
+  <- 가능 안내, 작업 순서 공유
+
+# 2026-09-26(토)
+@HOLIDAY
+
+# 2026-09-27(일)
+@HOLIDAY
+"
+`;
+
+exports[`특성 고정: sample-week-04-27 > parseTolerant AST + 진단 고정 1`] = `
+{
+  "diagnostics": [],
+  "report": {
+    "authorName": "박민수",
+    "currentWeekRange": {
+      "end": "2026-05-08",
+      "start": "2026-05-04",
+    },
+    "days": [
+      {
+        "blocks": [
+          {
+            "customer": "남산 IDC",
+            "items": [
+              {
+                "client": "ABZ+",
+                "contact": "이영희",
+                "content": [
+                  {
+                    "details": [
+                      "Rocky 9, Ubuntu 22.04, Windows 각각 OS별 설치 가이드",
+                      "> Unix 계열은 가이드 이후 고객 측에서 직접 설치 예정",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "서버 모니터링 에이전트 설치 시연 및 가이드",
+                  },
+                ],
+                "srcLine": 8,
+                "workType": "신규 수집 서버 설치 완료 후, 후속 작업 진행 (PoC)",
+              },
+            ],
+            "locations": [
+              "남산 데이터센터",
+            ],
+            "srcLine": 6,
+          },
+        ],
+        "date": "2026-04-27",
+        "srcLine": 5,
+        "weekday": "월",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "남산 IDC",
+            "items": [
+              {
+                "channel": "유선&메일",
+                "client": "ABZ+",
+                "contact": "이영희",
+                "content": [
+                  {
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "out",
+                        "text": "재시작 전/후로 확인 및 진행해야 하는 절차 공유 요청",
+                      },
+                      {
+                        "kind": "in",
+                        "text": "재시작 이전) 관리 서비스 중단",
+                      },
+                      {
+                        "kind": "in",
+                        "text": "재기동 이후) 관리 서비스 실행",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 16,
+                "workType": "테스트 VM 2대 전원 종료 후 재기동 작업 예정",
+              },
+            ],
+            "locations": [
+              "한강 제트플러스 4F",
+            ],
+            "srcLine": 14,
+          },
+          {
+            "customer": "한강 관제 개발팀 / (네트워크 부문)",
+            "inheritLocation": true,
+            "items": [
+              {
+                "channel": "메일",
+                "client": "ABZ+",
+                "contact": "정다은",
+                "content": [
+                  {
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "수집서버, 관리 콘솔 관리자 계정 정보 공유",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 21,
+                "workType": "테스트 계정 정보 공유 및 방화벽 정보 요청",
+              },
+            ],
+            "locations": [
+              "한강 제트플러스 4F",
+            ],
+            "srcLine": 20,
+          },
+          {
+            "customer": "ABZ+ SRE",
+            "items": [
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "items": [
+                      "서버 프로세스 그룹화 스크립트 수정 및 공유",
+                    ],
+                    "kind": "bullets",
+                  },
+                ],
+                "srcLine": 26,
+                "workType": "파일 키워드 감시 이관 작업 지원",
+              },
+            ],
+            "locations": [
+              "한강SRE",
+              "서원SRE",
+            ],
+            "srcLine": 24,
+          },
+        ],
+        "date": "2026-04-29",
+        "srcLine": 13,
+        "weekday": "수",
+      },
+      {
+        "blocks": [],
+        "date": "2026-05-01",
+        "holiday": {
+          "reason": "근로자의 날",
+        },
+        "srcLine": 29,
+        "weekday": "금",
+      },
+    ],
+    "prevWeekRange": {
+      "end": "2026-05-03",
+      "start": "2026-04-27",
+    },
+  },
+}
+`;
+
+exports[`특성 고정: sample-week-04-27 > renderHtml 출력 고정 1`] = `
+"<p style="margin:0 0 12px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">■ 주간 보고</p>
+<p style="margin:0 0 16px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">□ Date : 2026. 04. 27 ~ 2026. 05. 03</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #b7bcc2;width:960px;table-layout:fixed;"><colgroup><col style="width:125px"/><col style="width:130px"/><col style="width:145px"/><col style="width:510px"/><col style="width:50px"/></colgroup><thead><tr><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">일자</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">지원장소</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">고객사|작업구분</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">내용</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">기타</th></tr></thead><tbody><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-04-27(월)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">남산 데이터센터</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">남산 IDC</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] (이영희) 신규 수집 서버 설치 완료 후, 후속 작업 진행 (PoC)</div><div>1) 서버 모니터링 에이전트 설치 시연 및 가이드</div><div style="margin-left:8px;">- Rocky 9, Ubuntu 22.04, Windows 각각 OS별 설치 가이드</div><div style="margin-left:16px;color:#6B7280;">&gt; Unix 계열은 가이드 이후 고객 측에서 직접 설치 예정</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="3" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-04-29(수)</td><td rowspan="2" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">한강 제트플러스 4F</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">남산 IDC</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] (이영희/유선&amp;메일) 테스트 VM 2대 전원 종료 후 재기동 작업 예정</div><div>&lt;- 재시작 전/후로 확인 및 진행해야 하는 절차 공유 요청</div><div>-&gt; 재시작 이전) 관리 서비스 중단</div><div>-&gt; 재기동 이후) 관리 서비스 실행</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">한강 관제 개발팀<br/>(네트워크 부문)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] (정다은/메일) 테스트 계정 정보 공유 및 방화벽 정보 요청</div><div>-&gt; 수집서버, 관리 콘솔 관리자 계정 정보 공유</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">한강SRE<br/>서원SRE</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">ABZ+ SRE</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 파일 키워드 감시 이관 작업 지원</div><div>- 서버 프로세스 그룹화 스크립트 수정 및 공유</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr style="background:#FFCCCC;"><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;color:#B91C1C;font-weight:600;">2026-05-01(금)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;"><span style="color:#B91C1C;font-weight:600;">근로자의 날</span></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td></tr></tbody></table>"
+`;
+
+exports[`특성 고정: sample-week-04-27 > serialize∘parse 고정점 1`] = `
+"@PREV 2026-04-27 ~ 2026-05-03
+@CURRENT 2026-05-04 ~ 2026-05-08
+@AUTHOR 박민수
+
+# 2026-04-27(월)
+@LOC 남산 데이터센터
+@CUS 남산 IDC
+@SUM [ABZ+] (이영희) 신규 수집 서버 설치 완료 후, 후속 작업 진행 (PoC)
+1) 서버 모니터링 에이전트 설치 시연 및 가이드
+- Rocky 9, Ubuntu 22.04, Windows 각각 OS별 설치 가이드
+> Unix 계열은 가이드 이후 고객 측에서 직접 설치 예정
+
+# 2026-04-29(수)
+@LOC 한강 제트플러스 4F
+@CUS 남산 IDC
+@SUM [ABZ+] (이영희/유선&메일) 테스트 VM 2대 전원 종료 후 재기동 작업 예정
+<- 재시작 전/후로 확인 및 진행해야 하는 절차 공유 요청
+-> 재시작 이전) 관리 서비스 중단
+-> 재기동 이후) 관리 서비스 실행
+
+@CUS 한강 관제 개발팀 / (네트워크 부문)
+@SUM [ABZ+] (정다은/메일) 테스트 계정 정보 공유 및 방화벽 정보 요청
+-> 수집서버, 관리 콘솔 관리자 계정 정보 공유
+
+@LOC 한강SRE / 서원SRE
+@CUS ABZ+ SRE
+@SUM [ABZ+] 파일 키워드 감시 이관 작업 지원
+- 서버 프로세스 그룹화 스크립트 수정 및 공유
+
+# 2026-05-01(금)
+@HOLIDAY 근로자의 날
+"
+`;
+
+exports[`특성 고정: week-05-11 > parseTolerant AST + 진단 고정 1`] = `
+{
+  "diagnostics": [],
+  "report": {
+    "authorName": "박민수",
+    "currentWeekRange": {
+      "end": "2026-05-22",
+      "start": "2026-05-18",
+    },
+    "days": [
+      {
+        "blocks": [
+          {
+            "customer": "ABZ+",
+            "items": [
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "details": [
+                      "서버 목록 csv를 읽어 남은 일수를 한 줄씩 출력",
+                      "> 사용방법 : ./cert_check.sh servers.csv --days 30",
+                      "> 30일 이하로 남은 서버만 따로 표시",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "웹 서버 인증서 만료일을 모아 보는 스크립트(cert_check.sh) 작성",
+                  },
+                  {
+                    "details": [
+                      "이번 달 안에 갱신이 필요한 서버 3대 목록 전달",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "만료 임박 서버 목록 공유",
+                  },
+                ],
+                "srcLine": 8,
+                "workType": "인증서 만료 점검 스크립트 작성 및 공유",
+              },
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "details": [
+                      "복원 대상·소요 시간·확인 항목을 표로 정리",
+                      "> 복원 시험은 매주 수요일 오전에 진행",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "주간 백업 복원 시험 절차 문서화",
+                  },
+                ],
+                "srcLine": 17,
+                "workType": "백업 검증 절차 정리",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 6,
+          },
+        ],
+        "date": "2026-05-11",
+        "srcLine": 5,
+        "weekday": "월",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "MX",
+            "items": [
+              {
+                "client": "MX",
+                "content": [
+                  {
+                    "details": [
+                      "서비스 4개 화면을 한 장에 배치",
+                      "> 기준선 : 평균 응답 300ms, 넘으면 노란색 표시",
+                      "화면 공유 링크 전달",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "운영팀 요청으로 서비스별 응답 시간 대시보드 구성",
+                  },
+                  {
+                    "details": [
+                      "조회 전용 계정 2개 추가 → 편집 권한은 운영 담당자만",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "대시보드 권한 정리",
+                  },
+                ],
+                "srcLine": 25,
+                "workType": "대시보드 구성 요청 처리",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 23,
+          },
+        ],
+        "date": "2026-05-12",
+        "srcLine": 22,
+        "weekday": "화",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "ABZ+",
+            "items": [
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "details": [
+                      "30일 지난 로그는 압축, 90일 지난 압축본은 삭제",
+                      "> 기준 적용 전 사용량 82% → 적용 후 54%",
+                      "시험 서버 1대에 먼저 적용",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "로그 보관 기준 정리",
+                  },
+                  {
+                    "details": [
+                      "매일 새벽 3시에 실행되도록 등록",
+                      "> 실행 결과는 메일로 요약 | 실패 시 담당자에게 알림",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "정리 스크립트 예약 실행 등록",
+                  },
+                ],
+                "srcLine": 37,
+                "workType": "디스크 정리 작업 — 오래된 로그 압축·삭제 기준 적용",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 35,
+          },
+        ],
+        "date": "2026-05-13",
+        "srcLine": 34,
+        "weekday": "수",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "ABZ+",
+            "items": [
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "details": [
+                      "인사 목록과 맞지 않는 계정 5개 확인",
+                      "> 사용하지 않은 지 90일이 지난 계정은 잠금 처리",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "관리 콘솔 계정 목록 대조",
+                  },
+                  {
+                    "details": [
+                      "요청 양식과 승인 담당자 안내",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "잠금 해제 요청 절차 안내",
+                  },
+                ],
+                "srcLine": 50,
+                "workType": "계정 정리 — 퇴사·이동 인원 계정 점검",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 48,
+          },
+        ],
+        "date": "2026-05-14",
+        "srcLine": 47,
+        "weekday": "목",
+      },
+      {
+        "blocks": [
+          {
+            "customer": "관제 개발팀",
+            "items": [
+              {
+                "channel": "메일",
+                "client": "ABZ+",
+                "contact": "정다은",
+                "content": [
+                  {
+                    "details": [],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "일부 알림 메일이 오지 않는다는 문의",
+                  },
+                  {
+                    "kind": "dialog",
+                    "turns": [
+                      {
+                        "kind": "in",
+                        "text": "받은 편지함 대신 스팸함으로 분류된 메일 확인 요청",
+                      },
+                      {
+                        "kind": "out",
+                        "text": "발신 주소를 허용 목록에 추가하도록 안내, 추가 회신 요청",
+                      },
+                    ],
+                  },
+                ],
+                "srcLine": 61,
+                "workType": "알림 메일 미수신 문의",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 59,
+          },
+          {
+            "customer": "ABZ+",
+            "inheritLocation": true,
+            "items": [
+              {
+                "client": "ABZ+",
+                "content": [
+                  {
+                    "details": [
+                      "점검 대상 서버 12대, 이틀에 나눠 진행",
+                      "> 1일 차 (서버 6대)",
+                      "> 2일 차 (서버 6대)",
+                    ],
+                    "index": 1,
+                    "kind": "numbered",
+                    "title": "정기 점검 대상과 순서 확정",
+                  },
+                  {
+                    "details": [
+                      "디스크·메모리 사용량, 최근 오류 로그, 백업 성공 여부",
+                    ],
+                    "index": 2,
+                    "kind": "numbered",
+                    "title": "점검 전 확인 항목 공유",
+                  },
+                ],
+                "srcLine": 67,
+                "workType": "다음 주 점검 일정 정리",
+              },
+            ],
+            "locations": [
+              "사내",
+            ],
+            "srcLine": 66,
+          },
+        ],
+        "date": "2026-05-15",
+        "srcLine": 58,
+        "weekday": "금",
+      },
+      {
+        "blocks": [],
+        "date": "2026-05-16",
+        "holiday": {
+          "reason": "",
+        },
+        "srcLine": 76,
+        "weekday": "토",
+      },
+      {
+        "blocks": [],
+        "date": "2026-05-17",
+        "holiday": {
+          "reason": "",
+        },
+        "srcLine": 79,
+        "weekday": "일",
+      },
+    ],
+    "prevWeekRange": {
+      "end": "2026-05-17",
+      "start": "2026-05-11",
+    },
+  },
+}
+`;
+
+exports[`특성 고정: week-05-11 > renderHtml 출력 고정 1`] = `
+"<p style="margin:0 0 12px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">■ 주간 보고</p>
+<p style="margin:0 0 16px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;">□ Date : 2026. 05. 11 ~ 2026. 05. 17</p>
+<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #b7bcc2;width:960px;table-layout:fixed;"><colgroup><col style="width:125px"/><col style="width:130px"/><col style="width:145px"/><col style="width:510px"/><col style="width:50px"/></colgroup><thead><tr><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">일자</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">지원장소</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">고객사|작업구분</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">내용</th><th style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#dde0e3;font-weight:600;text-align:center;color:#111827;">기타</th></tr></thead><tbody><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-05-11(월)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사내</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">ABZ+</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 인증서 만료 점검 스크립트 작성 및 공유</div><div>1) 웹 서버 인증서 만료일을 모아 보는 스크립트(cert_check.sh) 작성</div><div style="margin-left:8px;">- 서버 목록 csv를 읽어 남은 일수를 한 줄씩 출력</div><div style="margin-left:16px;color:#6B7280;">&gt; 사용방법 : ./cert_check.sh servers.csv --days 30</div><div style="margin-left:16px;color:#6B7280;">&gt; 30일 이하로 남은 서버만 따로 표시</div><div>2) 만료 임박 서버 목록 공유</div><div style="margin-left:8px;">- 이번 달 안에 갱신이 필요한 서버 3대 목록 전달</div><div style="height:10px;"></div><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 백업 검증 절차 정리</div><div>1) 주간 백업 복원 시험 절차 문서화</div><div style="margin-left:8px;">- 복원 대상·소요 시간·확인 항목을 표로 정리</div><div style="margin-left:16px;color:#6B7280;">&gt; 복원 시험은 매주 수요일 오전에 진행</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-05-12(화)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사내</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">MX</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[MX] 대시보드 구성 요청 처리</div><div>1) 운영팀 요청으로 서비스별 응답 시간 대시보드 구성</div><div style="margin-left:8px;">- 서비스 4개 화면을 한 장에 배치</div><div style="margin-left:16px;color:#6B7280;">&gt; 기준선 : 평균 응답 300ms, 넘으면 노란색 표시</div><div style="margin-left:8px;">- 화면 공유 링크 전달</div><div>2) 대시보드 권한 정리</div><div style="margin-left:8px;">- 조회 전용 계정 2개 추가 → 편집 권한은 운영 담당자만</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-05-13(수)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사내</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">ABZ+</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 디스크 정리 작업 — 오래된 로그 압축·삭제 기준 적용</div><div>1) 로그 보관 기준 정리</div><div style="margin-left:8px;">- 30일 지난 로그는 압축, 90일 지난 압축본은 삭제</div><div style="margin-left:16px;color:#6B7280;">&gt; 기준 적용 전 사용량 82% → 적용 후 54%</div><div style="margin-left:8px;">- 시험 서버 1대에 먼저 적용</div><div>2) 정리 스크립트 예약 실행 등록</div><div style="margin-left:8px;">- 매일 새벽 3시에 실행되도록 등록</div><div style="margin-left:16px;color:#6B7280;">&gt; 실행 결과는 메일로 요약 | 실패 시 담당자에게 알림</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="1" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-05-14(목)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사내</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">ABZ+</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 계정 정리 — 퇴사·이동 인원 계정 점검</div><div>1) 관리 콘솔 계정 목록 대조</div><div style="margin-left:8px;">- 인사 목록과 맞지 않는 계정 5개 확인</div><div style="margin-left:16px;color:#6B7280;">&gt; 사용하지 않은 지 90일이 지난 계정은 잠금 처리</div><div>2) 잠금 해제 요청 절차 안내</div><div style="margin-left:8px;">- 요청 양식과 승인 담당자 안내</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td rowspan="2" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">2026-05-15(금)</td><td rowspan="2" style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">사내</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">관제 개발팀</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] (정다은/메일) 알림 메일 미수신 문의</div><div>1) 일부 알림 메일이 오지 않는다는 문의</div><div>-&gt; 받은 편지함 대신 스팸함으로 분류된 메일 확인 요청</div><div>&lt;- 발신 주소를 허용 목록에 추가하도록 안내, 추가 회신 요청</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">ABZ+</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;"><div style="font-weight:700;margin-bottom:4px;">[ABZ+] 다음 주 점검 일정 정리</div><div>1) 정기 점검 대상과 순서 확정</div><div style="margin-left:8px;">- 점검 대상 서버 12대, 이틀에 나눠 진행</div><div style="margin-left:16px;color:#6B7280;">&gt; 1일 차 (서버 6대)</div><div style="margin-left:16px;color:#6B7280;">&gt; 2일 차 (서버 6대)</div><div>2) 점검 전 확인 항목 공유</div><div style="margin-left:8px;">- 디스크·메모리 사용량, 최근 오류 로그, 백업 성공 여부</div></td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;">　</td></tr><tr style="background:#FFCCCC;"><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;color:#B91C1C;font-weight:600;">2026-05-16(토)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td></tr><tr style="background:#FFCCCC;"><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;color:#B91C1C;font-weight:600;">2026-05-17(일)</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:middle;text-align:center;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td><td style="border:1px solid #b7bcc2;padding:8px 10px;vertical-align:top;font-family:'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;font-size:13px;line-height:1.55;letter-spacing:-0.01em;color:#1f2937;word-break:keep-all;overflow-wrap:break-word;font-variant-ligatures:none;background:#FFCCCC;">　</td></tr></tbody></table>"
+`;
+
+exports[`특성 고정: week-05-11 > serialize∘parse 고정점 1`] = `
+"@PREV 2026-05-11 ~ 2026-05-17
+@CURRENT 2026-05-18 ~ 2026-05-22
+@AUTHOR 박민수
+
+# 2026-05-11(월)
+@LOC 사내
+@CUS ABZ+
+@SUM [ABZ+] 인증서 만료 점검 스크립트 작성 및 공유
+1) 웹 서버 인증서 만료일을 모아 보는 스크립트(cert_check.sh) 작성
+- 서버 목록 csv를 읽어 남은 일수를 한 줄씩 출력
+> 사용방법 : ./cert_check.sh servers.csv --days 30
+> 30일 이하로 남은 서버만 따로 표시
+2) 만료 임박 서버 목록 공유
+- 이번 달 안에 갱신이 필요한 서버 3대 목록 전달
+
+@SUM [ABZ+] 백업 검증 절차 정리
+1) 주간 백업 복원 시험 절차 문서화
+- 복원 대상·소요 시간·확인 항목을 표로 정리
+> 복원 시험은 매주 수요일 오전에 진행
+
+# 2026-05-12(화)
+@LOC 사내
+@CUS MX
+@SUM [MX] 대시보드 구성 요청 처리
+1) 운영팀 요청으로 서비스별 응답 시간 대시보드 구성
+- 서비스 4개 화면을 한 장에 배치
+> 기준선 : 평균 응답 300ms, 넘으면 노란색 표시
+- 화면 공유 링크 전달
+2) 대시보드 권한 정리
+- 조회 전용 계정 2개 추가 → 편집 권한은 운영 담당자만
+
+# 2026-05-13(수)
+@LOC 사내
+@CUS ABZ+
+@SUM [ABZ+] 디스크 정리 작업 — 오래된 로그 압축·삭제 기준 적용
+1) 로그 보관 기준 정리
+- 30일 지난 로그는 압축, 90일 지난 압축본은 삭제
+> 기준 적용 전 사용량 82% → 적용 후 54%
+- 시험 서버 1대에 먼저 적용
+2) 정리 스크립트 예약 실행 등록
+- 매일 새벽 3시에 실행되도록 등록
+> 실행 결과는 메일로 요약 | 실패 시 담당자에게 알림
+
+# 2026-05-14(목)
+@LOC 사내
+@CUS ABZ+
+@SUM [ABZ+] 계정 정리 — 퇴사·이동 인원 계정 점검
+1) 관리 콘솔 계정 목록 대조
+- 인사 목록과 맞지 않는 계정 5개 확인
+> 사용하지 않은 지 90일이 지난 계정은 잠금 처리
+2) 잠금 해제 요청 절차 안내
+- 요청 양식과 승인 담당자 안내
+
+# 2026-05-15(금)
+@LOC 사내
+@CUS 관제 개발팀
+@SUM [ABZ+] (정다은/메일) 알림 메일 미수신 문의
+1) 일부 알림 메일이 오지 않는다는 문의
+-> 받은 편지함 대신 스팸함으로 분류된 메일 확인 요청
+<- 발신 주소를 허용 목록에 추가하도록 안내, 추가 회신 요청
+
+@CUS ABZ+
+@SUM [ABZ+] 다음 주 점검 일정 정리
+1) 정기 점검 대상과 순서 확정
+- 점검 대상 서버 12대, 이틀에 나눠 진행
+> 1일 차 (서버 6대)
+> 2일 차 (서버 6대)
+2) 점검 전 확인 항목 공유
+- 디스크·메모리 사용량, 최근 오류 로그, 백업 성공 여부
+
+# 2026-05-16(토)
+@HOLIDAY
+
+# 2026-05-17(일)
+@HOLIDAY
+"
+`;

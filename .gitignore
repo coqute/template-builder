@@ -1,12 +1,32 @@
+# 빌드·설치 산출물
 node_modules/
 dist/
 dist-electron/
 release/
 .vite/
+coverage/
+*.tsbuildinfo
 *.log
 .DS_Store
-.env
-.env.local
-*.tsbuildinfo
-coverage/
+
+# 실측·도구 작업 폴더
 .ai-live/
+.claude/
+
+# 비밀값·환경 파일
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+client_secret*.json
+token*.json
+secrets*.json
+
+# 실데이터·비공개 사전 — 저장소 밖에 둔다 (공개 검사 scripts/public-guard.mjs가 경로·내용을 한 번 더 막는다)
+*redact*.json
+guard-terms*.json
+tests/fixtures/real-*
+*.local.*
