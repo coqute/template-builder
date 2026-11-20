@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # 앱 대상이 Windows 데스크톱이라 같은 OS에서 확인한다
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      # 테스트·타입 검사에는 Electron 실행 파일이 필요 없다
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # 비공개 사전은 저장소 밖에만 있다 — CI는 일반 패턴(메일·IP·코드 모양 값·경로·이름 모양)만 검사한다
+      - name: Public guard (general patterns)
+        run: node scripts/public-guard.mjs --tree . --no-terms --lines

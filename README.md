@@ -40,7 +40,7 @@ electron/
   ai*.ts       LLM API 스트리밍 호출·진행 표시·비용 계산
   atomic.ts · secure-store.ts · dialog-dir.ts   원자적 쓰기·OS 암호화 저장·대화상자 폴더 기억
 scripts/       아이콘 빌드, Windows 설치본 갱신, 주간보고 검증 CLI, 공개 검사
-tests/         Vitest 46개 파일 · 563개 테스트 (fixture는 합성 데이터, 실제 설정 값 확인 1개는 이 사본에서 건너뜀)
+tests/         Vitest 단위·통합 테스트 (fixture는 합성 데이터, 실제 설정 값 확인 1개는 이 사본에서 건너뜀)
 ```
 
 주간보고 문법은 `assets/sample-week.md`(합성 예시)와 `src/core/grammar.ts`, 검증 규칙은 `src/core/validator.ts`에 있습니다.
@@ -96,3 +96,5 @@ npm run guard:history    # 모든 커밋
 | 0.13.3 | 비주얼 편집 — 항목을 목록/대화로 만들고 줄 단위로 바꾸기 |
 
 빠진 버전(0.8~0.11의 나머지, 0.14)은 이 사본에서 뺀 개인 문서 기능의 변경입니다.
+
+이후 변경은 원본에서 공개 규칙을 거쳐 `sync:` 커밋으로 반영됩니다(GitHub Actions에서 타입 검사·테스트·공개 검사).
