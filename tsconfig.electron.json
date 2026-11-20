@@ -7,7 +7,7 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist-electron",
-    "rootDir": "./electron",
+    "rootDir": ".",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,

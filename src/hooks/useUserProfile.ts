@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
-  DEFAULT_COMPANY,
+  defaultCompany,
   loadUserProfile,
   saveUserProfile,
   type UserProfile,
@@ -19,7 +19,7 @@ export function useUserProfile(): {
       ...next,
       name: next.name.trim(),
       email: next.email.trim(),
-      company: next.company.trim() || DEFAULT_COMPANY,
+      company: next.company.trim() || defaultCompany(),
     };
     saveUserProfile(clean); // 동기 저장 → 이후 렌더의 loadUserProfile()도 최신값
     setProfileState(clean);
