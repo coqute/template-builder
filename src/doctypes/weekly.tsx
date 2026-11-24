@@ -319,7 +319,8 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     // 홈과 다른 기간을 읽는다 — 홈이 견줄 기준(마지막으로 읽은 일정)을 덮지 않게 한 번 쓰고 버리는 읽기로
     const r = await api.calendarEvents({ from: range.start, to: range.end, calendars: s?.settings.calendars ?? ['primary'], transient: true });
     if (!r.ok) return void toast.error(`달력을 읽지 못했습니다: ${r.message}`);
-    const events = classifyEvents(r.events, { hiddenEvents: s?.hiddenEvents, hiddenTitles: s?.hiddenTitles });
+    // 남의 달력(동료 등)의 일정은 내 일정 예정이 아니다
+    const events = classifyEvents(r.events, { hiddenEvents: s?.hiddenEvents, hiddenTitles: s?.hiddenTitles }).filter((e) => !e.other);
     const have = report.plans ?? [];
     const add = plansFromEvents(events, range).filter((p) => !have.some((h) => h.date === p.date && h.text.trim() === p.text));
     if (add.length === 0) return void toast.info(`${range.start} ~ ${range.end}에 새로 넣을 달력 일정이 없습니다.`);

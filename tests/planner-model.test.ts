@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorklogEntry, WorklogSaveRequest } from '../electron/worklog-types';
 import type { PlannerApi } from '../src/planner/api';
 import { classifyEvents, detectClient, diffEvents, eventsOn, kindOf } from '../src/planner/classify';
+import { addDays } from '../src/planner/dates';
 import { agendaDays, bucketOf, buildStrip, closedInWorklog, groupTasks, recentPastEvents, summarize, visibleCandidates, waitingDays } from '../src/planner/model';
 import { applyOp, emptyState, newTaskId } from '../src/planner/ops';
 import { insertPlanLines, plansFromEvents, scanWeekly } from '../src/planner/sources/weekly';
@@ -291,5 +292,76 @@ describe('일지에 덧붙이기 (worklogWrite.ts)', () => {
     expect(files['[2026-11-20] MX 주간 미팅.txt']).toBe('[2026-11-20] MX 주간 미팅\n\n■ MX 주간 미팅 회의 (캘린더 일정)\n');
     const again = await appendToWorklog(api, { folder: 'AB Z+ 작업', date: '2026-11-20', title: 'MX 주간 미팅', block: '■ MX 주간 미팅 회의 (캘린더 일정)', skipIfEventExists: true });
     expect(again).toMatchObject({ ok: false, duplicate: true });
+  });
+});
+
+// 2026-11-24 — 설계 §5.4(반차는 시각과 함께)·§5.5(동료 달력은 띠에 옅게)
+describe('2주 띠 — 반차와 남의 달력', () => {
+  const TODAY = '2026-11-24';
+  const raw = (id: string, summary: string, date: string, extra: Partial<RawEvent> = {}): RawEvent => ({
+    calendarId: 'primary',
+    id,
+    summary,
+    location: '',
+    allDay: false,
+    start: new Date(`${date}T10:00:00`).toISOString(),
+    end: new Date(`${date}T11:00:00`).toISOString(),
+    status: 'confirmed',
+    eventType: 'default',
+    htmlLink: '',
+    meet: false,
+    declined: false,
+    holiday: false,
+    canWrite: true,
+    updated: '',
+    ...extra,
+  });
+  const allDay = (date: string) => ({ allDay: true, start: date, end: addDays(date, 1) });
+
+  it('반차는 빨간 줄에 시각과 함께 나오고, 그날을 쉬는 날로 칠하지 않는다', () => {
+    const events = classifyEvents([
+      raw('half', '오후 반차', '2026-11-25', { start: new Date('2026-11-25T14:00:00').toISOString(), end: new Date('2026-11-25T18:00:00').toISOString() }),
+      raw('full', '휴가', '2026-11-26', allDay('2026-11-26')),
+    ]);
+    const [week] = buildStrip(TODAY, events, []);
+    const day = (date: string) => week.find((d) => d.date === date)!;
+    expect(day('2026-11-25')).toMatchObject({ off: '14:00 오후 반차', offPart: true });
+    expect(day('2026-11-26')).toMatchObject({ off: '휴가', offPart: false });
+    expect(day('2026-11-27')).toMatchObject({ off: '', offPart: false });
+  });
+
+  it('같은 날 종일 휴가와 반차가 함께 있으면 종일 휴가가 그날의 표시다', () => {
+    const events = classifyEvents([
+      raw('half', '오전 반차', '2026-11-26', { start: new Date('2026-11-26T09:00:00').toISOString(), end: new Date('2026-11-26T13:00:00').toISOString() }),
+      raw('full', '연차', '2026-11-26', allDay('2026-11-26')),
+    ]);
+    expect(buildStrip(TODAY, events, [])[0].find((d) => d.date === '2026-11-26')).toMatchObject({ off: '휴가', offPart: false });
+  });
+
+  it('남의 달력의 일정은 띠에만 옅게 — 내 일정 수·다음 일정·목록·지난 일정에는 넣지 않는다', () => {
+    const other = { calendarId: 'damdang-a@example.com', other: true, calendarName: '담당A', canWrite: false };
+    const events = classifyEvents([
+      raw('mine', 'MX 주간 미팅', '2026-11-26'),
+      raw('team', '가나스토어 정기점검', '2026-11-25', other),
+      raw('team-off', '휴가', '2026-11-27', { ...other, ...allDay('2026-11-27') }),
+      raw('team-past', '지난 현장 작업', '2026-11-20', other),
+    ]);
+    expect(events.find((e) => e.key.endsWith('/team'))).toMatchObject({ other: true, owner: '담당A' });
+    expect(events.find((e) => e.key.endsWith('/mine'))).not.toHaveProperty('other');
+
+    const [week] = buildStrip(TODAY, events, []);
+    const day = (date: string) => week.find((d) => d.date === date)!;
+    expect(day('2026-11-25').events).toEqual([]);
+    expect(day('2026-11-25').others.map((e) => `${e.owner} ${e.title}`)).toEqual(['담당A 가나스토어 정기점검']);
+    // 동료의 휴가는 내 휴가 표시(빨간 줄)가 되지 않는다
+    expect(day('2026-11-27')).toMatchObject({ off: '', offPart: false });
+    expect(day('2026-11-27').others.map((e) => e.title)).toEqual(['휴가']);
+    expect(day('2026-11-26').events.map((e) => e.title)).toEqual(['MX 주간 미팅']);
+
+    const summary = summarize(TODAY, groupTasks([], TODAY), events);
+    expect(summary).toMatchObject({ weekEvents: 1, todayEvents: 0 });
+    expect(summary.next?.title).toBe('MX 주간 미팅'); // 더 가까운 동료 일정(11/25)이 아니라 내 일정
+    expect(agendaDays(TODAY, events).flatMap((d) => d.events.map((e) => e.title))).toEqual(['MX 주간 미팅']);
+    expect(recentPastEvents(TODAY, events)).toEqual([]);
   });
 });

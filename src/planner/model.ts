@@ -85,10 +85,14 @@ export interface StripDay {
   weekend: boolean;
   /** 근무 위치 (작게) */
   place: string;
-  /** 휴가·공휴일 이름 (빨간 줄) */
+  /** 휴가·공휴일 이름 (빨간 줄) — 반차처럼 시각이 있는 휴가는 시각과 함께 */
   off: string;
-  /** 회의·작업 */
+  /** 시각이 있는 휴가(반차)다 — 빨간 줄은 긋되 그날 전체를 쉬는 날로 칠하지 않는다 */
+  offPart: boolean;
+  /** 내 회의·작업 */
   events: HomeEvent[];
+  /** 남의 달력의 일정 (동료의 휴가·현장 일정) — 옅게 */
+  others: HomeEvent[];
   /** 그날이 기한인 열린 할 일 수 */
   due: number;
   /** 오늘 칸에만 — 기한 지난 할 일 수 */
@@ -102,16 +106,20 @@ export function buildStrip(today: string, events: readonly HomeEvent[], open: re
   const week = (from: string): StripDay[] =>
     Array.from({ length: 7 }, (_, i) => {
       const date = addDays(from, i);
-      const day = eventsOn(events, date);
-      const off = day.find((e) => e.kind === 'holiday') ?? day.find((e) => e.kind === 'leave');
+      const all = eventsOn(events, date);
+      const day = all.filter((e) => !e.other);
+      const off = day.find((e) => e.kind === 'holiday') ?? day.find((e) => e.kind === 'leave' && e.allDay) ?? day.find((e) => e.kind === 'leave');
+      const part = !!off && off.kind === 'leave' && !off.allDay;
       return {
         date,
         past: date < today,
         today: date === today,
         weekend: i > 4,
         place: day.find((e) => e.kind === 'place')?.title ?? '',
-        off: off ? (off.kind === 'holiday' ? off.title : off.allDay ? '휴가' : off.title) : '',
+        off: off ? (off.kind === 'holiday' ? off.title : off.allDay ? '휴가' : `${off.startTime} ${off.title}`.trim()) : '',
+        offPart: part,
         events: day.filter(isAgendaEvent),
+        others: all.filter((e) => e.other && e.kind !== 'place' && e.kind !== 'holiday'),
         due: open.filter((t) => t.due === date).length,
         late: date === today ? late : 0,
       };
@@ -150,7 +158,7 @@ export function agendaDays(today: string, events: readonly HomeEvent[]): Array<{
   const end = addDays(mondayOf(today), 13);
   const out: Array<{ date: string; events: HomeEvent[] }> = [];
   for (const e of events) {
-    if (e.kind === 'place' || e.endDate < today || e.date > end) continue;
+    if (e.other || e.kind === 'place' || e.endDate < today || e.date > end) continue;
     const date = e.date < today ? today : e.date;
     const last = out[out.length - 1];
     if (last && last.date === date) last.events.push(e);

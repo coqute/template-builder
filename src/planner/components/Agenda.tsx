@@ -57,10 +57,11 @@ export function Agenda({ today, days, past, cal, changes, linked, focus, flash, 
     const off = e.kind === 'leave' || e.kind === 'holiday';
     const dim = !!focus && !(e.date <= focus && focus <= e.endDate);
     return (
-      <div key={`${e.key}@${date}`}>
+      <div key={`${e.key}@${date}`} className="hm-agw">
+        <div className={cx('hm-agr', dim && 'is-dim', flash === e.key && 'is-flash')}>
         <button
           type="button"
-          className={cx('hm-ag', off && 'is-off', dim && 'is-dim', flash === e.key && 'is-flash')}
+          className={cx('hm-ag', off && 'is-off')}
           aria-expanded={open === e.key}
           aria-label={`${mdw(date)} ${e.allDay ? '종일' : e.startTime} ${e.title}${what ? ' — 바뀜' : ''}`}
           data-event={e.key}
@@ -87,24 +88,29 @@ export function Agenda({ today, days, past, cal, changes, linked, focus, flash, 
                 {e.location && <span>· {e.location}</span>}
                 {e.source === 'plan' && <span>· 주간보고 일정 예정</span>}
                 {e.recurring && <span>· 반복</span>}
-                {linked.has(e.key) && <span>· 일지와 이어짐</span>}
               </span>
             )}
           </span>
         </button>
+        {/* 설계 §6.4 — 달력·일지로 가는 길은 줄에 바로 둔다(펼치지 않아도 보인다) */}
+        {(e.htmlLink || linked.has(e.key)) && (
+          <span className="hm-ag-l">
+            {linked.has(e.key) && (
+              <button type="button" className="hm-org" aria-label={`이어진 일지 사안 열기 — ${e.title}`} title="작업일지 탭에서 이어진 사안을 엽니다" onClick={() => actions.openCase(e)}>
+                일지 ↗
+              </button>
+            )}
+            {e.htmlLink && (
+              <button type="button" className="hm-org" aria-label={`달력에서 열기 — ${e.title}`} title="Google 달력에서 이 일정을 엽니다" onClick={() => actions.open(e)}>
+                달력 ↗
+              </button>
+            )}
+          </span>
+        )}
+        </div>
         {open === e.key && (
           <div className="hm-ag-acts">
             {e.source === 'plan' && <span className="hm-note">주간보고의 일정 예정(@PLAN)에 적어 둔 일정입니다 — 달력에는 없습니다. 주간보고 탭에서 고칩니다.</span>}
-            {e.htmlLink && (
-              <button type="button" className="hm-mini" onClick={() => actions.open(e)}>
-                달력에서 열기 ↗
-              </button>
-            )}
-            {linked.has(e.key) && (
-              <button type="button" className="hm-mini" onClick={() => actions.openCase(e)}>
-                이어진 일지 사안 ↗
-              </button>
-            )}
             {pastRow && canLog && !off && (
               <button type="button" className="hm-mini" onClick={() => actions.toWorklog(e)} title="그날 작업일지 끝에 ■ 회의 블록 초안을 덧붙입니다 (이미 있으면 쓰지 않음)">
                 일지에 회의 블록으로

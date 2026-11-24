@@ -163,6 +163,8 @@ export interface CalendarInfo {
   canWrite: boolean;
   /** 공휴일 달력인가 */
   holiday: boolean;
+  /** 내 달력인가 — 본인 달력이거나 내가 만든 달력. 아니면 남의 달력(동료 등)이다 */
+  mine: boolean;
 }
 
 /** 달력에서 읽은 일정 — 분류(회의·작업·휴가…)는 renderer의 classify.ts가 한다 */
@@ -192,6 +194,10 @@ export interface RawEvent {
   updated: string;
   /** 반복 일정의 한 회차다 — 고치거나 지우면 그 회차만 바뀐다 (아니면 칸이 없다) */
   recurring?: boolean;
+  /** 남의 달력(동료 등)의 일정이다 — 2주 띠에만 옅게 보이고 내 일정 수·다음 일정·목록에는 넣지 않는다 (아니면 칸이 없다) */
+  other?: boolean;
+  /** 그 달력의 이름 — 누구 일정인지 보이는 데 쓴다 (남의 달력일 때만) */
+  calendarName?: string;
 }
 
 export interface CalendarEventsRequest {

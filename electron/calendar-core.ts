@@ -208,6 +208,7 @@ export async function listCalendars(deps: CalendarDeps): Promise<CalendarListRes
           summary: c.summaryOverride || c.summary || '',
           primary: c.primary === true,
           canWrite: c.accessRole === 'owner' || c.accessRole === 'writer',
+          mine: c.primary === true || c.accessRole === 'owner',
           holiday: c.id.includes(HOLIDAY_MARK),
         });
       }
@@ -243,7 +244,16 @@ interface GEvent {
 }
 
 /** 응답의 일정 하나를 RawEvent로 — 취소된 일정과 시작 시각이 없는 것은 버린다(null) */
-function toRawEvent(calendarId: string, e: GEvent | null, cal: { canWrite: boolean; holiday: boolean }): RawEvent | null {
+interface CalendarFlags {
+  canWrite: boolean;
+  holiday: boolean;
+  /** 남의 달력인가 (동료 등) */
+  other?: boolean;
+  /** 달력 이름 — 남의 달력일 때 누구 것인지 보이는 데 쓴다 */
+  name?: string;
+}
+
+function toRawEvent(calendarId: string, e: GEvent | null, cal: CalendarFlags): RawEvent | null {
   if (!e || typeof e.id !== 'string' || !e.id || e.status === 'cancelled') return null;
   const allDay = typeof e.start?.date === 'string';
   const start = allDay ? e.start?.date : e.start?.dateTime;
@@ -273,6 +283,8 @@ function toRawEvent(calendarId: string, e: GEvent | null, cal: { canWrite: boole
     updated: typeof e.updated === 'string' ? e.updated : '',
     // 반복 일정의 한 회차 — 고치거나 지우면 그 회차만 바뀐다
     ...(typeof e.recurringEventId === 'string' && e.recurringEventId ? { recurring: true } : {}),
+    // 남의 달력의 일정 — 화면은 2주 띠에만 옅게 그린다 (설계 §5.5)
+    ...(cal.other ? { other: true, ...(cal.name ? { calendarName: cal.name } : {}) } : {}),
   };
 }
 
@@ -287,7 +299,7 @@ async function readCalendar(
   id: string,
   timeMin: string,
   timeMax: string,
-  cal: { canWrite: boolean; holiday: boolean },
+  cal: CalendarFlags,
 ): Promise<RawEvent[] | { status: number; fail: CalendarFailure }> {
   const out: RawEvent[] = [];
   let pageToken = '';
@@ -336,7 +348,10 @@ export async function listEvents(deps: CalendarDeps, req: CalendarEventsRequest,
     let read = 0;
     for (const id of ids) {
       const info = calendars?.find((c) => c.id === id) ?? (id === 'primary' ? calendars?.find((c) => c.primary) : undefined);
-      const cal = { canWrite: info?.canWrite ?? id === 'primary', holiday: info?.holiday ?? id.includes(HOLIDAY_MARK) };
+      const holiday = info?.holiday ?? id.includes(HOLIDAY_MARK);
+      // 내 달력(본인 달력·내가 만든 달력)도 공휴일 달력도 아니면 남의 달력이다. 달력 목록이 없으면 본인 달력만 내 것으로 본다
+      const other = !holiday && !(info ? info.mine : id === 'primary');
+      const cal: CalendarFlags = { canWrite: info?.canWrite ?? id === 'primary', holiday, other, name: other ? (info?.summary ?? '') : '' };
       const got = await readCalendar(send, id, timeMin, timeMax, cal);
       if (Array.isArray(got)) {
         events.push(...got);

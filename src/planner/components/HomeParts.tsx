@@ -59,6 +59,9 @@ export function SummaryBar({ today, summary, calendar, onJump }: SummaryProps) {
   );
 }
 
+/** 날 칸에 보이는 남의 달력 일정 수 — 넘치면 "외 n건"으로 접는다(동료 달력을 여럿 켜면 2주에 수십 건이다) */
+const OTHERS_SHOWN = 3;
+
 interface StripProps {
   weeks: StripDay[][];
   focus: string | null;
@@ -76,9 +79,9 @@ export function WeekStrip({ weeks, focus, onFocus }: StripProps) {
             <button
               type="button"
               key={day.date}
-              className={cx('hm-day', day.today && 'is-today', day.weekend && 'is-we', day.off && 'is-off', day.past && 'is-past', focus === day.date && 'is-sel')}
+              className={cx('hm-day', day.today && 'is-today', day.weekend && 'is-we', day.off && !day.offPart && 'is-off', day.past && 'is-past', focus === day.date && 'is-sel')}
               aria-pressed={focus === day.date}
-              aria-label={`${mdw(day.date)}${day.off ? ` ${day.off}` : ''} — 일정 ${day.events.length}건, 할 일 ${day.due}건`}
+              aria-label={`${mdw(day.date)}${day.off ? ` ${day.off}` : ''} — 일정 ${day.events.length}건, 할 일 ${day.due}건${day.others.length ? `, 다른 달력 ${day.others.length}건` : ''}`}
               onClick={() => onFocus(focus === day.date ? null : day.date)}
             >
               <span className="hm-day-h hm-num">
@@ -97,6 +100,20 @@ export function WeekStrip({ weeks, focus, onFocus }: StripProps) {
                   <b>{e.title}</b>
                 </span>
               ))}
+              {day.others.slice(0, OTHERS_SHOWN).map((e) => (
+                <span className="hm-ev is-other" key={e.key} title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}>
+                  {e.startTime && <i className="hm-num">{e.startTime}</i>}
+                  <b>
+                    {e.owner ? `${e.owner} · ` : ''}
+                    {e.title}
+                  </b>
+                </span>
+              ))}
+              {day.others.length > OTHERS_SHOWN && (
+                <span className="hm-ev is-other" title={day.others.slice(OTHERS_SHOWN).map((e) => `${e.owner ? `${e.owner} — ` : ''}${e.startTime} ${e.title}`.trim()).join(' · ')}>
+                  <b>외 {day.others.length - OTHERS_SHOWN}건</b>
+                </span>
+              )}
               {day.late > 0 && <span className="hm-due is-late">지남 {day.late}</span>}
               {day.due > 0 && <span className="hm-due">할 일 {day.due}</span>}
             </button>

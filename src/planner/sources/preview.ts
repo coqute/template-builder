@@ -36,7 +36,7 @@ function seedEvents(today: string): RawEvent[] {
     end: at(date, end),
     status: 'confirmed',
     eventType: 'default',
-    htmlLink: '',
+    htmlLink: 'https://calendar.google.com/calendar/',
     meet: false,
     declined: false,
     holiday: false,
@@ -55,6 +55,10 @@ function seedEvents(today: string): RawEvent[] {
     allDay('p6', '휴가', addDays(mon, 11)),
     allDay('p7', '예시 공휴일', addDays(mon, 9), { calendarId: 'holiday', holiday: true, canWrite: false }),
     ev('p8', 'MX 알림 설정 회의', addDays(today, -2), '10:00', '11:00', '온라인', { meet: true }),
+    // 반차(시각이 있는 휴가)와 동료 달력의 일정 — 띠에서 어떻게 보이는지
+    ev('p9', '오후 반차', addDays(mon, 4), '14:00', '18:00', ''),
+    ev('p10', '가나스토어 현장 점검', addDays(mon, 3), '13:00', '17:00', '', { calendarId: 'team', other: true, calendarName: '담당A', canWrite: false }),
+    allDay('p11', '휴가', addDays(mon, 8), { calendarId: 'team', other: true, calendarName: '담당A', canWrite: false }),
   ];
 }
 
@@ -104,8 +108,9 @@ export function createPreviewApi(): PlannerApi {
     calendarList: async () => ({
       ok: true,
       calendars: [
-        { id: 'primary', summary: '내 달력', primary: true, canWrite: true, holiday: false },
-        { id: 'holiday', summary: '예시 공휴일 달력', primary: false, canWrite: false, holiday: true },
+        { id: 'primary', summary: '내 달력', primary: true, canWrite: true, holiday: false, mine: true },
+        { id: 'holiday', summary: '예시 공휴일 달력', primary: false, canWrite: false, holiday: true, mine: false },
+        { id: 'team', summary: '담당A', primary: false, canWrite: false, holiday: false, mine: false },
       ],
     }),
     calendarEvents: async () => ({ ok: true, events, readAt: Date.now(), fromCache: false, baseline: null }),

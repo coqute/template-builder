@@ -293,8 +293,9 @@ export function usePlanner() {
     const candidates = state ? visibleCandidates(all, state) : [];
     // 읽지 않게 된 달력의 일정이 '취소됨'으로 나오지 않게, 이번에 읽은 달력의 것만 견준다
     const read = new Set(cal.calendars);
-    const baseline = cal.baseline ? cal.baseline.filter((e) => read.has(e.calendarId)) : null;
-    const changes: EventChange[] = diffEvents(baseline, cal.raw, today).filter((c) => !own.current.has(c.key));
+    // 남의 달력의 일정이 바뀐 것은 알리지 않는다 — 내 일정이 아니다
+    const baseline = cal.baseline ? cal.baseline.filter((e) => read.has(e.calendarId) && !e.other) : null;
+    const changes: EventChange[] = diffEvents(baseline, cal.raw.filter((e) => !e.other), today).filter((c) => !own.current.has(c.key));
     // 명령줄·MCP 도구로 Claude가 고친 할 일 — 마지막으로 확인한 뒤의 것
     const claudeChanged: Task[] = tasks.filter((t) => t.by === 'claude' && t.updatedAt > seenAt);
     return {

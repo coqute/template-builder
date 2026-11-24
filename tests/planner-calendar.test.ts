@@ -118,10 +118,11 @@ describe('listCalendars — 달력 목록', () => {
     expect(r).toEqual({
       ok: true,
       calendars: [
-        { id: 'me@example.com', summary: '홍길동', primary: true, canWrite: true, holiday: false },
-        { id: HOLIDAY, summary: '휴일', primary: false, canWrite: false, holiday: true },
-        { id: TEAM, summary: '담당A 일정', primary: false, canWrite: true, holiday: false },
-        { id: 'free@example.com', summary: '바쁨만 보임', primary: false, canWrite: false, holiday: false },
+        { id: 'me@example.com', summary: '홍길동', primary: true, canWrite: true, holiday: false, mine: true },
+        { id: HOLIDAY, summary: '휴일', primary: false, canWrite: false, holiday: true, mine: false },
+        // 편집 권한을 받은 동료 달력 — 쓸 수는 있어도 내 달력은 아니다
+        { id: TEAM, summary: '담당A 일정', primary: false, canWrite: true, holiday: false, mine: false },
+        { id: 'free@example.com', summary: '바쁨만 보임', primary: false, canWrite: false, holiday: false, mine: false },
       ],
     });
     expect(calls).toHaveLength(1);
@@ -360,15 +361,44 @@ describe('listEvents — 정규화', () => {
     ]);
 
     const known: CalendarInfo[] = [
-      { id: 'me@example.com', summary: '홍길동', primary: true, canWrite: true, holiday: false },
-      { id: TEAM, summary: '담당A', primary: false, canWrite: true, holiday: false },
-      { id: HOLIDAY, summary: '휴일', primary: false, canWrite: false, holiday: true },
+      { id: 'me@example.com', summary: '홍길동', primary: true, canWrite: true, holiday: false, mine: true },
+      { id: TEAM, summary: '담당A', primary: false, canWrite: true, holiday: false, mine: false },
+      { id: HOLIDAY, summary: '휴일', primary: false, canWrite: false, holiday: true, mine: false },
     ];
     expect(flags(await listEvents(deps, { ...RANGE, calendars: ids }, known))).toEqual([
       ['primary', true, false], // 'primary'는 목록의 본인 달력으로 찾는다
       [TEAM, true, false],
       [HOLIDAY, false, true],
     ]);
+  });
+
+  it('남의 달력(동료 등)의 일정은 남의 것으로 표시하고 달력 이름을 붙인다 — 내 달력·내가 만든 달력·공휴일 달력은 아니다', async () => {
+    const OWNED = 'side@example.com';
+    const one = (id: string) => [{ id: `e-${id.length}`, start: { date: '2026-12-25' }, end: { date: '2026-12-26' } }];
+    const { deps } = fake((url) => jsonRes(200, { items: one(calOf(url)) }));
+    const marks = (r: Awaited<ReturnType<typeof listEvents>>) => (r.ok ? r.events.map((e) => [e.calendarId, e.other ?? false, e.calendarName ?? '']) : r);
+    const ids = ['primary', OWNED, TEAM, HOLIDAY];
+    const known: CalendarInfo[] = [
+      { id: 'me@example.com', summary: '홍길동', primary: true, canWrite: true, holiday: false, mine: true },
+      { id: OWNED, summary: '내가 만든 달력', primary: false, canWrite: true, holiday: false, mine: true },
+      { id: TEAM, summary: '담당A', primary: false, canWrite: false, holiday: false, mine: false },
+      { id: HOLIDAY, summary: '휴일', primary: false, canWrite: false, holiday: true, mine: false },
+    ];
+    expect(marks(await listEvents(deps, { ...RANGE, calendars: ids }, known))).toEqual([
+      ['primary', false, ''],
+      [OWNED, false, ''],
+      [TEAM, true, '담당A'],
+      [HOLIDAY, false, ''],
+    ]);
+    // 달력 목록을 읽지 못하면 본인 달력만 내 것으로 본다
+    expect(marks(await listEvents(deps, { ...RANGE, calendars: ['primary', TEAM, HOLIDAY] }))).toEqual([
+      ['primary', false, ''],
+      [TEAM, true, ''],
+      [HOLIDAY, false, ''],
+    ]);
+    // 내 일정에는 칸 자체가 없다(저장해 둔 옛 일정과 모양이 같다)
+    const mine = await listEvents(deps, { ...RANGE, calendars: ['primary'] }, known);
+    expect(mine.ok && mine.events[0]).not.toHaveProperty('other');
   });
 });
 

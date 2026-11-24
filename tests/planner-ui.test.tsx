@@ -247,6 +247,8 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
   const LINK = 'https://www.google.com/calendar/event?eid=ZTEgaG9uZ0BleGFtcGxlLmNvbQ';
   const TOMORROW = addDays(TODAY, 1);
   const rowOf = (id: string) => document.querySelector(`[data-event="primary/${id}"]`) as HTMLElement;
+  /** 그 일정의 줄 묶음 — 줄 + 바로 가는 길 + 펼친 단추 */
+  const wrapOf = (id: string) => rowOf(id).closest('.hm-agw') as HTMLElement;
   /** 그 일정 줄을 펼친다 — 이미 펼쳐져 있으면 그대로 둔다(고친 뒤에도 줄은 펼쳐진 채다) */
   const openRow = async (id: string) => {
     await waitFor(() => expect(rowOf(id)).not.toBeNull());
@@ -256,10 +258,15 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
   it('[달력에서 열기] — 그 일정의 링크를 바깥 브라우저로 열고, 열지 못하면 알린다', async () => {
     const { api } = fakeApi({ events: [{ ...event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00'), htmlLink: LINK }] });
     renderHome(api);
-    await openRow('e1');
-    fireEvent.click(screen.getByRole('button', { name: /달력에서 열기/ }));
+    // 설계 §6.4 — 줄을 펼치지 않아도 `달력 ↗`가 줄에 바로 있다
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    expect(rowOf('e1').getAttribute('aria-expanded')).toBe('false');
+    const link = within(wrapOf('e1')).getByRole('button', { name: /달력에서 열기/ });
+    expect(link.textContent).toBe('달력 ↗');
+    fireEvent.click(link);
     await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith(LINK));
     expect(screen.queryByText(/열지 못했습니다/)).toBeNull();
+    expect(rowOf('e1').getAttribute('aria-expanded')).toBe('false'); // 여는 것만으로 줄이 펼쳐지지 않는다
 
     api.openExternal.mockResolvedValueOnce({ ok: false, error: '열 수 없는 주소입니다' } as never);
     fireEvent.click(screen.getByRole('button', { name: /달력에서 열기/ }));
@@ -273,13 +280,14 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     });
     renderHome(api);
     await openRow('e1');
-    expect(screen.queryByRole('button', { name: /달력에서 열기/ })).toBeNull();
-    expect(screen.getByRole('button', { name: '고치기·옮기기' })).toBeTruthy();
+    expect(within(wrapOf('e1')).queryByRole('button', { name: /달력에서 열기/ })).toBeNull();
+    expect(within(wrapOf('e1')).getByRole('button', { name: '고치기·옮기기' })).toBeTruthy();
+    fireEvent.click(rowOf('e1')); // 접는다
     await openRow('e2');
-    expect(screen.getByRole('button', { name: /달력에서 열기/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '고치기·옮기기' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '지우기' })).toBeNull();
-    expect(screen.getByRole('button', { name: '이 일정 숨기기' })).toBeTruthy();
+    expect(within(wrapOf('e2')).getByRole('button', { name: /달력에서 열기/ })).toBeTruthy();
+    expect(within(wrapOf('e2')).queryByRole('button', { name: '고치기·옮기기' })).toBeNull();
+    expect(within(wrapOf('e2')).queryByRole('button', { name: '지우기' })).toBeNull();
+    expect(within(wrapOf('e2')).getByRole('button', { name: '이 일정 숨기기' })).toBeTruthy();
   });
 
   it('[고치기·옮기기] — 바뀐 칸만 달력에 보낸다. 밤을 넘기는 일정은 길이를 지킨다', async () => {
@@ -335,7 +343,7 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     expect(within(tasksBox()).queryByRole('button', { name: '달력에 올리기' })).toBeNull();
     await openRow('e1');
     // 할 일 상자에도 [지우기]가 있다 — 일정 줄 아래의 것을 누른다
-    fireEvent.click(within(rowOf('e1').parentElement as HTMLElement).getByRole('button', { name: '지우기' }));
+    fireEvent.click(within(wrapOf('e1')).getByRole('button', { name: '지우기' }));
     const dialog = await screen.findByRole('dialog');
     expect(api.calendarDelete).not.toHaveBeenCalled(); // 확인 전에는 지우지 않는다
     expect(dialog.textContent).toContain('반복 일정의 이번 회차만');
@@ -376,6 +384,41 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     act(() => void window.dispatchEvent(new Event('focus')));
     expect(await screen.findByText('지난번 본 뒤 바뀐 일정 1건')).toBeTruthy();
     expect(rowOf('e1').textContent).toContain('바뀜');
+  });
+
+  it('일지 사안과 이어진 일정은 줄에 `일지 ↗`가 있고, 누르면 작업일지 탭의 그 사안으로 간다', async () => {
+    const anchor = { folder: FOLDER, name: '[2026-11-18] 점검.txt', date: '2026-11-18', caseKey: '수집누락원인문의', nth: 0, line: 3, title: '수집 누락 원인 문의', source: '홍길동/메일' };
+    const { api, outside } = fakeApi({ events: [{ ...event('e1', 'AB Z+ 수집 서버 패치', TOMORROW, '10:00', '12:00'), htmlLink: LINK }, event('e2', '이어지지 않은 일정', TOMORROW, '15:00', '16:00')] });
+    outside({ type: 'link.set', link: { calendarId: 'primary', eventId: 'e1', anchor } });
+    const { navigate } = renderHome(api);
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    const go = await within(wrapOf('e1')).findByRole('button', { name: /이어진 일지 사안 열기/ });
+    expect(go.textContent).toBe('일지 ↗');
+    expect(within(wrapOf('e2')).queryByRole('button', { name: /이어진 일지 사안 열기/ })).toBeNull();
+    fireEvent.click(go);
+    expect(navigate).toHaveBeenCalledWith('worklog', expect.objectContaining({ kind: 'worklog-open', anchor: expect.objectContaining({ caseKey: '수집누락원인문의' }) }));
+  });
+
+  it('남의 달력의 일정은 2주 띠에만 옅게 나오고, 확정 일정 목록과 다음 일정에는 없다', async () => {
+    const theirs: RawEvent = { ...event('t1', '가나스토어 정기점검', TODAY, '23:00', '23:30'), calendarId: 'damdang-a@example.com', other: true, calendarName: '담당A', canWrite: false };
+    const { api } = fakeApi({ events: [theirs, event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });
+    renderHome(api);
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    const dim = document.querySelector('.hm-ev.is-other') as HTMLElement;
+    expect(dim.textContent).toContain('담당A · 가나스토어 정기점검');
+    expect(document.querySelector('[data-event="damdang-a@example.com/t1"]')).toBeNull(); // 목록에는 없다
+    expect(screen.getByTestId('home-next').textContent).toContain('MX 주간 미팅');
+    expect(screen.getByTestId('home-next').textContent).not.toContain('가나스토어');
+  });
+
+  it('남의 달력의 일정이 한 날에 많으면 셋까지만 보이고 나머지는 "외 n건"으로 접는다', async () => {
+    const theirs = Array.from({ length: 5 }, (_, i): RawEvent => ({ ...event(`t${i}`, `동료 일정 ${i + 1}`, TODAY, `1${i}:00`, `1${i}:30`), calendarId: 'damdang-a@example.com', other: true, calendarName: '담당A', canWrite: false }));
+    const { api } = fakeApi({ events: [...theirs, event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });
+    renderHome(api);
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    const dim = [...document.querySelectorAll('.hm-day.is-today .hm-ev.is-other')].map((x) => x.textContent);
+    expect(dim).toHaveLength(4);
+    expect(dim[3]).toBe('외 2건');
   });
 
   it('읽을 달력 설정이 바뀌면 그 설정으로 달력을 다시 읽는다 (새로 고침을 누르지 않아도)', async () => {

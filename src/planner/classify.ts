@@ -33,6 +33,10 @@ export interface HomeEvent {
   canWrite: boolean;
   /** 반복 일정의 한 회차 */
   recurring?: boolean;
+  /** 남의 달력(동료 등)의 일정 — 2주 띠에만 옅게 보인다 */
+  other?: boolean;
+  /** 그 달력의 이름 (남의 달력일 때) */
+  owner?: string;
   source: 'gcal' | 'plan';
 }
 
@@ -96,6 +100,7 @@ export function classifyEvents(raw: readonly RawEvent[], opts: ClassifyOptions =
       htmlLink: e.htmlLink,
       canWrite: e.canWrite && !e.holiday,
       ...(e.recurring ? { recurring: true } : {}),
+      ...(e.other ? { other: true, owner: (e.calendarName ?? '').trim() } : {}),
       source: 'gcal',
     });
   }
@@ -113,9 +118,9 @@ export function eventsOn(events: readonly HomeEvent[], date: string): HomeEvent[
   return events.filter((e) => e.date <= date && date <= e.endDate);
 }
 
-/** 일정 수에 넣는 것 — 회의·작업 (휴가·공휴일·근무 위치는 날 칸의 표시일 뿐이다) */
+/** 일정 수에 넣는 것 — **내** 회의·작업 (휴가·공휴일·근무 위치는 날 칸의 표시일 뿐이고, 남의 달력의 일정은 내 일정이 아니다) */
 export function isAgendaEvent(e: HomeEvent): boolean {
-  return e.kind === 'meeting' || e.kind === 'work';
+  return !e.other && (e.kind === 'meeting' || e.kind === 'work');
 }
 
 export interface EventChange {

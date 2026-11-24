@@ -98,6 +98,7 @@ export function HomeSettings({ mono, open }: { mono: boolean; open: boolean }) {
                   <span className="min-w-0 truncate">
                     {c.primary ? '내 달력' : c.summary}
                     {c.holiday && ' · 공휴일'}
+                    {!c.primary && !c.holiday && !c.mine && ' · 2주 띠에만 옅게'}
                   </span>
                 </label>
               );
