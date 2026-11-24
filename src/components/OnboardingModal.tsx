@@ -18,8 +18,8 @@ export function OnboardingModal({ onSubmit }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-[360px] rounded-card border border-rule bg-bg-elevated p-5" style={{ boxShadow: 'var(--shadow)' }}>
+    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="tb-pop w-[360px] rounded-card border border-rule bg-bg-elevated p-5" style={{ boxShadow: 'var(--shadow)' }}>
         <h2 className="text-sm font-semibold text-fg">프로필 설정</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-fg-muted">
           주간보고서 작성자명과 이메일 인사말·기본값에 사용됩니다. 나중에 설정(F1)에서 변경할 수 있습니다.

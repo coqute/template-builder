@@ -105,7 +105,7 @@ function useDropdown() {
           <div
             ref={panelRef}
             role="menu"
-            className="fixed z-50 rounded-sharp border border-rule-strong bg-bg-elevated py-1 shadow-pop"
+            className="tb-menu fixed z-50 rounded-sharp border border-rule-strong bg-bg-elevated py-1 shadow-pop"
             style={{ top: pos.top, right: pos.right, minWidth }}
           >
             {children}

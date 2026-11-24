@@ -3,6 +3,7 @@
  * 날 칸은 좁아 여러 건이 겹치면 제목이 잘린다 — 여기서 전부를 제대로 읽고, 달력·일지·Notion으로 넘어간다.
  *
  * - 가운데에 띄운다(Notion의 가운데 미리보기처럼): 아래로 펼치면 화면이 밀리고 줄이 가로로 길게 늘어진다.
+ *   열릴 때도 그것처럼 — 뒤 바탕이 어두워지고 창이 살짝 작게 시작해 커지며 또렷해진다(.tb-scrim · .tb-pop).
  * - 띠가 가려지므로 머리에 그 주의 날 줄과 ‹ ›를 둔다 — 닫지 않고 옆 날로 넘어간다(← → 키도 같다).
  * - 날을 넘겨도 창의 자리·너비·단 구성이 같다(왼쪽 = 일정·다른 달력, 오른쪽 = 할 일·Notion) — 같은 것이 늘 같은 자리에 있다.
  * - 읽기만 한다. 고치는 것은 아래 할 일·확정 일정에서 한다.
@@ -99,8 +100,8 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
   );
 
   return (
-    <div className="hm-pk-scrim" onMouseDown={onClose}>
-      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${fullDate(day.date)} 미리보기`} className="hm-pk" data-testid="home-day" data-date={day.date} onMouseDown={(e) => e.stopPropagation()}>
+    <div className="hm-pk-scrim tb-scrim" onMouseDown={onClose}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${fullDate(day.date)} 미리보기`} className="hm-pk tb-pop" data-testid="home-day" data-date={day.date} onMouseDown={(e) => e.stopPropagation()}>
         <header className="hm-pk-h">
           <div className="hm-pk-top">
             <button type="button" className="hm-pk-nav" aria-label="앞 날" title="앞 날 (←)" disabled={!prev} onClick={() => prev && onMove(prev)}>
@@ -148,7 +149,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
           {!left && !right ? (
             <p className="hm-pk-none">이 날에는 일정·할 일·Notion 작성이 없습니다.</p>
           ) : (
-            <div className="hm-pk-g">
+            <div key={day.date} className="hm-pk-g tb-swap">
               <div className="hm-pk-col">
                 {!left && <p className="hm-pk-nil">일정 없음</p>}
                   {day.events.length > 0 && (

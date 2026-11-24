@@ -23,12 +23,12 @@ export function Modal({ title, subtitle, children, footer, onClose, width = 720,
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onMouseDown={onClose}>
+    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelId}
-        className="flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated"
+        className="tb-pop flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated"
         style={{ boxShadow: 'var(--shadow-pop)', maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >

@@ -29,7 +29,7 @@ export function AiProgressLine({ startedAt, progress }: Pick<Props, 'startedAt' 
 /** AI 호출 중 화면을 덮는 카드 — 지금 무엇을 하는지(연결·생각·쓰는 중)와 지난 시간을 보여 주고, 멈출 수 있다 */
 export function AiBusyCard({ label, startedAt, progress, note, onCancel }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--scrim)' }} role="alertdialog" aria-label={label}>
+    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'var(--scrim)' }} role="alertdialog" aria-label={label}>
       <div className="flex items-center gap-3 rounded-card border border-rule-strong bg-bg-elevated px-5 py-4" style={{ boxShadow: 'var(--shadow-pop)' }}>
         <Loader2 size={16} className="shrink-0 animate-spin text-fg-muted" aria-hidden="true" />
         <div className="min-w-[230px]">

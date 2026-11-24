@@ -46,12 +46,12 @@ export function AiReviewDialog({ title, review, onApply, onClose }: Props) {
   const seconds = Math.max(1, Math.round(review.ms / 1000));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onClick={onClose}>
+    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-review-title"
-        className="flex max-h-[86vh] w-[min(820px,100%)] flex-col rounded-card border border-rule-strong bg-bg-elevated"
+        className="tb-pop flex max-h-[86vh] w-[min(820px,100%)] flex-col rounded-card border border-rule-strong bg-bg-elevated"
         style={{ boxShadow: 'var(--shadow-pop)' }}
         onClick={(e) => e.stopPropagation()}
       >

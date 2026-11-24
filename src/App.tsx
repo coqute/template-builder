@@ -126,14 +126,10 @@ export function App() {
       {/* 활성 문서 타입 워크스페이스 — 모듈이 본문+상태바를 소유 */}
       <div className="min-h-0 flex-1">
         <DocTypeHostProvider value={hostValue}>
-          <Workspace
-            key={active.id}
-            theme={theme}
-            profile={profile}
-            zoom={zoom}
-            onZoomChange={setZoom}
-            templatesVersion={overlays.version}
-          />
+          {/* 탭마다 새로 끼우는 틀 — 살짝 커지며 또렷해진다(가운데 미리보기가 열릴 때와 같은 방식) */}
+          <div key={active.id} className="tb-page h-full" data-tab={active.id}>
+            <Workspace theme={theme} profile={profile} zoom={zoom} onZoomChange={setZoom} templatesVersion={overlays.version} />
+          </div>
         </DocTypeHostProvider>
       </div>
 

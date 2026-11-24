@@ -1208,3 +1208,53 @@ html[data-theme] {
 @media (prefers-reduced-motion: reduce) {
   [data-theme='mono'] .cm-cursor { animation: none; }
 }
+
+/* ==========================================================
+ * 전환 — 누른 것에 답하는 움직임만 (v0.22.0)
+ *
+ * Notion의 가운데 미리보기가 열릴 때처럼: 뒤 바탕이 어두워지고, 창이 가운데에서 살짝 작게 시작해
+ * 커지며 또렷해진다. 탭의 본문·메뉴도 같은 방식으로(본문은 더 작게, 메뉴는 단추 쪽 모서리에서) 나타난다.
+ * 콘솔 테마: 커지지 않고 세 단계로 끊겨 찍힌다(--zoom-* : 1 · steps).
+ * 들어올 때만 움직인다 — 닫히는 것은 바로 사라져 길을 비킨다.
+ * 끝난 뒤에는 아무 값도 남기지 않는다(backwards) — 안에서 뜨는 창의 자리를 흔들지 않게.
+ * ========================================================== */
+:root {
+  --motion-fast: 130ms;
+  --motion: 240ms;
+  --motion-slow: 260ms;
+  /* 나오면서 줄곧 느려져 부드럽게 멈춘다 — 튕기지 않는다. 너무 급한 곡선은 커지는 것이 보이기 전에 끝난다 */
+  --ease-settle: cubic-bezier(0.33, 1, 0.68, 1);
+  /* 시작 크기 — 창·메뉴 / 탭의 본문(넓어서 조금만) */
+  --zoom-pop: 0.95;
+  --zoom-page: 0.988;
+}
+[data-theme='mono'] {
+  --ease-settle: steps(3, jump-end);
+  --zoom-pop: 1;
+  --zoom-page: 1;
+}
+
+@keyframes tb-zoom {
+  from { opacity: 0; transform: scale(var(--zoom, 1)); }
+}
+@keyframes tb-fade {
+  from { opacity: 0; }
+}
+
+/* 창 뒤의 어두운 바탕 */
+.tb-scrim { animation: tb-fade var(--motion) linear backwards; }
+/* 가운데에 뜨는 창·미리보기 — 가운데에서 살짝 커지며 또렷해진다 */
+.tb-pop { --zoom: var(--zoom-pop); transform-origin: center; animation: tb-zoom var(--motion) var(--ease-settle) backwards; }
+/* 탭의 본문 — 같은 방식, 넓은 화면이라 크기 변화는 조금만 */
+.tb-page { --zoom: var(--zoom-page); transform-origin: center top; animation: tb-zoom var(--motion) var(--ease-settle) backwards; }
+/* 단추에서 열리는 메뉴 — 단추 쪽 모서리에서 */
+.tb-menu { --zoom: var(--zoom-pop); transform-origin: top right; animation: tb-zoom var(--motion-fast) var(--ease-settle) backwards; }
+/* 제자리에서 내용만 갈리는 것 — 미리보기의 옆 날, 줄 아래로 펼쳐지는 단추·입력칸 */
+.tb-swap { animation: tb-fade var(--motion-fast) linear backwards; }
+/* 옆에서 나오는 서랍 — 같은 곡선으로 */
+.tb-drawer { transition-duration: var(--motion-slow); transition-timing-function: var(--ease-settle); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-scrim, .tb-pop, .tb-page, .tb-menu, .tb-swap { animation: none !important; }
+  .tb-drawer { transition: none !important; }
+}

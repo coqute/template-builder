@@ -169,7 +169,7 @@ export function HelpDrawer({
         aria-modal="true"
         aria-labelledby="help-drawer-title"
         className={[
-          'absolute right-0 top-0 h-full w-[380px] border-l border-rule-strong bg-bg-elevated transition-transform',
+          'tb-drawer absolute right-0 top-0 h-full w-[380px] border-l border-rule-strong bg-bg-elevated transition-transform',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
         style={{ boxShadow: 'var(--shadow-pop)' }}
