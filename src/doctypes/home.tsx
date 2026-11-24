@@ -65,7 +65,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
   const [showDone, setShowDone] = useState(false);
   const [hiddenOpen, setHiddenOpen] = useState(false);
   const [log, setLog] = useState<PlannerLogEntry[] | null>(null);
-  const [eventDialog, setEventDialog] = useState<{ event: HomeEvent | null } | null>(null);
+  const [eventDialog, setEventDialog] = useState<{ event: HomeEvent | null; date?: string } | null>(null);
   const [removing, setRemoving] = useState<HomeEvent | null>(null);
   const [writing, setWriting] = useState(false);
   const addRef = useRef<HTMLInputElement | null>(null);
@@ -176,6 +176,15 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
   const wrote = useMemo(() => new Map(p.notionDays.map((d) => [d.date, d.items])), [p.notionDays]);
   /** 고른 날 — 띠 아래에 그날의 일정·할 일·Notion을 펼쳐 보인다 */
   const focusDay = useMemo(() => (focus ? (p.strip.flat().find((d) => d.date === focus) ?? null) : null), [focus, p.strip]);
+  const stripDays = useMemo(() => p.strip.flat(), [p.strip]);
+  /** 그날에 든 것의 수 — 미리보기의 날 줄에 보인다 */
+  const dayCount = useCallback(
+    (date: string) => {
+      const d = stripDays.find((x) => x.date === date);
+      return d ? d.events.length + d.others.length + d.due + d.late + (wrote.get(date)?.length ?? 0) : 0;
+    },
+    [stripDays, wrote],
+  );
   const focusTasks = useMemo(
     () => (focus ? (state?.tasks ?? []).filter((t) => !t.doneAt && t.state === 'todo' && !!t.due && (t.due === focus || (focus === today && t.due < today))) : []),
     [focus, state?.tasks, today],
@@ -295,7 +304,29 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
           </>,
           toolbarSlot,
         )}
-      {eventDialog && <EventDialog event={eventDialog.event} date={focus ?? today} busy={writing} onSubmit={(input) => void submitEvent(input)} onClose={() => setEventDialog(null)} />}
+      {focusDay && !eventDialog && (
+        <DayPreview
+          today={today}
+          day={focusDay}
+          days={stripDays}
+          countOf={dayCount}
+          tasks={focusTasks}
+          notion={wrote.get(focusDay.date) ?? []}
+          notes={p.notes.byEvent}
+          linked={linked}
+          onOpenEvent={(e) => eventActions.open(e)}
+          onOpenCase={(e) => eventActions.openCase(e)}
+          onOpenUrl={(url, what) => void openOutside(url, what)}
+          onTask={(id) => {
+            setFocus(null);
+            reveal(id);
+          }}
+          onMove={setFocus}
+          onAddEvent={canWrite ? () => setEventDialog({ event: null, date: focusDay.date }) : undefined}
+          onClose={() => setFocus(null)}
+        />
+      )}
+      {eventDialog && <EventDialog event={eventDialog.event} date={eventDialog.date ?? focus ?? today} busy={writing} onSubmit={(input) => void submitEvent(input)} onClose={() => setEventDialog(null)} />}
       {removing && (
         <Modal
           title="이 일정을 달력에서 지웁니다"
@@ -397,21 +428,6 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
         <main className="hm min-h-0 flex-1" ref={mainRef}>
           <SummaryBar today={today} summary={p.summary} calendar={!!p.cal.status?.canRead} onJump={jump} />
           <WeekStrip weeks={p.strip} focus={focus} onFocus={setFocus} noted={noted} notion={wrote} />
-          {focusDay && (
-            <DayPreview
-              today={today}
-              day={focusDay}
-              tasks={focusTasks}
-              notion={wrote.get(focusDay.date) ?? []}
-              notes={p.notes.byEvent}
-              linked={linked}
-              onOpenEvent={(e) => eventActions.open(e)}
-              onOpenCase={(e) => eventActions.openCase(e)}
-              onOpenUrl={(url, what) => void openOutside(url, what)}
-              onTask={reveal}
-              onClose={() => setFocus(null)}
-            />
-          )}
           {p.notion.status?.connected && (p.notion.error || p.notion.failed.length > 0 || notionSettings.sources.length === 0) && (
             <p className="hm-note" role="status" data-testid="home-notion-note">
               {notionSettings.sources.length === 0
@@ -435,7 +451,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
               <div className="hm-h">
                 <h2>할 일</h2>
                 <small>남은 작업과 앞으로 할 작업</small>
-                {focus && <span className="hm-r">{mdw(focus)}만 또렷이 — 날 칸을 다시 누르면 풀림</span>}
+                
               </div>
               <input
                 ref={addRef}

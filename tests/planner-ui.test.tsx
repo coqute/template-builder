@@ -505,7 +505,7 @@ describe('홈 화면 — 앱 밖에서 바뀐 것 (명령줄·MCP 도구)', () =
   });
 });
 
-describe('홈 화면 — 날을 고르면 그날의 미리보기가 펼쳐진다', () => {
+describe('홈 화면 — 날을 고르면 그날의 미리보기가 가운데에 열린다', () => {
   beforeEach(() => store.clear());
   afterEach(() => {
     cleanup();
@@ -514,7 +514,7 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 펼쳐진다
   const dayCell = (date: string) => document.querySelector(`.hm-day[data-date="${date}"]`) as HTMLElement;
   const preview = () => screen.getByTestId('home-day');
 
-  it('그날의 일정·다른 달력·할 일을 한데 보여 주고, 다시 누르거나 [닫기]로 닫는다', async () => {
+  it('그날의 일정·다른 달력·할 일을 한데 보여 주고, 닫기·Esc·바깥을 눌러 닫는다', async () => {
     // 동료 달력의 이름은 대개 메일 주소다 — 골뱅이는 공개 검사가 실제 주소로 읽지 않게 이어 붙인다
     const mail = ['damdang-b', 'example.com'].join('@');
     const events: RawEvent[] = [
@@ -533,11 +533,13 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 펼쳐진다
 
     fireEvent.click(dayCell(TODAY));
     const box = preview();
+    expect(box.getAttribute('role')).toBe('dialog');
     expect(box.getAttribute('aria-label')).toContain('미리보기');
     // 일정 — 시각·긴 제목 전체·장소
     const mine = box.querySelector('[data-group="events"]') as HTMLElement;
     expect(within(mine).getByText('AB Z+ 수집 서버 패치 사전 점검과 작업 순서 협의')).toBeTruthy();
-    expect(mine.textContent).toContain('10:00 ~ 12:00');
+    expect(mine.textContent).toContain('10:00');
+    expect(mine.textContent).toContain('~ 12:00');
     expect(mine.textContent).toContain('누리사옥 4층');
     expect(within(mine).getByText('MX 주간 미팅')).toBeTruthy();
     // 다른 달력 — 누구 것인지와 제목
@@ -554,15 +556,78 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 펼쳐진다
     // 달력으로, 할 일 줄로
     fireEvent.click(within(mine).getByRole('button', { name: '달력에서 열기 — AB Z+ 수집 서버 패치 사전 점검과 작업 순서 협의' }));
     await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith('https://www.google.com/calendar/event?eid=ZTE'));
+    // 할 일 줄을 누르면 창을 닫고 아래 목록의 그 줄로 간다
     fireEvent.click(within(todo).getByRole('button', { name: '할 일로 가기 — 정기점검 체크리스트 갱신' }));
-    await waitFor(() => expect(document.querySelector('[data-task].is-flash, .is-flash [data-task], .is-flash')).not.toBeNull());
+    expect(screen.queryByTestId('home-day')).toBeNull();
+    await waitFor(() => expect(document.querySelector('.is-flash')).not.toBeNull());
 
-    fireEvent.click(within(box).getByRole('button', { name: '닫기' }));
+    // 닫는 세 가지 — [닫기], Esc, 창 바깥
+    fireEvent.click(dayCell(TODAY));
+    fireEvent.click(within(preview()).getByRole('button', { name: '닫기 (Esc)' }));
     expect(screen.queryByTestId('home-day')).toBeNull();
     fireEvent.click(dayCell(TODAY));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('home-day')).toBeNull();
+    fireEvent.click(dayCell(TODAY));
+    fireEvent.mouseDown(preview()); // 창 안을 눌러서는 닫히지 않는다
     expect(screen.queryByTestId('home-day')).not.toBeNull();
-    fireEvent.click(dayCell(TODAY));
+    fireEvent.mouseDown(preview().parentElement as HTMLElement);
     expect(screen.queryByTestId('home-day')).toBeNull();
+  });
+
+  it('창을 닫지 않고 옆 날로 넘어간다 — ‹ ›, 그 주의 날 줄, ← → 키', async () => {
+    const mon = mondayOf(TODAY);
+    const { api } = fakeApi({ events: [event('e1', 'MX 주간 미팅', addDays(mon, 2), '14:00', '15:00'), event('e2', '가나스토어 정기점검', addDays(mon, 3), '10:00', '11:00')], tasks: [{ title: '수요일 기한', due: addDays(mon, 2) }] });
+    renderHome(api);
+    await waitFor(() => expect(dayCell(mon)).not.toBeNull());
+    fireEvent.click(dayCell(addDays(mon, 2)));
+    const shown = () => preview().getAttribute('data-date');
+    expect(shown()).toBe(addDays(mon, 2));
+    expect(within(preview()).getByText('MX 주간 미팅')).toBeTruthy();
+    // 그 주의 날 줄 — 월~일 일곱, 고른 날이 눌린 모양, 날마다 건수(일정 1 + 할 일 1 = 2)
+    const pills = [...preview().querySelectorAll('.hm-pk-d')] as HTMLElement[];
+    expect(pills).toHaveLength(7);
+    expect(pills.map((x) => x.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false', 'false', 'false', 'false']);
+    expect(pills[2].querySelector('i')?.textContent).toBe('2');
+    expect(pills[3].querySelector('i')?.textContent).toBe('1');
+    expect(pills[0].querySelector('i')?.textContent).toBe('');
+    // › 로 다음 날
+    fireEvent.click(within(preview()).getByRole('button', { name: '뒷 날' }));
+    expect(shown()).toBe(addDays(mon, 3));
+    expect(within(preview()).getByText('가나스토어 정기점검')).toBeTruthy();
+    // ← 키로 두 번 앞
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(shown()).toBe(addDays(mon, 1));
+    // 날 줄에서 일요일로
+    fireEvent.click([...preview().querySelectorAll('.hm-pk-d')][6] as HTMLElement);
+    expect(shown()).toBe(addDays(mon, 6));
+    // 띠의 처음에서는 ‹ 가, 끝에서는 › 가 꺼진다
+    fireEvent.click(preview().querySelector('.hm-pk-d') as HTMLElement);
+    expect(shown()).toBe(mon);
+    expect((within(preview()).getByRole('button', { name: '앞 날' }) as HTMLButtonElement).disabled).toBe(true);
+    for (let k = 0; k < 13; k++) fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(shown()).toBe(addDays(mon, 13));
+    expect((within(preview()).getByRole('button', { name: '뒷 날' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('달력에 쓸 수 있으면 [이 날에 일정 추가]가 그날 날짜로 일정 창을 연다 — 쓸 수 없으면 단추가 없다', async () => {
+    const day = addDays(mondayOf(TODAY), 9);
+    const ro = fakeApi();
+    renderHome(ro.api);
+    await waitFor(() => expect(dayCell(day)).not.toBeNull());
+    fireEvent.click(dayCell(day));
+    expect(within(preview()).queryByRole('button', { name: /이 날에 일정 추가/ })).toBeNull();
+    cleanup();
+
+    const rw = fakeApi({ status: { connected: true, canRead: true, canList: true, canWrite: true } });
+    renderHome(rw.api);
+    await waitFor(() => expect(dayCell(day)).not.toBeNull());
+    fireEvent.click(dayCell(day));
+    fireEvent.click(within(preview()).getByRole('button', { name: /이 날에 일정 추가/ }));
+    // 미리보기는 물러나고 일정 창이 그 날짜로 열린다
+    expect(screen.queryByTestId('home-day')).toBeNull();
+    await waitFor(() => expect((document.querySelector('input[type="date"]') as HTMLInputElement | null)?.value).toBe(day));
   });
 
   it('아무것도 없는 날은 없다고 알린다', async () => {
@@ -628,13 +693,13 @@ describe('홈 화면 — Notion (읽기만): 어느 날에 무엇을 썼는가',
 
     fireEvent.click(dayCell(YESTERDAY));
     const group = screen.getByTestId('home-day').querySelector('[data-group="notion"]') as HTMLElement;
-    expect([...group.querySelectorAll('.hm-dp-n b')].map((b) => b.textContent)).toEqual(['알림 분류 개선 요청', '에이전트 재기동 절차 문의', '대시보드 권한 문의', '분기 정리 회의']);
+    expect([...group.querySelectorAll('.hm-pk-n b')].map((b) => b.textContent)).toEqual(['알림 분류 개선 요청', '에이전트 재기동 절차 문의', '대시보드 권한 문의', '분기 정리 회의']);
     expect(group.textContent).toContain('지원 기록 · 새로 만듦');
     expect(group.textContent).toContain('예시 회의 · 새로 만듦');
     fireEvent.click(within(group).getByRole('button', { name: 'Notion에서 열기 — 대시보드 권한 문의' }));
     await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith('https://www.notion.so/s4'));
-    // 오늘 칸의 것은 만든 날이 아니라 고친 날이다
-    fireEvent.click(dayCell(TODAY));
+    // 오늘 칸의 것은 만든 날이 아니라 고친 날이다 — 창 안에서 다음 날로 넘어가 본다
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(screen.getByTestId('home-day').querySelector('[data-group="notion"]')?.textContent).toContain('지원 기록 · 고침');
     expect(screen.getByTestId('home-notion-status').textContent).toContain('Notion 연결됨');
   });
