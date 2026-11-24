@@ -1,6 +1,6 @@
 {
   "name": "template-builder",
-  "version": "0.14.2",
+  "version": "0.19.0",
   "private": true,
   "description": "Template Builder — 주간보고·반복 이메일·작업일지를 정해진 형식으로 쓰고 검증하는 데스크톱 앱",
   "author": "hojhk",
@@ -19,6 +19,7 @@
     "guard": "node scripts/public-guard.mjs --tree . --lines",
     "guard:history": "node scripts/public-guard.mjs --history",
     "prepare": "git config core.hooksPath .githooks || exit 0",
+    "planner:tool": "node scripts/planner-tool.mjs",
     "lint": "tsc --noEmit -p tsconfig.json",
     "build:icon": "node scripts/build-icon.mjs"
   },

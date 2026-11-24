@@ -8,6 +8,7 @@ import { loadTeamFolder, saveTeamFolder } from '../email/useTemplateOverlays';
 import { loadWeeklyRecipients, saveWeeklyRecipients, type WeeklyRecipients } from '../lib/weeklyRecipients';
 import { ThemeToggle } from './ThemeToggle';
 import { AiSettings } from './AiSettings';
+import { HomeGuide, HomeSettings } from '../planner/components/HomeHelp';
 
 interface Props {
   open: boolean;
@@ -146,6 +147,7 @@ export function HelpDrawer({
   const isMono = theme === 'mono';
   const isEmail = docType === 'email';
   const isWorklog = docType === 'worklog';
+  const isHome = docType === 'home';
   const dirty =
     draft.name !== profile.name || draft.email !== profile.email || draft.company !== profile.company;
 
@@ -235,7 +237,7 @@ export function HelpDrawer({
             </div>
           </section>
 
-          {!isEmail && !isWorklog && (
+          {!isEmail && !isWorklog && !isHome && (
             <section className="mb-3 rounded-card border border-rule bg-bg p-3">
               <h3 className="mb-2 text-xs font-semibold text-fg">
                 {isMono ? '$ send' : '주간보고 발송 (임시보관함)'}
@@ -261,6 +263,8 @@ export function HelpDrawer({
               </div>
             </section>
           )}
+
+          {isHome && <HomeSettings mono={isMono} open={open} />}
 
           {isEmail && (
             <section className="mb-3 rounded-card border border-rule bg-bg p-3">
@@ -319,6 +323,8 @@ export function HelpDrawer({
           <GroupTitle mono={isMono}>{isMono ? '# guide' : '가이드'}</GroupTitle>
           {isWorklog ? (
             <WorklogGuide mono={isMono} />
+          ) : isHome ? (
+            <HomeGuide mono={isMono} />
           ) : isEmail ? (
             <>
               <section className="mb-3 rounded-card border border-rule bg-bg p-3">

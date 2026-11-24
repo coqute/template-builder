@@ -5,6 +5,20 @@ import { safeSetItem } from '../lib/storage';
 export type DocType = string;
 
 const KEY = 'tb:doc-type';
+/** 시작 화면 — 'home'(기본: 켤 때 늘 홈) · 'last'(마지막으로 보던 화면) */
+const START_KEY = 'tb:start:v1';
+const HOME_ID = 'home';
+
+export type StartMode = 'home' | 'last';
+
+export function loadStartMode(): StartMode {
+  if (typeof localStorage === 'undefined') return 'home';
+  return localStorage.getItem(START_KEY) === 'last' ? 'last' : 'home';
+}
+
+export function saveStartMode(mode: StartMode): void {
+  safeSetItem(START_KEY, mode);
+}
 
 export function useDocType(validIds: readonly string[]): {
   docType: DocType;
@@ -14,7 +28,10 @@ export function useDocType(validIds: readonly string[]): {
     const fallback = validIds[0] ?? 'weekly';
     if (typeof localStorage === 'undefined') return fallback;
     const v = localStorage.getItem(KEY);
-    return v && validIds.includes(v) ? v : fallback;
+    const last = v && validIds.includes(v) ? v : null;
+    // 홈이 등록돼 있으면 켤 때 늘 홈으로 연다 — 설정에서 "마지막으로 보던 화면"을 고른 경우만 예전처럼
+    if (validIds.includes(HOME_ID) && !(loadStartMode() === 'last' && last)) return HOME_ID;
+    return last ?? fallback;
   });
 
   useEffect(() => {

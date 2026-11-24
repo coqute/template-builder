@@ -10,7 +10,7 @@ import { useDocType } from './hooks/useDocType';
 import { useTemplateOverlays } from './email/useTemplateOverlays';
 import { readWithFallback, safeSetItem } from './lib/storage';
 import { DOC_TYPE_MODULES, getDocTypeModule } from './doctypes';
-import { DocTypeHostProvider, type DocTypeHandlers, type DocTypeHostValue } from './doctypes/DocTypeHost';
+import { DocTypeHostProvider, type DocIntent, type DocTypeHandlers, type DocTypeHostValue } from './doctypes/DocTypeHost';
 
 const STORAGE_KEY_ZOOM = 'tb:preview-zoom';
 const LEGACY_KEY_ZOOM = 'weekly-report-builder:preview-zoom';
@@ -56,9 +56,20 @@ export function App() {
     };
   }, []);
 
+  // 화면 사이 전달 — 홈에서 "작업일지의 이 사안 열기"처럼, 넘어간 화면이 마운트될 때 한 번 꺼내 쓴다
+  const [intent, setIntent] = useState<DocIntent | null>(null);
+  const navigate = useCallback(
+    (next: string, nextIntent?: DocIntent) => {
+      setIntent(nextIntent ?? null);
+      setDocType(next);
+    },
+    [setDocType],
+  );
+  const clearIntent = useCallback(() => setIntent(null), []);
+
   const hostValue: DocTypeHostValue = useMemo(
-    () => ({ toolbarSlot, registerHandlers }),
-    [toolbarSlot, registerHandlers],
+    () => ({ toolbarSlot, registerHandlers, navigate, intent, clearIntent }),
+    [toolbarSlot, registerHandlers, navigate, intent, clearIntent],
   );
 
   useEffect(() => {
@@ -105,7 +116,7 @@ export function App() {
         <Toolbar
           options={SWITCH_OPTIONS}
           docType={active.id}
-          onDocTypeChange={setDocType}
+          onDocTypeChange={(next) => navigate(next)}
           onToolbarSlot={setToolbarSlot}
           onToggleHelp={() => setHelpOpen((v) => !v)}
           theme={theme}

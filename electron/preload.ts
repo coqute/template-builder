@@ -14,6 +14,20 @@ import type {
   WorklogSaveResult,
   WorklogStatResult,
 } from './worklog-types';
+import type {
+  CalendarDeleteResult,
+  CalendarEventsRequest,
+  CalendarEventsResult,
+  CalendarListResult,
+  CalendarStatus,
+  CalendarWriteResult,
+  EventInput,
+  EventRef,
+  PlannerOp,
+  PlannerResult,
+  PlannerLogResult,
+  PlannerStatResult,
+} from '../src/planner/types';
 
 type SaveKind = 'md' | 'html' | 'json';
 
@@ -102,6 +116,22 @@ const api = {
     ipcRenderer.invoke('worklog:weekly-history', dirs) as Promise<Array<{ name: string; text: string }>>,
   worklogReveal: (ref?: WorklogFileRef) =>
     ipcRenderer.invoke('worklog:reveal', ref) as Promise<{ ok: boolean; error?: string }>,
+  // 플래너 — 홈 화면의 할 일 저장소. 고치는 길은 plannerApply(동작 하나)뿐이다
+  plannerGet: () => ipcRenderer.invoke('planner:get') as Promise<PlannerResult>,
+  plannerApply: (op: PlannerOp) => ipcRenderer.invoke('planner:apply', op) as Promise<PlannerResult>,
+  plannerStat: () => ipcRenderer.invoke('planner:stat') as Promise<PlannerStatResult>,
+  plannerLog: (limit?: number) => ipcRenderer.invoke('planner:log', limit) as Promise<PlannerLogResult>,
+  plannerReveal: () => ipcRenderer.invoke('planner:reveal') as Promise<{ ok: boolean; error?: string }>,
+  // Google 달력 — 토큰의 권한 범위 안에서 읽기·쓰기 (일정의 설명은 받지 않는다)
+  calendarStatus: () => ipcRenderer.invoke('calendar:status') as Promise<CalendarStatus>,
+  calendarList: () => ipcRenderer.invoke('calendar:list') as Promise<CalendarListResult>,
+  calendarEvents: (req: CalendarEventsRequest) => ipcRenderer.invoke('calendar:events', req) as Promise<CalendarEventsResult>,
+  // [확인] — 바뀐 일정을 견주는 기준을 마지막으로 읽은 일정으로 바꾼다
+  calendarAck: () => ipcRenderer.invoke('calendar:ack') as Promise<{ ok: boolean }>,
+  calendarInsert: (input: EventInput) => ipcRenderer.invoke('calendar:insert', input) as Promise<CalendarWriteResult>,
+  calendarPatch: (req: { ref: EventRef; patch: Partial<EventInput> }) =>
+    ipcRenderer.invoke('calendar:patch', req) as Promise<CalendarWriteResult>,
+  calendarDelete: (ref: EventRef) => ipcRenderer.invoke('calendar:delete', ref) as Promise<CalendarDeleteResult>,
   onMenu: (handler: (channel: string) => void) => {
     const events = [
       'menu:new',

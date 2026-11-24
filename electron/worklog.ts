@@ -30,6 +30,7 @@ import {
   type WorklogStatResult,
 } from './worklog-types';
 import { decodeWorklog, encodeWorklog, type DiskText } from './worklog-codec';
+import { plannerDir, writeAppInfo } from './planner-store';
 
 const DEFAULT_ROOT = 'C:\\worklog';
 const BACKUP_KEEP = 30;
@@ -114,6 +115,8 @@ async function readConfig(): Promise<WorklogConfig> {
   const root = await getRoot();
   if (!root) return { root: '', folders: [] };
   if (!(await isDir(root))) return { root, folders: [], error: `작업일지 폴더가 없습니다: ${root}` };
+  // 명령줄·MCP 도구는 앱 데이터 폴더의 설정을 볼 수 없다 — 작업일지 폴더를 플래너 저장 폴더에 적어 둔다
+  void writeAppInfo(plannerDir(), { worklogRoot: root });
   try {
     return { root, folders: await discoverFolders(root) };
   } catch (err) {

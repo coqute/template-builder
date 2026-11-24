@@ -9,7 +9,7 @@ import { EXAMPLE_SITE, realSite } from '../src/core/site-config';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ALLOWED = new Set(['src/core/site-config.ts', 'src/email/builtin/tech-inquiry.json']);
 const DIRS = ['src', 'electron', 'scripts', 'assets', 'tests', 'docs'];
-const FILES = ['README.md', 'index.html'];
+const FILES = ['README.md', 'README.public.md', 'index.html'];
 // 경로 조각 가운데 흔한 폴더 이름은 실제 값으로 보지 않는다
 const GENERIC_DIRS = new Set(['.claude', 'tools', 'credentials', '.template-builder', 'gmail-credentials']);
 const EXTS = new Set(['.ts', '.tsx', '.mjs', '.cjs', '.js', '.json', '.md', '.html', '.css', '.cmd', '.ps1', '.snap']);

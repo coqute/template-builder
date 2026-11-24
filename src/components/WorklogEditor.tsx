@@ -6,10 +6,13 @@ import { lintGutter } from '@codemirror/lint';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 import {
   setLineMarker,
+  setPins,
   worklogCompletions,
   worklogHighlight,
   worklogKeymap,
   worklogLinter,
+  worklogPins,
+  type LinePin,
   type MarkerKind,
 } from '../worklog/editor';
 import type { WlFileContext, WlFix } from '../worklog/lint';
@@ -23,6 +26,9 @@ interface Props {
   vocab: Vocabulary;
   onFix: (fix: WlFix) => void;
   onBlur?: () => void;
+  /** ■ 줄 끝에 붙일 표지 — 그 사안에 달린 할 일·일정 (파일에는 들어가지 않는다) */
+  pins?: LinePin[];
+  onPin?: (id: string) => void;
 }
 
 export interface WorklogEditorHandle {
@@ -38,7 +44,7 @@ export interface WorklogEditorHandle {
 }
 
 export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function WorklogEditor(
-  { value, onChange, file, vocab, onFix, onBlur },
+  { value, onChange, file, vocab, onFix, onBlur, pins, onPin },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +59,8 @@ export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function Wor
   onFixRef.current = onFix;
   const onBlurRef = useRef(onBlur);
   onBlurRef.current = onBlur;
+  const onPinRef = useRef(onPin);
+  onPinRef.current = onPin;
 
   useImperativeHandle(
     ref,
@@ -127,6 +135,7 @@ export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function Wor
           (fix) => onFixRef.current(fix),
         ),
         autocompletion({ override: [worklogCompletions(() => vocabRef.current)] }),
+        worklogPins((id) => onPinRef.current?.(id)),
         Prec.highest(
           keymap.of([{ key: 'Tab', run: (v) => (completionStatus(v.state) === 'active' ? acceptCompletion(v) : false) }]),
         ),
@@ -170,6 +179,11 @@ export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function Wor
     const head = Math.min(view.state.selection.main.head, value.length);
     view.dispatch({ changes: { from: 0, to: cur.length, insert: value }, selection: { anchor: head } });
   }, [value]);
+
+  // 표지는 본문이 맞춰진 뒤에 다시 그린다 (줄 번호는 지금 본문 기준)
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: setPins.of(pins ?? []) });
+  }, [pins, value]);
 
   return (
     <div className="relative h-full overflow-hidden bg-bg-elevated">

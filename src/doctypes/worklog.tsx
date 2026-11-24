@@ -1,22 +1,30 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
-import { CalendarCheck, FileDown, FolderOpen, FolderSearch, MessagesSquare, NotebookPen, RefreshCw, Wand2 } from 'lucide-react';
+import { CalendarCheck, CalendarPlus, FileDown, FolderOpen, FolderSearch, MessagesSquare, NotebookPen, RefreshCw, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Btn, MoreMenu } from '../components/ToolbarButton';
 import { WorklogEditor, type WorklogEditorHandle } from '../components/WorklogEditor';
 import { useAiTidy } from '../ai/useAiTidy';
 import { applyWorklogTidy, planWorklogTidy, reviewWorklogTidy } from '../ai/worklogAi';
 import { loadAiModel } from '../ai/settings';
-import { useWorklog } from '../worklog/useWorklog';
+import { sameRef, useWorklog } from '../worklog/useWorklog';
 import { WorklogSidebar, type WorklogSidebarHandle } from '../worklog/components/WorklogSidebar';
 import { WorklogCreateDialog } from '../worklog/components/WorklogCreateDialog';
 import { WorklogStatusBar } from '../worklog/components/WorklogStatusBar';
 import { BlockFromChatDialog } from '../worklog/components/BlockFromChatDialog';
-import { parseWorklog, weekdayOf } from '../worklog/format';
+import { isoToday, parseWorklog, weekdayOf } from '../worklog/format';
 import { lintWorklog } from '../worklog/lint';
-import { MARKERS, type MarkerKind } from '../worklog/editor';
+import { MARKERS, type LinePin, type MarkerKind } from '../worklog/editor';
+import { anchorOf, caseAtLine, findAnchor, insertScheduleLine } from '../planner/anchor';
+import { plannerApi } from '../planner/api';
+import { LinkDialog, type LinkRequest } from '../planner/components/LinkDialog';
+import { md } from '../planner/dates';
+import { eventKey } from '../planner/ops';
+import type { PlannerState, WorklogAnchor } from '../planner/types';
+import { folderClient } from '../planner/usePlanner';
+import '../styles/planner.css';
 import { useDocTypeHost, useRegisterDocTypeHandlers } from './DocTypeHost';
 import type { DocTypeModule, DocTypeWorkspaceProps } from './registry';
 
@@ -29,8 +37,10 @@ const MARKER_BUTTONS: Array<{ kind: MarkerKind; label: string; hint: string }> =
 ];
 
 function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
-  const { toolbarSlot } = useDocTypeHost();
-  const wl = useWorklog();
+  const { toolbarSlot, navigate, intent, clearIntent } = useDocTypeHost();
+  // 홈에서 "이 사안 열기"로 넘어왔으면 오늘 일지 대신 그 파일을 먼저 연다
+  const openAnchor = intent?.kind === 'worklog-open' ? intent.anchor : null;
+  const wl = useWorklog({ initial: openAnchor ? { folder: openAnchor.folder, name: openAnchor.name } : null });
   const editorRef = useRef<WorklogEditorHandle | null>(null);
   const sidebarRef = useRef<WorklogSidebarHandle | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -45,6 +55,124 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
     [doc],
   );
   const names = useMemo(() => [...wl.vocab.requesters.map((r) => r.name), profile.name].filter(Boolean), [wl.vocab, profile.name]);
+
+  // ── 홈(플래너)과 잇기 — 넘어온 사안으로 이동, 사안에 일정·할 일 달기, ■ 줄 표지 ──────────────
+  const planner = useMemo(plannerApi, []);
+  const [plan, setPlan] = useState<PlannerState | null>(null);
+  const [canEvent, setCanEvent] = useState(false);
+  const [linkTarget, setLinkTarget] = useState<WorklogAnchor | null>(null);
+  const [linking, setLinking] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void planner.plannerGet().then((r) => alive && r.ok && setPlan(r.state));
+    void planner.calendarStatus().then((s) => alive && setCanEvent(s.canWrite));
+    return () => {
+      alive = false;
+    };
+  }, [planner]);
+
+  useEffect(() => {
+    if (!openAnchor || wl.files.length === 0) return;
+    const target = wl.files.find((f) => f.folder === openAnchor.folder && f.name === openAnchor.name);
+    if (!target) {
+      toast.info('그 일지 파일을 찾지 못했습니다 — 이름이 바뀌었거나 지워졌습니다.');
+      clearIntent();
+      return;
+    }
+    if (!wl.current) return; // 처음 여는 중
+    if (!sameRef(wl.current, target)) {
+      void wl.open(target);
+      return;
+    }
+    const line = findAnchor(doc, openAnchor)?.startLine ?? openAnchor.line;
+    clearIntent();
+    setTimeout(() => editorRef.current?.jumpToLine(line), 40);
+    // wl.open은 열린 파일이 바뀔 때만 다시 본다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAnchor, wl.files, wl.current, doc, clearIntent]);
+
+  /** 이 일지의 ■ 줄에 붙일 표지 — 그 사안에 달린 할 일·달력 일정 */
+  const pins = useMemo((): LinePin[] => {
+    if (!plan || !wl.current) return [];
+    const cur = wl.current;
+    const mine = (a: WorklogAnchor) => a.folder === cur.folder && a.name === cur.name;
+    const byLine = new Map<number, { labels: string[]; id: string }>();
+    const add = (a: WorklogAnchor, label: string, id: string) => {
+      const line = findAnchor(doc, a)?.startLine;
+      if (!line) return;
+      const hit = byLine.get(line);
+      if (hit) hit.labels.push(label);
+      else byLine.set(line, { labels: [label], id });
+    };
+    for (const task of plan.tasks) {
+      if (task.doneAt || task.origin.kind !== 'worklog' || !mine(task.origin.anchor)) continue;
+      add(task.origin.anchor, task.state === 'waiting' ? '기다리는 중' : task.due ? `${md(task.due)} 할 일` : '할 일', `task:${task.id}`);
+    }
+    for (const link of plan.links) if (mine(link.anchor)) add(link.anchor, '달력 일정', `event:${eventKey(link)}`);
+    return [...byLine].map(([line, v]) => ({ line, id: v.id, label: v.labels.length > 1 ? `${v.labels[0]} 외 ${v.labels.length - 1}` : v.labels[0] }));
+  }, [plan, wl.current, doc]);
+
+  const onPin = useCallback(
+    (id: string) => {
+      const [kind, ...rest] = id.split(':');
+      const key = rest.join(':');
+      navigate('home', kind === 'task' ? { kind: 'home-focus', taskId: key } : { kind: 'home-focus', eventKey: key });
+    },
+    [navigate],
+  );
+
+  const openLink = () => {
+    if (!wl.current) return void toast.info('일지를 먼저 여세요.');
+    const block = caseAtLine(doc, editorRef.current?.cursorLine() ?? 0);
+    if (!block || !block.title.trim()) return void toast.info('커서를 ■ 사안 안에 두고 다시 실행하세요.');
+    setLinkTarget(anchorOf({ folder: wl.current.folder, name: wl.current.name, date: wl.current.date }, doc, block));
+  };
+
+  const submitLink = async (req: LinkRequest) => {
+    const anchor = linkTarget;
+    const file = wl.current;
+    if (!anchor || !file) return;
+    setLinking(true);
+    let focus: { kind: 'home-focus'; taskId?: string; eventKey?: string } | null = null;
+    let next: PlannerState | null = null;
+    if (req.as === 'task') {
+      const id = `t_${Date.now().toString(36)}`;
+      const r = await planner.plannerApply({
+        type: 'task.add',
+        id,
+        draft: { title: req.title, due: req.date, client: folderClient(anchor.folder), who: anchor.source.split('/')[0].trim(), origin: { kind: 'worklog', anchor } },
+      });
+      if (r.ok) {
+        next = r.state;
+        focus = { kind: 'home-focus', taskId: id };
+      } else toast.error(`달지 못했습니다: ${r.error}`);
+    } else {
+      const ev = await planner.calendarInsert({ summary: req.title, allDay: false, start: `${req.date}T${req.start}`, end: `${req.date}T${req.end}` });
+      if (!ev.ok) toast.error(`달력에 만들지 못했습니다: ${ev.message}`);
+      else {
+        const ref = { calendarId: ev.event.calendarId, eventId: ev.event.id };
+        const r = await planner.plannerApply({ type: 'link.set', link: { ...ref, anchor } });
+        if (r.ok) {
+          next = r.state;
+          focus = { kind: 'home-focus', eventKey: eventKey(ref) };
+        } else toast.error(`달력에는 만들었지만 일지와 잇지 못했습니다: ${r.error}`);
+      }
+    }
+    setLinking(false);
+    if (!next || !focus) return;
+    setPlan(next);
+    setLinkTarget(null);
+    if (req.logLine) {
+      // 달기 창을 여는 사이 다른 일지를 열었으면 그 일지에는 넣지 않는다
+      const block = findAnchor(parseWorklog(textRef.current), anchor);
+      if (block) wl.setTextFor(file, insertScheduleLine(textRef.current, block, req.logLine), '그 사이 다른 일지를 열어 일지에는 적지 않았습니다.');
+    }
+    const target = focus;
+    toast.success(req.as === 'task' ? `${md(req.date)} 할 일로 달았습니다.` : `${md(req.date)} ${req.start} 일정을 달력에 만들고 이 사안과 이었습니다.`, {
+      duration: 8000,
+      action: { label: '홈에서 보기', onClick: () => navigate('home', target) },
+    });
+  };
 
   const openAt = useCallback(
     async (entry: Parameters<typeof wl.open>[0], line?: number) => {
@@ -128,6 +256,9 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
         case 'shift+a':
           if (!ai.busy) void tidyWithAi();
           return true;
+        case 'shift+d':
+          openLink();
+          return true;
         default:
           return false;
       }
@@ -160,6 +291,7 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
             />
             <MoreMenu
               items={[
+                { label: '이 사안에 일정·할 일 달기', shortcut: 'Ctrl+Shift+D', icon: <CalendarPlus size={13} />, disabled: !wl.current, onClick: openLink },
                 { label: '새 일지 (날짜 고르기)', icon: <NotebookPen size={13} />, onClick: () => setCreateOpen(true) },
                 { label: '목록 새로 고침', icon: <RefreshCw size={13} />, onClick: () => void wl.refreshList().then(() => wl.refreshCorpus()) },
                 {
@@ -174,6 +306,9 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
           toolbarSlot,
         )}
       {ai.view}
+      {linkTarget && (
+        <LinkDialog anchor={linkTarget} today={isoToday()} canEvent={canEvent} busy={linking} onSubmit={(req) => void submitLink(req)} onClose={() => setLinkTarget(null)} />
+      )}
       {createOpen && wl.config && (
         <WorklogCreateDialog
           folders={wl.config.folders}
@@ -245,7 +380,7 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
                 )}
                 <div className={wl.conflict ? 'h-[calc(100%-32px-41px)]' : 'h-[calc(100%-32px)]'}>
                   {wl.current ? (
-                    <WorklogEditor ref={editorRef} value={wl.text} onChange={wl.setText} file={fileCtx} vocab={wl.vocab} onFix={wl.applyFix} onBlur={() => void wl.save()} />
+                    <WorklogEditor ref={editorRef} value={wl.text} onChange={wl.setText} file={fileCtx} vocab={wl.vocab} onFix={wl.applyFix} onBlur={() => void wl.save()} pins={pins} onPin={onPin} />
                   ) : (
                     <EmptyFile hasFiles={wl.files.length > 0} onToday={openToday} />
                   )}

@@ -31,6 +31,9 @@ import { useWeeklyState, type CombineEntry } from '../hooks/useWeeklyState';
 import { copyHtmlToClipboard } from '../hooks/useClipboard';
 import { fileBaseName as baseName } from '../lib/recentFiles';
 import { readWithFallback, safeSetItem } from '../lib/storage';
+import { plannerApi } from '../planner/api';
+import { classifyEvents } from '../planner/classify';
+import { insertPlanLines, plansFromEvents } from '../planner/sources/weekly';
 import { useDocTypeHost, useRegisterDocTypeHandlers } from './DocTypeHost';
 import type { DocTypeModule, DocTypeWorkspaceProps } from './registry';
 import type { Theme } from '../hooks/useTheme';
@@ -94,7 +97,7 @@ function loadSplit(): [number, number] {
 }
 
 function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspaceProps) {
-  const { toolbarSlot } = useDocTypeHost();
+  const { toolbarSlot, intent, clearIntent } = useDocTypeHost();
   const w = useWeeklyState(profile.name);
   const ai = useAiTidy();
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
@@ -190,6 +193,14 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     if (sizes.length !== 2) return;
     safeSetItem(STORAGE_KEY_SPLIT, JSON.stringify(sizes));
   }, []);
+
+  // 홈에서 "주간보고의 이 줄"로 넘어온 경우 — 지금 문서의 그 줄로 간다
+  useEffect(() => {
+    if (intent?.kind !== 'weekly-line') return;
+    const line = intent.line;
+    clearIntent();
+    setTimeout(() => jumpToLine(line), 80);
+  }, [intent, clearIntent, jumpToLine]);
 
   useRegisterDocTypeHandlers({
     menu: {
@@ -294,6 +305,38 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
   // AI 정돈 — 지금 .md를 기준으로 계획하고, 적용 직전에 내용이 그대로인지 확인한다
   const mdRef = useRef(w.md);
   mdRef.current = w.md;
+  /** 다음 주(일정 예정 범위)의 달력 일정을 `@PLAN` 줄로 넣는다 — 이미 있는 줄은 두고 없는 것만 */
+  const importPlans = async () => {
+    const baseMd = w.md;
+    const report = parseTolerant(baseMd).report;
+    const range = report.currentWeekRange;
+    if (!range.start || !range.end) return void toast.info('일정 예정 범위(@CURRENT)가 없어 가져올 수 없습니다.');
+    const api = plannerApi();
+    const status = await api.calendarStatus();
+    if (!status.canRead) return void toast.info('Google 달력이 연결되지 않았습니다 — 홈 화면의 도움말·설정(F1)에서 연결 방법을 확인하세요.');
+    const store = await api.plannerGet();
+    const s = store.ok ? store.state : null;
+    const r = await api.calendarEvents({ from: range.start, to: range.end, calendars: s?.settings.calendars ?? ['primary'] });
+    if (!r.ok) return void toast.error(`달력을 읽지 못했습니다: ${r.message}`);
+    const events = classifyEvents(r.events, { hiddenEvents: s?.hiddenEvents, hiddenTitles: s?.hiddenTitles });
+    const have = report.plans ?? [];
+    const add = plansFromEvents(events, range).filter((p) => !have.some((h) => h.date === p.date && h.text.trim() === p.text));
+    if (add.length === 0) return void toast.info(`${range.start} ~ ${range.end}에 새로 넣을 달력 일정이 없습니다.`);
+    if (mdRef.current !== baseMd) return void toast.error('가져오는 동안 내용이 바뀌어 넣지 않았습니다. 다시 실행하세요.');
+    w.setMd(insertPlanLines(baseMd, add));
+    const gen = w.docGen();
+    toast.success(`달력 일정 ${add.length}건을 일정 예정(@PLAN)에 넣었습니다.`, {
+      duration: 8000,
+      action: {
+        label: '되돌리기',
+        onClick: () => {
+          if (w.docGen() !== gen) return void toast.info('그 사이 다른 문서를 열어 되돌리지 않았습니다.');
+          w.setMd(baseMd);
+        },
+      },
+    });
+  };
+
   const tidyWithAi = async () => {
     const baseMd = w.md;
     const report = parseTolerant(baseMd).report;
@@ -390,6 +433,12 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
                   icon: <NotebookPen size={13} />,
                   hint: '한 주의 작업일지(■ ▶ -)로 주간보고를 만듭니다 — 요청자별 고객사|작업구분은 지난 보고에서 (되돌리기 가능)',
                   onClick: () => setWorklogImport(true),
+                },
+                {
+                  label: '다음 주 일정 가져오기 (달력)',
+                  icon: <CalendarPlus size={13} />,
+                  hint: '일정 예정 범위의 Google 달력 일정을 @PLAN 줄로 넣습니다 — 이미 있는 줄은 그대로 (되돌리기 가능)',
+                  onClick: () => void importPlans(),
                 },
                 {
                   label: '샘플 보기',

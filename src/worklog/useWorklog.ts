@@ -72,7 +72,12 @@ function writeDrafts(list: Draft[]): boolean {
   return safeSetItem(DRAFT_KEY, JSON.stringify(list));
 }
 
-export function useWorklog() {
+export interface UseWorklogOptions {
+  /** 처음에 열 파일 — 홈에서 "이 사안 열기"로 넘어온 경우. 없으면 오늘 일지 → 마지막에 본 일지 순 */
+  initial?: WorklogFileRef | null;
+}
+
+export function useWorklog(opts: UseWorklogOptions = {}) {
   const api = typeof window !== 'undefined' ? window.reportApi : undefined;
   const [config, setConfig] = useState<WorklogConfig | null>(null);
   const [files, setFiles] = useState<WorklogEntry[]>([]);
@@ -506,7 +511,8 @@ export function useWorklog() {
       if (!alive) return;
       const last = readJson<WorklogFileRef>(LAST_KEY);
       const today = list.filter((f) => f.date === isoToday());
-      const target = today[0] ?? list.find((f) => sameRef(f, last)) ?? list[0];
+      const wanted = opts.initial ? list.find((f) => sameRef(f, opts.initial)) : undefined;
+      const target = wanted ?? today[0] ?? list.find((f) => sameRef(f, last)) ?? list[0];
       if (target) await open(target, { quiet: true });
       if (alive) void refreshCorpus();
     })();

@@ -9,6 +9,8 @@ import { upsertDraft } from './gmail/upsert';
 import type { DraftPayload, GmailDraftResult } from './gmail/types';
 import { registerAiIpc } from './ai';
 import { registerWorklogIpc } from './worklog';
+import { registerPlannerIpc } from './planner';
+import { registerCalendarIpc } from './calendar';
 import { writeFileAtomic } from './atomic';
 import { kindOf, rememberDir, startDir } from './dialog-dir';
 
@@ -400,6 +402,12 @@ registerAiIpc();
 
 // 작업일지 — 작업일지 폴더의 [YYYY-MM-DD] 제목.txt 읽기·쓰기
 registerWorklogIpc(() => mainWindow);
+
+// 플래너 — 홈 화면의 할 일 저장소(사용자 폴더 아래 planner.json) 읽기·동작 적용
+registerPlannerIpc();
+
+// Google 달력 — 확정 일정 읽기·쓰기 (토큰의 권한 범위 안에서)
+registerCalendarIpc();
 
 
 

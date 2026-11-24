@@ -11,12 +11,12 @@ interface Props {
   onChange: (next: string) => void;
 }
 
-/** 문서 타입 전환 스위치 — 옵션은 doctypes 레지스트리에서 주입 */
+/** 화면 전환 스위치(홈 + 문서 종류) — 옵션은 doctypes 레지스트리에서 주입 */
 export function DocTypeSwitch({ options, docType, onChange }: Props) {
   return (
     <div
       role="radiogroup"
-      aria-label="문서 종류"
+      aria-label="화면"
       className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-sharp border border-rule p-0.5"
       style={{ background: 'var(--bg-elevated)' }}
     >
