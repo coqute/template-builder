@@ -187,9 +187,11 @@ export interface RawEvent {
   declined: boolean;
   /** 공휴일 달력의 일정이다 */
   holiday: boolean;
-  /** 이 일정을 고칠 수 있다 (쓸 수 있는 달력의 일정) */
+  /** 이 일정을 고칠 수 있다 (쓸 수 있는 달력에 있고 내가 만든 일정) */
   canWrite: boolean;
   updated: string;
+  /** 반복 일정의 한 회차다 — 고치거나 지우면 그 회차만 바뀐다 (아니면 칸이 없다) */
+  recurring?: boolean;
 }
 
 export interface CalendarEventsRequest {
@@ -200,6 +202,11 @@ export interface CalendarEventsRequest {
   calendars: string[];
   /** 5분 기억을 건너뛰고 다시 읽는다 */
   force?: boolean;
+  /**
+   * 한 번 쓰고 버릴 읽기 — 마지막으로 읽은 일정(calendar-cache.json)과 견줄 기준을 건드리지 않는다.
+   * 홈이 아닌 곳에서 다른 기간을 읽을 때 쓴다(주간보고의 다음 주 일정 가져오기).
+   */
+  transient?: boolean;
 }
 
 export type CalendarEventsResult =

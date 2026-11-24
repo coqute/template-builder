@@ -316,7 +316,8 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     if (!status.canRead) return void toast.info('Google 달력이 연결되지 않았습니다 — 홈 화면의 도움말·설정(F1)에서 연결 방법을 확인하세요.');
     const store = await api.plannerGet();
     const s = store.ok ? store.state : null;
-    const r = await api.calendarEvents({ from: range.start, to: range.end, calendars: s?.settings.calendars ?? ['primary'] });
+    // 홈과 다른 기간을 읽는다 — 홈이 견줄 기준(마지막으로 읽은 일정)을 덮지 않게 한 번 쓰고 버리는 읽기로
+    const r = await api.calendarEvents({ from: range.start, to: range.end, calendars: s?.settings.calendars ?? ['primary'], transient: true });
     if (!r.ok) return void toast.error(`달력을 읽지 못했습니다: ${r.message}`);
     const events = classifyEvents(r.events, { hiddenEvents: s?.hiddenEvents, hiddenTitles: s?.hiddenTitles });
     const have = report.plans ?? [];

@@ -86,6 +86,7 @@ export function Agenda({ today, days, past, cal, changes, linked, focus, flash, 
                 <span>{KIND_LABEL[e.kind]}</span>
                 {e.location && <span>· {e.location}</span>}
                 {e.source === 'plan' && <span>· 주간보고 일정 예정</span>}
+                {e.recurring && <span>· 반복</span>}
                 {linked.has(e.key) && <span>· 일지와 이어짐</span>}
               </span>
             )}
@@ -93,6 +94,7 @@ export function Agenda({ today, days, past, cal, changes, linked, focus, flash, 
         </button>
         {open === e.key && (
           <div className="hm-ag-acts">
+            {e.source === 'plan' && <span className="hm-note">주간보고의 일정 예정(@PLAN)에 적어 둔 일정입니다 — 달력에는 없습니다. 주간보고 탭에서 고칩니다.</span>}
             {e.htmlLink && (
               <button type="button" className="hm-mini" onClick={() => actions.open(e)}>
                 달력에서 열기 ↗

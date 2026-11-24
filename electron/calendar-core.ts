@@ -26,9 +26,12 @@ const HOLIDAY_MARK = '#holiday';
 const PAGE_SIZE = 250;
 const MAX_PAGES = 4;
 
-/** 일정 하나에서 받는 칸 — 설명(description)·참석자 주소는 여기에 없으므로 응답에 오지 않는다 */
+/**
+ * 일정 하나에서 받는 칸 — 설명(description)·참석자 주소는 여기에 없으므로 응답에 오지 않는다.
+ * organizer/self·guestsCanModify = 내가 만든 일정인가(남이 만든 일정은 고치지 못한다), recurringEventId = 반복 일정의 한 회차인가.
+ */
 const EVENT_FIELDS =
-  'id,summary,location,start,end,status,eventType,htmlLink,hangoutLink,conferenceData/entryPoints/entryPointType,attendees(self,responseStatus),updated';
+  'id,summary,location,start,end,status,eventType,htmlLink,hangoutLink,conferenceData/entryPoints/entryPointType,attendees(self,responseStatus),organizer/self,guestsCanModify,recurringEventId,updated';
 const LIST_FIELDS = `nextPageToken,items(${EVENT_FIELDS})`;
 
 export interface CalendarDeps {
@@ -233,6 +236,9 @@ interface GEvent {
   hangoutLink?: string;
   conferenceData?: { entryPoints?: unknown[] };
   attendees?: Array<{ self?: boolean; responseStatus?: string }>;
+  organizer?: { self?: boolean };
+  guestsCanModify?: boolean;
+  recurringEventId?: string;
   updated?: string;
 }
 
@@ -246,6 +252,9 @@ function toRawEvent(calendarId: string, e: GEvent | null, cal: { canWrite: boole
   // 끝이 빠진 일정 — 시각 일정은 시작과 같게, 종일 일정은 하루짜리(끝 = 다음 날)로 본다
   const nextDay = allDay ? localDay(start, 1) : null;
   const noEnd = nextDay ? isoDate(nextDay) : start;
+  // 남이 만들어 나를 부른 일정은 내 달력에 있어도 시각·제목을 고칠 수 없다(손님이 고칠 수 있게 해 둔 일정만 예외).
+  // 지우면 내 달력에서만 빠지고 만든 사람에게는 불참으로 보이므로, 그런 일정은 고치기·지우기를 내놓지 않는다.
+  const mine = !e.organizer || e.organizer.self === true || e.guestsCanModify === true;
   return {
     calendarId,
     id: e.id,
@@ -260,8 +269,10 @@ function toRawEvent(calendarId: string, e: GEvent | null, cal: { canWrite: boole
     meet: !!e.hangoutLink || (Array.isArray(e.conferenceData?.entryPoints) && e.conferenceData.entryPoints.length > 0),
     declined: Array.isArray(e.attendees) && e.attendees.some((a) => a?.self === true && a.responseStatus === 'declined'),
     holiday: cal.holiday,
-    canWrite: cal.canWrite,
+    canWrite: cal.canWrite && mine,
     updated: typeof e.updated === 'string' ? e.updated : '',
+    // 반복 일정의 한 회차 — 고치거나 지우면 그 회차만 바뀐다
+    ...(typeof e.recurringEventId === 'string' && e.recurringEventId ? { recurring: true } : {}),
   };
 }
 

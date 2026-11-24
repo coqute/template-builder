@@ -18,7 +18,7 @@ function seedLogs(today: string): WorklogFileText[] {
   return [
     file(addDays(today, -5), '수집 점검', '■ (홍길동/메일) 수집 누락 원인 문의\n▶ 에이전트 로그 회수 후 원인 확인\n- 대상: 수집 서버 2대\n- 원인 확인 중 — 제조사 회신 대기'),
     file(addDays(today, -11), '웹훅 점검', '■ (담당A/메신저) 웹훅 연동 설정 전수 확인\n※ event DB 접속 불가로 담당B 대리님에게 조회 요청 예정'),
-    file(addDays(today, -18), '패치 안내', '■ (담당C/메일) v2.1 패치 안내\n※ 현장 적용 여부 확인 필요'),
+    file(addDays(today, -18), '패치 일정', '■ (담당C/유선) v2.1 패치 적용 일정 문의\n▶ 적용 가능 일정 확인\n- 적용 전 백업 절차 확인 필요'),
     file(addDays(today, -3), '주간 미팅', '■ MX 주간 미팅 회의 (캘린더 일정)\n▶ 회의 참석 — 알림 분류 개선 일정 협의'),
   ];
 }

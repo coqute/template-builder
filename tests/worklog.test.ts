@@ -148,6 +148,18 @@ describe('형식 제안', () => {
     expect(lintWorklog(t, { date: '2026-10-20', title: '제목' }).map((i) => i.code)).toContain('title-missing');
     expect(setTitleLine(t, '[2026-10-20] 제목')).toBe(`[2026-10-20] 제목\n\n${t}`);
   });
+
+  it('한 일이 적히지 않은 사안 — ■ 한 줄뿐이면 ▶ 보강을 제안한다 (자리 글이 없어도)', () => {
+    const codes = (t: string) => lintWorklog(t, null).filter((i) => i.code === 'needs-act').map((i) => i.line);
+    // 루틴이 메일로 사안만 세운 모양(2026-11-24부터 ※ 자리 글을 붙이지 않는다)
+    expect(codes('■ (홍길동/메일) v2.1 패치 안내\n\n■ (담당A/메신저) 설정 문의\n▶ 설정 방법 안내')).toEqual([1]);
+    // 옛 자리 글이 붙은 모양도 그대로 잡는다
+    expect(codes('■ (홍길동/메일) v2.1 패치 안내\n※ 현장 적용 여부 확인 필요')).toEqual([1]);
+    // 배경만 적어 둔 사안, 회의 기록, 한 일이 있는 사안은 제안하지 않는다
+    expect(codes('■ (담당A/메신저) 웹훅 설정 확인\n※ event DB 접속 불가')).toEqual([]);
+    expect(codes('■ MX 주간 미팅 회의 (캘린더 일정)')).toEqual([]);
+    expect(codes('■ (담당A/메신저) 설정 문의\n▶ 설정 방법 안내')).toEqual([]);
+  });
 });
 
 describe('검색·어휘', () => {

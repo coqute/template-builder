@@ -91,14 +91,19 @@ describe('대화 → 블록', () => {
 // v0.13.2 — 요청 내용을 작업일지 루틴 형식(STEP 4·5)과 다시 대조
 describe('대화 → 블록: 요청 내용이 지금 일지 형식과 맞는다', () => {
   it('지침에 루틴의 상태 어휘·URL 금지·회의 모양·수행 불명 처리가 있다', () => {
-    for (const w of ['안내 완료', '전달 완료', '패치 전달', '제조사지원 회신 대기', '고객 회신 대기', '문의 예정', '대응 예정', '조회 요청 예정', '적용 여부 확인 필요']) {
+    for (const w of ['안내 완료', '전달 완료', '패치 전달', '제조사지원 회신 대기', '고객 회신 대기']) {
       expect(BLOCK_SYSTEM).toContain(w);
     }
+    // 2026-11-24 — 루틴과 같이, 대화에 없는 계획·확인 사항을 상태로 지어 붙이지 않는다(홈이 남은 할 일로 읽는다)
+    expect(BLOCK_SYSTEM).toContain('상태는 두 가지만 쓴다');
+    expect(BLOCK_SYSTEM).toContain('acts와 notes를 비운다');
+    expect(BLOCK_SYSTEM).toContain('지어 붙이지 않는다');
+    expect(BLOCK_SYSTEM).not.toContain('notes에 상태만 쓴다');
+    expect(BLOCK_SYSTEM).not.toContain('패치·설정 안내를 받았을 뿐이면 "현장 적용 여부 확인 필요"');
     expect(BLOCK_SYSTEM).toContain(' — 제조사지원 회신 대기');
     expect(BLOCK_SYSTEM).toMatch(/URL을 쓰지 않는다\(전달물 원문 안은 예외\)/);
     expect(BLOCK_SYSTEM).toContain('⟦URL1⟧은 전달물 원문에만 둔다');
     expect(BLOCK_SYSTEM).toContain('{회의명} 회의');
-    expect(BLOCK_SYSTEM).toContain('현장 적용 여부 확인 필요');
     expect(BLOCK_SYSTEM).toContain('전달물로 남긴 내용은 facts로 다시 요약하지 않는다');
     expect(BLOCK_SYSTEM).toContain('원인 한 줄과 조치 한 줄');
     // 실제 일지(2026-09 이후 28개)에는 시각·요일이 없고 일정은 M/D로 적혀 있다

@@ -24,6 +24,7 @@ export interface WlFileContext {
 }
 
 const HONORIFIC = /(님|책임|부장|차장|과장|대리|선임|수석|사원|주임|전임|매니저|팀장|이사|대표|프로)$/;
+/** 옛 루틴이 한 일을 알 수 없는 사안에 붙이던 자리 글 — 2026-11-24부터 루틴은 붙이지 않는다(■ 한 줄만 세운다) */
 const NEEDS_ACT = /(확인 필요|대응 예정|보강)/;
 
 export function lintWorklog(text: string, file: WlFileContext | null, doc: WlDoc = parseWorklog(text)): WlIssue[] {
@@ -67,7 +68,9 @@ export function lintWorklog(text: string, file: WlFileContext | null, doc: WlDoc
         message: `출처 괄호는 이름만 씁니다(${names.join(', ')}) — 호칭은 ▶·- 문장 안에서만 씁니다.`,
       });
     }
-    if (!b.calendar && b.acts.length === 0 && b.notes.some((n) => NEEDS_ACT.test(n.text))) {
+    // 한 일이 적히지 않은 사안 — ■ 한 줄뿐이거나(루틴이 메일로 사안만 세운 것), 옛 자리 글만 있는 것
+    const bare = b.notes.length === 0 && b.looseFacts.length === 0 && b.deliverables.length === 0 && b.extra.length === 0;
+    if (!b.calendar && b.acts.length === 0 && b.title.trim() && (bare || b.notes.some((n) => NEEDS_ACT.test(n.text)))) {
       out.push({ line: b.startLine, severity: 'info', code: 'needs-act', message: '▶로 실제 수행한 내용을 보강하세요.' });
     }
   }

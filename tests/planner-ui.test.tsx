@@ -237,6 +237,161 @@ describe('홈 화면', () => {
   });
 });
 
+describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
+  beforeEach(() => store.clear());
+  afterEach(() => {
+    cleanup();
+    (window as unknown as { reportApi: unknown }).reportApi = undefined;
+  });
+  const WRITABLE: CalendarStatus = { connected: true, canRead: true, canList: true, canWrite: true };
+  const LINK = 'https://www.google.com/calendar/event?eid=ZTEgaG9uZ0BleGFtcGxlLmNvbQ';
+  const TOMORROW = addDays(TODAY, 1);
+  const rowOf = (id: string) => document.querySelector(`[data-event="primary/${id}"]`) as HTMLElement;
+  /** 그 일정 줄을 펼친다 — 이미 펼쳐져 있으면 그대로 둔다(고친 뒤에도 줄은 펼쳐진 채다) */
+  const openRow = async (id: string) => {
+    await waitFor(() => expect(rowOf(id)).not.toBeNull());
+    if (rowOf(id).getAttribute('aria-expanded') !== 'true') fireEvent.click(rowOf(id));
+  };
+
+  it('[달력에서 열기] — 그 일정의 링크를 바깥 브라우저로 열고, 열지 못하면 알린다', async () => {
+    const { api } = fakeApi({ events: [{ ...event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00'), htmlLink: LINK }] });
+    renderHome(api);
+    await openRow('e1');
+    fireEvent.click(screen.getByRole('button', { name: /달력에서 열기/ }));
+    await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith(LINK));
+    expect(screen.queryByText(/열지 못했습니다/)).toBeNull();
+
+    api.openExternal.mockResolvedValueOnce({ ok: false, error: '열 수 없는 주소입니다' } as never);
+    fireEvent.click(screen.getByRole('button', { name: /달력에서 열기/ }));
+    expect(await screen.findByText(/달력에서 이 일정을 열지 못했습니다 — 열 수 없는 주소입니다/)).toBeTruthy();
+  });
+
+  it('링크가 없는 일정에는 [달력에서 열기]가 없고, 남이 만든 일정에는 고치기·지우기가 없다', async () => {
+    const { api } = fakeApi({
+      status: WRITABLE,
+      events: [event('e1', '링크 없는 일정', TOMORROW, '10:00', '11:00'), { ...event('e2', '초대받은 회의', TOMORROW, '14:00', '15:00'), htmlLink: LINK, canWrite: false }],
+    });
+    renderHome(api);
+    await openRow('e1');
+    expect(screen.queryByRole('button', { name: /달력에서 열기/ })).toBeNull();
+    expect(screen.getByRole('button', { name: '고치기·옮기기' })).toBeTruthy();
+    await openRow('e2');
+    expect(screen.getByRole('button', { name: /달력에서 열기/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '고치기·옮기기' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '지우기' })).toBeNull();
+    expect(screen.getByRole('button', { name: '이 일정 숨기기' })).toBeTruthy();
+  });
+
+  it('[고치기·옮기기] — 바뀐 칸만 달력에 보낸다. 밤을 넘기는 일정은 길이를 지킨다', async () => {
+    const overnight: RawEvent = { ...event('e1', '', TOMORROW, '22:00', '23:00'), end: new Date(`${addDays(TOMORROW, 1)}T01:00:00`).toISOString(), htmlLink: LINK };
+    const { api } = fakeApi({ status: WRITABLE, events: [overnight] });
+    api.calendarPatch.mockImplementation(async () => ({ ok: true, event: overnight }));
+    renderHome(api);
+
+    // 장소만 고친다 — 제목이 없던 일정의 자리 글과 시각은 보내지 않는다
+    await openRow('e1');
+    fireEvent.click(screen.getByRole('button', { name: '고치기·옮기기' }));
+    let dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByLabelText('제목') as HTMLInputElement).value).toBe('(제목 없음)');
+    fireEvent.change(within(dialog).getByLabelText('장소 (선택)'), { target: { value: '본사 3층' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '고치기' }));
+    await waitFor(() => expect(api.calendarPatch).toHaveBeenCalledTimes(1));
+    expect(api.calendarPatch).toHaveBeenLastCalledWith({ ref: { calendarId: 'primary', eventId: 'e1' }, patch: { location: '본사 3층' } });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 시작만 한 시간 당긴다 — 끝은 다음 날 01:00 그대로
+    await openRow('e1');
+    fireEvent.click(screen.getByRole('button', { name: '고치기·옮기기' }));
+    dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('시작'), { target: { value: '21:00' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '고치기' }));
+    await waitFor(() => expect(api.calendarPatch).toHaveBeenCalledTimes(2));
+    expect(api.calendarPatch).toHaveBeenLastCalledWith({
+      ref: { calendarId: 'primary', eventId: 'e1' },
+      patch: { allDay: false, start: `${TOMORROW}T21:00`, end: `${addDays(TOMORROW, 1)}T01:00` },
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 아무것도 고치지 않으면 달력에 쓰지 않는다
+    await openRow('e1');
+    fireEvent.click(screen.getByRole('button', { name: '고치기·옮기기' }));
+    dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '고치기' }));
+    expect(await screen.findByText('바뀐 것이 없어 달력에 쓰지 않았습니다.')).toBeTruthy();
+    expect(api.calendarPatch).toHaveBeenCalledTimes(2);
+  });
+
+  it('[지우기] — 한 번 더 확인하고, 그 일정으로 달력에 올려 둔 할 일의 표시를 지운다', async () => {
+    const { api, state } = fakeApi({
+      status: WRITABLE,
+      tasks: [{ title: '달력에 올린 일', due: TOMORROW, event: { calendarId: 'primary', eventId: 'e1' } }],
+      events: [{ ...event('e1', '달력에 올린 일', TOMORROW, '10:00', '11:00'), htmlLink: LINK, recurring: true }],
+    });
+    api.calendarDelete.mockImplementation(async () => ({ ok: true }));
+    renderHome(api);
+    // 할 일을 펼치면 "달력에 올림" 표시가 있다
+    fireEvent.click(await within(await screen.findByTestId('home-tasks')).findByRole('button', { name: '달력에 올린 일' }));
+    expect(within(tasksBox()).getByText('달력에 올림')).toBeTruthy();
+    expect(within(tasksBox()).queryByRole('button', { name: '달력에 올리기' })).toBeNull();
+    await openRow('e1');
+    // 할 일 상자에도 [지우기]가 있다 — 일정 줄 아래의 것을 누른다
+    fireEvent.click(within(rowOf('e1').parentElement as HTMLElement).getByRole('button', { name: '지우기' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(api.calendarDelete).not.toHaveBeenCalled(); // 확인 전에는 지우지 않는다
+    expect(dialog.textContent).toContain('반복 일정의 이번 회차만');
+    fireEvent.click(within(dialog).getByRole('button', { name: '지우기' }));
+    await waitFor(() => expect(api.calendarDelete).toHaveBeenCalledWith({ calendarId: 'primary', eventId: 'e1' }));
+    await waitFor(() => expect(state().tasks[0].event).toBeNull());
+    await waitFor(() => expect(within(tasksBox()).queryByText('달력에 올림')).toBeNull());
+    expect(within(tasksBox()).getByRole('button', { name: '달력에 올리기' })).toBeTruthy();
+  });
+  it('앱에서 고친 일정이 나중에 밖에서 또 바뀌면 "바뀜"으로 알린다 (한 번 고쳤다고 계속 가리지 않는다)', async () => {
+    const at = (time: string) => event('e1', 'MX 주간 미팅', TOMORROW, time, '18:00');
+    let current: RawEvent[] = [at('14:00')];
+    let baseline: RawEvent[] | null = null;
+    const { api } = fakeApi({ status: WRITABLE });
+    api.calendarEvents.mockImplementation(async () => ({ ok: true as const, events: current, readAt: Date.now(), fromCache: false, baseline }) as never);
+    api.calendarAck.mockImplementation(async () => {
+      baseline = current;
+      return { ok: true };
+    });
+    api.calendarPatch.mockImplementation(async () => {
+      current = [{ ...current[0], location: '본사 3층' }];
+      return { ok: true, event: current[0] };
+    });
+    renderHome(api);
+    baseline = current; // 처음 읽은 일정이 견줄 기준이 된다
+
+    // 앱에서 장소를 고친다 — 내가 고친 것은 "바뀜"으로 띄우지 않는다
+    await openRow('e1');
+    fireEvent.click(screen.getByRole('button', { name: '고치기·옮기기' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('장소 (선택)'), { target: { value: '본사 3층' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '고치기' }));
+    await waitFor(() => expect(api.calendarAck).toHaveBeenCalled());
+    expect(screen.queryByText(/지난번 본 뒤 바뀐 일정/)).toBeNull();
+
+    // 그 뒤 밖에서(다른 기기·달력 도구) 같은 일정의 시각이 바뀐다
+    current = [{ ...at('16:00'), location: '본사 3층' }];
+    act(() => void window.dispatchEvent(new Event('focus')));
+    expect(await screen.findByText('지난번 본 뒤 바뀐 일정 1건')).toBeTruthy();
+    expect(rowOf('e1').textContent).toContain('바뀜');
+  });
+
+  it('읽을 달력 설정이 바뀌면 그 설정으로 달력을 다시 읽는다 (새로 고침을 누르지 않아도)', async () => {
+    const { api, outside } = fakeApi({ status: WRITABLE, events: [event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });
+    renderHome(api);
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    const lastRequest = () => (api.calendarEvents.mock.calls.at(-1) as unknown as [unknown] | undefined)?.[0];
+    const first = api.calendarEvents.mock.calls.length;
+    expect(lastRequest()).toMatchObject({ calendars: ['primary'] });
+    // 도움말·설정(F1)이나 밖에서 설정을 고친 것처럼
+    outside({ type: 'settings', patch: { calendars: ['primary', 'damdang-a@example.com'] } });
+    await waitFor(() => expect(api.calendarEvents.mock.calls.length).toBeGreaterThan(first), { timeout: 6000 });
+    expect(lastRequest()).toMatchObject({ calendars: ['primary', 'damdang-a@example.com'] });
+  }, 10000);
+});
+
 describe('홈 화면 — 앱 밖에서 바뀐 것 (명령줄·MCP 도구)', () => {
   beforeEach(() => store.clear());
   afterEach(() => {

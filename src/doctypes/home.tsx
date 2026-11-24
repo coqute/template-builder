@@ -10,7 +10,7 @@ import { sameCustomer } from '@core/index';
 import { BTN_GHOST, BTN_SOLID, Modal, SOLID_STYLE } from '../components/Modal';
 import { Btn, MoreMenu } from '../components/ToolbarButton';
 import { Agenda, type EventActions } from '../planner/components/Agenda';
-import { EventDialog } from '../planner/components/EventDialog';
+import { EventDialog, eventPatch } from '../planner/components/EventDialog';
 import { ChangeBanner, EmptyBox, SummaryBar, WeekStrip } from '../planner/components/HomeParts';
 import { TaskList, type TaskActions } from '../planner/components/TaskList';
 import type { HomeEvent } from '../planner/classify';
@@ -166,8 +166,14 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     } else toast.error('되돌리지 못했습니다 — 그 뒤에 다시 바뀌었을 수 있습니다.');
   };
 
+  /** 바깥 브라우저로 연다 — 열지 못하면 알린다(전에는 조용히 아무 일도 없었다) */
+  const openOutside = async (url: string, what: string) => {
+    const r = await api.openExternal(url);
+    if (!r.ok) toast.error(`${what} 열지 못했습니다${r.error ? ` — ${r.error}` : '.'}`);
+  };
+
   const eventActions: EventActions = {
-    open: (e) => void (e.htmlLink && api.openExternal(e.htmlLink)),
+    open: (e) => void (e.htmlLink && openOutside(e.htmlLink, '달력에서 이 일정을')),
     hide: async (e, byTitle) => {
       if (!e.ref) return;
       const on = (hidden: boolean) => (byTitle ? apply({ type: 'title.hide', title: e.title, hidden }) : apply({ type: 'event.hide', ref: e.ref!, hidden }));
@@ -190,8 +196,14 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
 
   const submitEvent = async (input: EventInput) => {
     const target = eventDialog?.event ?? null;
+    // 고칠 때는 바뀐 칸만 보낸다 — 제목만 고쳤는데 시각까지 다시 쓰지 않는다
+    const patch = target?.ref ? eventPatch(target, input) : null;
+    if (patch && Object.keys(patch).length === 0) {
+      setEventDialog(null);
+      return void toast.info('바뀐 것이 없어 달력에 쓰지 않았습니다.');
+    }
     setWriting(true);
-    const r = target?.ref ? await api.calendarPatch({ ref: target.ref, patch: input }) : await api.calendarInsert(input);
+    const r = target?.ref && patch ? await api.calendarPatch({ ref: target.ref, patch }) : await api.calendarInsert(input);
     setWriting(false);
     if (!r.ok) return void toast.error(`달력에 쓰지 못했습니다: ${r.message}`);
     setEventDialog(null);
@@ -208,6 +220,8 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     setRemoving(null);
     if (!r.ok) return void toast.error(`지우지 못했습니다: ${r.message}`);
     if (state?.links.some((l) => eventKey(l) === e.key)) await apply({ type: 'link.remove', ref: e.ref });
+    // 이 일정으로 달력에 올려 둔 할 일은 표시를 지운다 — 다시 [달력에 올리기]를 쓸 수 있게
+    for (const t of state?.tasks ?? []) if (t.event && eventKey(t.event) === e.key) await apply({ type: 'task.update', id: t.id, patch: { event: null } });
     await p.reloadCalendar([e.key]);
     toast.success(`달력에서 지웠습니다 — ${e.title}`);
   };
@@ -245,7 +259,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
                 { label: showDone ? '끝낸 일 접기' : '끝낸 일 보기', icon: <CheckSquare size={13} />, onClick: () => setShowDone((v) => !v) },
                 { label: `무시한 후보·숨긴 일정 (${hiddenCount})`, icon: <EyeOff size={13} />, disabled: hiddenCount === 0, onClick: () => setHiddenOpen(true) },
                 { label: '바뀐 기록', icon: <History size={13} />, hint: '앱·명령줄·Claude가 고친 것 — 되돌릴 수 있습니다', onClick: () => void openLog() },
-                { label: 'Google 달력 열기', icon: <CalendarDays size={13} />, onClick: () => void api.openExternal(CALENDAR_URL) },
+                { label: 'Google 달력 열기', icon: <CalendarDays size={13} />, onClick: () => void openOutside(CALENDAR_URL, 'Google 달력을') },
                 { label: '저장 폴더 열기', icon: <FolderOpen size={13} />, hint: p.storePath, onClick: () => void api.plannerReveal() },
               ]}
             />
@@ -271,7 +285,10 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
             </>
           }
         >
-          <p className="text-[12.5px] leading-relaxed text-fg-soft">Google 달력에서 이 일정이 없어집니다. 홈에서만 가리려면 [이 일정 숨기기]를 쓰세요.</p>
+          <p className="text-[12.5px] leading-relaxed text-fg-soft">
+            {removing.recurring ? '반복 일정의 이번 회차만 Google 달력에서 없어집니다. ' : 'Google 달력에서 이 일정이 없어집니다. '}
+            홈에서만 가리려면 [이 일정 숨기기]를 쓰세요.
+          </p>
         </Modal>
       )}
       {log && (

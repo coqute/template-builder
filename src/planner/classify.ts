@@ -31,6 +31,8 @@ export interface HomeEvent {
   client: string;
   htmlLink: string;
   canWrite: boolean;
+  /** 반복 일정의 한 회차 */
+  recurring?: boolean;
   source: 'gcal' | 'plan';
 }
 
@@ -93,6 +95,7 @@ export function classifyEvents(raw: readonly RawEvent[], opts: ClassifyOptions =
       client: kind === 'meeting' || kind === 'work' ? detectClient(`${e.summary} ${e.location}`) : '',
       htmlLink: e.htmlLink,
       canWrite: e.canWrite && !e.holiday,
+      ...(e.recurring ? { recurring: true } : {}),
       source: 'gcal',
     });
   }

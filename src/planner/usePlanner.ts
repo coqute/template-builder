@@ -202,6 +202,20 @@ export function usePlanner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 설정(읽을 달력·공휴일·후보 기간)이 바뀌면 — 도움말·설정(F1)에서 고쳤든 밖에서 고쳤든 — 달력과 일지를 그 설정으로 다시 읽는다.
+  // 전에는 [새로 고침]을 누르거나 창이 다시 앞에 올 때까지 예전 설정으로 읽은 내용이 남아 있었다.
+  const settingsKey = state ? `${[...state.settings.calendars].sort().join(',')}|${state.settings.holidays}|${state.settings.lookbackDays}` : '';
+  const lastSettings = useRef('');
+  useEffect(() => {
+    const s = stateRef.current?.settings;
+    if (!settingsKey || !s) return;
+    if (lastSettings.current && lastSettings.current !== settingsKey) {
+      void loadCalendar(s);
+      void loadWorklog(s.lookbackDays);
+    }
+    lastSettings.current = settingsKey;
+  }, [settingsKey, loadCalendar, loadWorklog]);
+
   /** 저장소를 고친다 — 실패하면 알리고 null */
   const apply = useCallback(
     async (op: PlannerOp): Promise<PlannerState | null> => {
@@ -253,6 +267,8 @@ export function usePlanner() {
       const others = diffEvents(got.baseline, got.raw, todayIso()).filter((c) => !own.current.has(c.key));
       if (others.length > 0) return;
       await api.calendarAck();
+      // 기준이 지금 일정으로 바뀌었으니 "내가 고친 일정" 표시는 더 필요 없다 — 남겨 두면 그 일정이 나중에 밖에서 바뀌어도 알리지 않는다
+      own.current.clear();
       if (alive.current) setCal((c) => ({ ...c, baseline: c.raw }));
     },
     [api, loadCalendar],
@@ -261,6 +277,7 @@ export function usePlanner() {
   /** 바뀐 일정을 확인했다 — 다음부터는 지금 일정이 기준이 된다 */
   const ackChanges = useCallback(async () => {
     await api.calendarAck();
+    own.current.clear();
     if (alive.current) setCal((c) => ({ ...c, baseline: c.raw }));
   }, [api]);
 

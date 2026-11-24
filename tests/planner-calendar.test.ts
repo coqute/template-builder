@@ -297,6 +297,39 @@ describe('listEvents — 정규화', () => {
     expect(await byId('e-day')).toMatchObject({ allDay: true, start: '2026-12-31', end: '2027-01-01' }); // 끝이 없으면 하루짜리
   });
 
+  it('남이 만들어 나를 부른 일정은 고칠 수 없는 것으로, 반복 일정의 한 회차는 반복으로 표시한다', async () => {
+    const when = { start: { dateTime: '2026-11-24T14:00:00+09:00' }, end: { dateTime: '2026-11-24T15:00:00+09:00' } };
+    const { deps, calls } = fake(() =>
+      jsonRes(200, {
+        items: [
+          { id: 'mine', summary: '내가 만든 일정', ...when, organizer: { self: true } },
+          { id: 'no-organizer', summary: '만든 사람 칸이 없는 일정', ...when },
+          { id: 'invited', summary: '초대받은 회의', ...when, organizer: {} },
+          { id: 'invited-open', summary: '손님도 고칠 수 있는 회의', ...when, organizer: {}, guestsCanModify: true },
+          { id: 'weekly_20261124T050000Z', summary: '주간 미팅', ...when, organizer: { self: true }, recurringEventId: 'weekly' },
+        ],
+      }),
+    );
+    const r = await listEvents(deps, { ...RANGE, calendars: ['primary'] });
+    if (!r.ok) throw new Error(r.message);
+    expect(r.events.map((e) => [e.id, e.canWrite, e.recurring ?? false])).toEqual([
+      ['mine', true, false],
+      ['no-organizer', true, false],
+      ['invited', false, false],
+      ['invited-open', true, false],
+      ['weekly_20261124T050000Z', true, true],
+    ]);
+    // 반복이 아니면 칸 자체가 없다(저장해 둔 옛 일정과 모양이 같다)
+    expect(r.events[0]).not.toHaveProperty('recurring');
+    // 그 판정에 쓰는 칸만 더 받는다 — 만든 사람의 주소는 받지 않는다
+    const fields = calls[0].url.searchParams.get('fields') ?? '';
+    expect(fields).toContain('organizer/self');
+    expect(fields).toContain('guestsCanModify');
+    expect(fields).toContain('recurringEventId');
+    expect(fields).not.toContain('organizer/email');
+    expect(fields).not.toContain('description');
+  });
+
   it('여러 달력의 일정을 시작 시각순으로 섞는다 — 같은 날이면 종일 일정이 먼저', async () => {
     const day = localRfc3339(new Date(2026, 10, 26, 0, 0)); // 그날 0시에 시작하는 시각 일정
     const data: Record<string, unknown[]> = {

@@ -13,6 +13,7 @@ import { registerPlannerIpc } from './planner';
 import { registerCalendarIpc } from './calendar';
 import { writeFileAtomic } from './atomic';
 import { kindOf, rememberDir, startDir } from './dialog-dir';
+import { isAllowedExternalUrl } from './external-url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -364,16 +365,14 @@ ipcMain.handle('dialog:open-json', async () => {
 });
 
 ipcMain.handle('shell:open-external', async (_evt, url: string) => {
-  // Gmail 작성창만 허용 (피싱/임의 URL 차단)
-  if (typeof url === 'string' && url.startsWith('https://mail.google.com/')) {
-    try {
-      await shell.openExternal(url);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: errMsg(err) };
-    }
+  // Gmail(임시보관함)·Google 달력만 연다 (피싱/임의 URL 차단) — 허용 목록은 external-url.ts
+  if (!isAllowedExternalUrl(url)) return { ok: false, error: '열 수 없는 주소입니다 — Gmail·Google 달력 주소만 엽니다.' };
+  try {
+    await shell.openExternal(url);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errMsg(err) };
   }
-  return { ok: false };
 });
 
 // Gmail API 임시보관함(draft) upsert — draftId 있으면 update(404/400 시 create 폴백), 없으면 create (발송 안 함)
