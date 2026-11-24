@@ -1,4 +1,4 @@
-/** 도움말·설정(F1)의 Notion 칸 — 키 저장, DB 찾기, 홈에 보일 DB와 회의록 DB 고르기 (설계 §19.10). 읽기만 한다 */
+/** 설정(F1)의 Notion 칸 — 키 저장, DB 찾기, 홈에 보일 DB와 회의록 DB 고르기 (설계 §19.10). 읽기만 한다 */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { plannerApi } from '../api';
 import { DEFAULT_NOTION } from '../ops';
@@ -11,7 +11,6 @@ const P = 'text-[11px] leading-relaxed text-fg-muted';
 const SMALL_BTN = 'rounded-sharp border border-rule px-2 py-1 text-[11px] text-fg-soft hover:bg-bg-sunken disabled:opacity-40';
 const INPUT = 'min-w-0 flex-1 rounded-sharp border border-rule bg-bg px-2 py-1 text-[11.5px] text-fg';
 const ON = { background: 'var(--accent)', color: 'var(--bg)', borderColor: 'var(--accent)' } as const;
-const DAYS = [3, 7, 14];
 
 export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean }) {
   const api = useMemo(plannerApi, []);
@@ -123,12 +122,12 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
         <p className={P}>확인 중…</p>
       ) : status.connected ? (
         <p className={P}>
-          <b className="text-fg">연결됨</b> — 고른 DB에서 최근에 바뀐 페이지를 홈에 보여 주고, 회의록 DB의 페이지를 본인 달력의 일정 줄에 잇습니다. 읽기만 하고 Notion에는 아무것도 쓰지 않습니다.
+          <b className="text-fg">연결됨</b> — 고른 DB에서 어느 날에 무엇을 썼는지 홈의 띠(날 칸)와 그날 미리보기에 보여 주고, 회의록 DB의 페이지를 본인 달력의 일정 줄에 잇습니다. 읽기만 하고 Notion에는 아무것도 쓰지 않습니다.
         </p>
       ) : (
         <>
           <p className={P}>
-            <b className="text-fg">연결되지 않음</b> — 연결하면 워크스페이스에서 최근에 바뀐 페이지와 회의록 링크가 홈에 나옵니다.
+            <b className="text-fg">연결되지 않음</b> — 연결하면 어느 날에 어떤 Notion 페이지를 썼는지와 회의록 링크가 홈에 나옵니다.
           </p>
           <ol className={`${P} mt-2 list-decimal space-y-1 pl-4`}>
             <li>Notion의 연결(통합) 관리 화면에서 내부 연결을 하나 만듭니다. 권한은 “콘텐츠 읽기”만 켭니다.</li>
@@ -203,18 +202,11 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
             </button>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-1" role="group" aria-label="최근 바뀐 것을 보이는 기간">
-            {DAYS.map((d) => (
-              <button key={d} type="button" aria-pressed={cfg.days === d} className={SMALL_BTN} style={cfg.days === d ? ON : undefined} onClick={() => void save(cfg, { days: d })}>
-                최근 {d}일
-              </button>
-            ))}
-            <label className="ml-2 flex items-center gap-1 text-[11.5px] text-fg-soft">
-              <input type="checkbox" checked={cfg.loose} onChange={(e) => void save(cfg, { loose: e.target.checked })} style={{ accentColor: 'var(--fg)' }} />
-              DB 밖의 페이지도
-            </label>
-          </div>
-          <p className={`${P} mt-2`}>DB의 행은 5분마다 다시 읽습니다. DB 밖의 페이지는 Notion 검색으로 찾아 몇 분 늦게 나올 수 있습니다.</p>
+          <label className="mt-2 flex items-center gap-1 text-[11.5px] text-fg-soft">
+            <input type="checkbox" checked={cfg.loose} onChange={(e) => void save(cfg, { loose: e.target.checked })} style={{ accentColor: 'var(--fg)' }} />
+            DB에 들어 있지 않은 페이지도 보기
+          </label>
+          <p className={`${P} mt-2`}>지난 주 월요일부터 오늘까지를 5분마다 다시 읽습니다. 페이지는 만든 날과 마지막으로 고친 날에 나옵니다(여러 날에 걸쳐 고쳤으면 마지막 날에만). DB 밖의 페이지는 Notion 검색으로 찾아 몇 분 늦을 수 있습니다.</p>
         </>
       )}
       {msg && (

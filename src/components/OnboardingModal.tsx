@@ -22,7 +22,7 @@ export function OnboardingModal({ onSubmit }: Props) {
       <div className="w-[360px] rounded-card border border-rule bg-bg-elevated p-5" style={{ boxShadow: 'var(--shadow)' }}>
         <h2 className="text-sm font-semibold text-fg">프로필 설정</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-fg-muted">
-          주간보고서 작성자명과 이메일 인사말·기본값에 사용됩니다. 나중에 도움말(F1)에서 변경할 수 있습니다.
+          주간보고서 작성자명과 이메일 인사말·기본값에 사용됩니다. 나중에 설정(F1)에서 변경할 수 있습니다.
         </p>
         <div className="mt-4 space-y-2.5">
           <Field label="이름 *" value={name} placeholder="홍길동" onChange={setName} autoFocus onEnter={submit} />

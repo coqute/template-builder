@@ -158,6 +158,15 @@ describe('2주 띠·요약·확정 일정', () => {
     expect(w2[4].off).toBe('휴가');
   });
 
+
+  it('지난 주를 달라고 하면 앞에 한 줄 더 — 그 줄은 모두 지난 날이고, 주지 않으면 전과 같이 두 줄', () => {
+    expect(buildStrip(TODAY, [], [])).toHaveLength(2);
+    const weeks = buildStrip(TODAY, [], [], 1);
+    expect(weeks).toHaveLength(3);
+    expect(weeks[0][0].date).toBe(addDays(weeks[1][0].date, -7));
+    expect(weeks[0].every((d) => d.past && !d.today)).toBe(true);
+    expect(weeks[1].some((d) => d.today)).toBe(true);
+  });
   it('요약은 다음 일정과 숫자 다섯을 준다', () => {
     const sum = summarize(TODAY, groupTasks(s.tasks, TODAY), events);
     expect(sum).toMatchObject({ late: 1, today: 1, week: 1, weekEvents: 2, waiting: 1, todayEvents: 0 });

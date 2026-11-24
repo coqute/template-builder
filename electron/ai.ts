@@ -80,7 +80,7 @@ export interface CompleteJsonOptions {
 export async function completeJson(req: AiCompleteRequest, opts: CompleteJsonOptions = {}): Promise<AiCompleteResult> {
   const key = opts.apiKey ?? (await resolveKey());
   if (!key) {
-    return { ok: false, code: 'no-key', message: 'API 키가 없습니다. 도움말(F1) > AI 정돈에서 키를 저장하세요.' };
+    return { ok: false, code: 'no-key', message: 'API 키가 없습니다. 설정(F1) > AI 정돈에서 키를 저장하세요.' };
   }
   if (typeof req?.model !== 'string' || !AI_MODEL_RE.test(req.model)) {
     return { ok: false, code: 'bad-request', message: `모델 이름이 올바르지 않습니다: ${String(req?.model)}` };

@@ -176,9 +176,33 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
 .hm-ev .hm-nm { align-self: center; color: var(--fg-muted); }
 .hm-nt { margin-top: 26px; }
 .hm-nt .hm-h h2 { display: flex; align-items: center; gap: 6px; }
-.hm-ng .hm-cap { margin-top: 10px; }
-.hm-np { display: flex; width: 100%; min-width: 0; align-items: baseline; gap: 8px; padding: 4px 2px; border: 0; border-bottom: 1px solid var(--rule); background: none; font-size: 12.5px; line-height: 1.4; text-align: left; color: var(--fg); cursor: pointer; }
-.hm-np:hover { background: var(--bg-sunken); }
-.hm-np > .hm-num { flex: none; width: 34px; font-size: 11.5px; color: var(--fg-muted); }
-.hm-np b { overflow: hidden; min-width: 0; flex: 1; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
-.hm-np-m { margin-top: 6px; }
+/* 날 칸의 Notion 작성 — 일정 조각과 같은 줄 모양, 왼쪽 선 대신 표지 */
+.hm-ev.is-notion { align-items: center; gap: 4px; padding-left: 0; border-left: 0; color: var(--fg-soft); }
+.hm-ev.is-notion b { font-weight: 400; }
+/* 지난 날은 옅게 하되, 그날 쓴 Notion은 읽을 수 있게 둔다 — 칸 전체가 아니라 칸 안의 것을 옅게 */
+.hm-day.is-past { opacity: 1; }
+.hm-day.is-past > * { opacity: 0.5; }
+.hm-day.is-past > .hm-ev.is-other { opacity: 0.3; }
+.hm-day.is-past > .hm-ev.is-notion { opacity: 0.9; }
+/* 동료 일정 — 제목이 먼저, 누구 것인지는 뒤에 짧게(자리가 모자라면 이쪽이 먼저 잘린다) */
+.hm-ev em { overflow: hidden; flex: 0 1 auto; max-width: 42%; margin-left: auto; font-size: 10.5px; font-style: normal; color: var(--fg-muted); white-space: nowrap; text-overflow: ellipsis; }
+.hm-ev.is-other b { flex: 1 1 auto; min-width: 2.5em; }
+/* 고른 날의 미리보기 — 띠 바로 아래에 펼쳐진다 */
+.hm-dp { margin-top: 10px; padding: 12px 14px 14px; border: var(--rule-width) solid var(--fg); border-radius: var(--radius-card); background: var(--bg-elevated); }
+.hm-dp-h { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.hm-dp-h b { font-size: 15px; font-weight: 800; }
+.hm-dp-h > span { color: var(--fg-muted); }
+.hm-dp-h .hm-dp-off { font-weight: 600; color: var(--stamp-red); }
+.hm-dp-h .hm-dp-c { margin-left: auto; font-size: 11.5px; }
+/* auto-fill — 묶음이 하나뿐이어도 한 칸 너비만 쓴다(줄이 화면 끝까지 늘어나지 않게) */
+.hm-dp-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px 28px; align-items: start; }
+.hm-dp-g .hm-cap { margin-top: 10px; }
+.hm-dp-r { display: flex; width: 100%; min-width: 0; align-items: baseline; gap: 10px; padding: 5px 2px; border: 0; border-bottom: 1px solid var(--rule); background: none; font-size: 12.5px; line-height: 1.4; text-align: left; color: var(--fg); }
+.hm-dp-r.is-btn { cursor: pointer; }
+.hm-dp-r.is-btn:hover { background: var(--bg-sunken); }
+.hm-dp-t { flex: none; width: 92px; font-size: 11.5px; color: var(--fg-soft); }
+.hm-dp-t.is-late { font-weight: 600; color: var(--stamp-red); }
+.hm-dp-n { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.hm-dp-n b { font-weight: 600; overflow-wrap: anywhere; }
+.hm-dp-n small { font-size: 11px; color: var(--fg-muted); overflow-wrap: anywhere; }
+.hm-dp-l { display: flex; flex: none; gap: 8px; font-size: 11px; color: var(--fg-muted); }

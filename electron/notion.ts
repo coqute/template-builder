@@ -17,7 +17,7 @@ import type { NotionFailure, NotionPage, NotionRecentRequest, NotionRecentResult
 const KEY_RE = /^(?:ntn_|secret_)[A-Za-z0-9_-]{20,}$/;
 const MEMO_MS = 5 * 60 * 1000;
 const MEMO_MAX = 10;
-const NO_KEY: NotionFailure = { ok: false, code: 'no-key', message: 'Notion 키가 없습니다 — 도움말·설정(F1)의 Notion 칸에서 저장하세요.' };
+const NO_KEY: NotionFailure = { ok: false, code: 'no-key', message: 'Notion 키가 없습니다 — 설정(F1)의 Notion 칸에서 저장하세요.' };
 
 const memo = new Map<string, { pages: NotionPage[]; failed: string[]; readAt: number }>();
 

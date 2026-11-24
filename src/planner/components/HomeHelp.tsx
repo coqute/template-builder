@@ -1,4 +1,4 @@
-/** 도움말·설정(F1)의 홈 구역 — 달력 연결, 읽을 달력, 후보를 찾는 기간, 시작 화면 + 가이드 (설계 §6.6) */
+/** 설정(F1)의 홈 구역 — 달력 연결, 읽을 달력, 후보를 찾는 기간, 시작 화면 + 가이드 (설계 §6.6) */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadStartMode, saveStartMode, type StartMode } from '../../hooks/useDocType';
 import { plannerApi } from '../api';
@@ -177,7 +177,7 @@ export function HomeGuide({ mono }: { mono: boolean }) {
             <b>맨 위 한 줄</b> — 오늘 날짜, 다음 일정, 기한 지남·오늘·이번 주 할 일 수. 숫자를 누르면 그 묶음으로 갑니다.
           </li>
           <li>
-            <b>2주 띠</b> — 이번 주와 다음 주. 날 칸을 누르면 그날의 할 일·일정만 또렷이 보입니다(다시 누르면 풀림).
+            <b>2주 띠</b> — 이번 주와 다음 주. 날 칸을 누르면 띠 아래에 그날의 일정·다른 달력·할 일·Notion 작성이 펼쳐지고, 아래 목록에서는 그날 것만 또렷이 보입니다(다시 누르면 닫힘). 여러 건이 겹쳐 날 칸에서 잘린 것은 여기서 읽습니다.
           </li>
           <li>
             <b>할 일</b> — 기한 지남 → 오늘 → 이번 주 → 다음 주 이후 → 기한 없음 → 기다리는 중 순서입니다.
@@ -217,7 +217,7 @@ export function HomeGuide({ mono }: { mono: boolean }) {
         <h3 className={H3}>{mono ? '$ notion' : 'Notion과 잇기'}</h3>
         <ul className="space-y-1 text-[11px] text-fg-soft">
           <li>
-            <b>Notion 구역</b> — 설정에서 고른 DB에서 최근에 바뀐 페이지를 DB별로 보여 줍니다. 줄을 누르면 그 페이지가, DB 이름을 누르면 그 DB가 브라우저에서 열립니다. ‘새’는 그 기간에 새로 만든 페이지입니다.
+            <b>날짜별 Notion 작성</b> — 연결하면 2주 띠 위에 지난 주 줄이 붙고, 날 칸마다 그날 만들거나 고친 페이지가 표지와 함께 나옵니다. 날을 누르면 띠 아래에 그날의 미리보기가 펼쳐지고, 줄을 누르면 그 페이지가 Notion에서 열립니다.
           </li>
           <li>
             <b>회의록 ↗</b> — 회의록 DB의 페이지는 만든 시각이 본인 달력 일정의 시간(앞뒤 30분) 안이면 그 일정 줄에 이어집니다. 2주 띠의 일정 끝에도 작은 표지가 붙습니다.

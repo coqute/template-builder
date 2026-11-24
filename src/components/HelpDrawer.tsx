@@ -178,7 +178,7 @@ export function HelpDrawer({
         <header className="flex items-center justify-between border-b border-rule px-4 py-3">
           <div>
             <h2 id="help-drawer-title" className="text-sm font-semibold text-fg">
-              {isMono ? '$ help' : '도움말 · 설정'}
+              {isMono ? '$ settings' : '설정 · 도움말'}
             </h2>
             <p className="text-[11px] text-fg-muted">
               {isMono ? '> press F1 to toggle' : 'F1로 다시 열고 닫을 수 있습니다.'}
@@ -365,7 +365,7 @@ export function HelpDrawer({
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Shift</kbd>+<kbd className="kbd">C</kbd> &nbsp;HTML 복사 (본문 없는 서식)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">N</kbd> &nbsp;새 이메일 (현재 템플릿 초기화 · 되돌리기 가능)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">S</kbd> / <kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">O</kbd> &nbsp;입력값 .json 저장 / 열기</li>
-                  <li><kbd className="kbd">F1</kbd> &nbsp;도움말 · 설정</li>
+                  <li><kbd className="kbd">F1</kbd> &nbsp;설정 · 도움말</li>
                 </ul>
               </section>
             </>
@@ -447,7 +447,7 @@ export function HelpDrawer({
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Shift</kbd>+<kbd className="kbd">I</kbd> &nbsp;Gmail 본문 가져오기 (툴바 ⋯)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Z</kbd> / <kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Shift</kbd>+<kbd className="kbd">Z</kbd> &nbsp;되돌리기 / 다시 실행 (비주얼은 문서 단위)</li>
                   <li><kbd className="kbd">Tab</kbd> / <kbd className="kbd">Shift</kbd>+<kbd className="kbd">Tab</kbd> &nbsp;텍스트 모드 들여쓰기 / 내어쓰기</li>
-                  <li><kbd className="kbd">F1</kbd> &nbsp;도움말 · 설정</li>
+                  <li><kbd className="kbd">F1</kbd> &nbsp;설정 · 도움말</li>
                 </ul>
               </section>
             </>

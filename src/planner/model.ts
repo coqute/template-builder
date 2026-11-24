@@ -99,8 +99,8 @@ export interface StripDay {
   late: number;
 }
 
-/** 이번 주 월요일부터 2주 */
-export function buildStrip(today: string, events: readonly HomeEvent[], open: readonly Task[]): StripDay[][] {
+/** 이번 주 월요일부터 2주 — `pastWeeks`를 주면 그만큼의 지난 주를 앞에 붙인다(지난 날에 한 것을 보일 때) */
+export function buildStrip(today: string, events: readonly HomeEvent[], open: readonly Task[], pastWeeks = 0): StripDay[][] {
   const start = mondayOf(today);
   const late = open.filter((t) => t.due && t.due < today).length;
   const week = (from: string): StripDay[] =>
@@ -124,7 +124,9 @@ export function buildStrip(today: string, events: readonly HomeEvent[], open: re
         late: date === today ? late : 0,
       };
     });
-  return [week(start), week(addDays(start, 7))];
+  const weeks: StripDay[][] = [];
+  for (let w = -Math.max(0, pastWeeks); w <= 1; w++) weeks.push(week(addDays(start, 7 * w)));
+  return weeks;
 }
 
 export interface Summary {

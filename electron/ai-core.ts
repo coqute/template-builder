@@ -148,9 +148,9 @@ export function refusalFail(msg: BetaMessage, requested: string): Fail {
   const cat = msg.stop_details?.category ?? null;
   const why = cat && REFUSAL_WHY[cat] ? ` — ${REFUSAL_WHY[cat]}(업무 기록도 걸릴 수 있습니다)` : '';
   const next = requested.startsWith('claude-fable')
-    ? 'Fable은 보안·AI 관련 내용에 더 엄격합니다. 도움말(F1) > AI 정돈에서 Opus 5.5로 바꿔 다시 실행하세요.'
+    ? 'Fable은 보안·AI 관련 내용에 더 엄격합니다. 설정(F1) > AI 정돈에서 Opus 5.5로 바꿔 다시 실행하세요.'
     : requested.startsWith('claude-haiku')
-      ? 'Haiku는 대체 모델로 이어 받지 않습니다. 도움말(F1) > AI 정돈에서 Opus 5.5나 Sonnet 5.5로 바꿔 다시 실행하세요.'
+      ? 'Haiku는 대체 모델로 이어 받지 않습니다. 설정(F1) > AI 정돈에서 Opus 5.5나 Sonnet 5.5로 바꿔 다시 실행하세요.'
       : '걸릴 만한 줄을 빼거나 다른 모델로 다시 실행하세요.';
   return { ok: false, code: 'refusal', message: `Claude가 이 요청을 처리하지 않았습니다${why}. ${next}` };
 }
@@ -169,7 +169,7 @@ export function mapApiError(err: unknown, model = ''): Fail {
     return { ok: false, code: 'timeout', message: 'Claude API가 응답을 시작하지 않았습니다(3분). 잠시 뒤 다시 실행하세요.' };
   }
   if (err instanceof Anthropic.AuthenticationError) {
-    return { ok: false, code: 'auth', message: 'API 키가 올바르지 않습니다(만료·삭제됐을 수 있음). 도움말(F1) > AI 정돈에서 키를 다시 저장하세요.' };
+    return { ok: false, code: 'auth', message: 'API 키가 올바르지 않습니다(만료·삭제됐을 수 있음). 설정(F1) > AI 정돈에서 키를 다시 저장하세요.' };
   }
   if (err instanceof Anthropic.PermissionDeniedError) {
     return { ok: false, code: 'auth', message: '이 키로는 이 모델을 쓸 권한이 없습니다. 다른 모델을 고르거나 키 권한을 확인하세요.' };
@@ -178,7 +178,7 @@ export function mapApiError(err: unknown, model = ''): Fail {
     return {
       ok: false,
       code: 'no-model',
-      message: `이 키에서 ${model || '이 모델'}을(를) 찾지 못했습니다. 도움말(F1) > AI 정돈에서 [연결 확인]으로 쓸 수 있는 모델을 확인하세요.`,
+      message: `이 키에서 ${model || '이 모델'}을(를) 찾지 못했습니다. 설정(F1) > AI 정돈에서 [연결 확인]으로 쓸 수 있는 모델을 확인하세요.`,
     };
   }
   if (err instanceof Anthropic.RateLimitError) {

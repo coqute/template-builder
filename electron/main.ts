@@ -145,8 +145,8 @@ function buildMenu(): void {
       ],
     },
     {
-      label: '도움말',
-      submenu: [{ label: '도움말 · 설정', accelerator: 'F1', click: send('menu:help') }, ...devItems],
+      label: '설정',
+      submenu: [{ label: '설정 · 도움말', accelerator: 'F1', click: send('menu:help') }, ...devItems],
     },
   ];
 

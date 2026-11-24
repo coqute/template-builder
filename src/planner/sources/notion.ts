@@ -1,5 +1,5 @@
 /**
- * Notion에서 읽은 페이지를 홈에 맞게 — ① 회의록을 본인 달력의 일정에 잇기 ② 최근 바뀐 것을 DB별로 묶기.
+ * Notion에서 읽은 페이지를 홈에 맞게 — ① 회의록을 본인 달력의 일정에 잇기 ② 어느 날에 무엇을 썼는지 날짜별로 묶기.
  * 순수 함수다(읽는 것은 main의 notion.ts). 설계: docs/home-schedule-design.md §19.10
  *
  * 회의록 DB에는 달력 일정과 이어 주는 칸이 없다. 실제 자료에서 회의록은 모두 회의 중에 만들어졌으므로
@@ -80,33 +80,45 @@ export function linkMeetingNotes(notes: readonly NotionPage[], events: readonly 
   return { byEvent, orphans };
 }
 
-export interface NotionGroup {
-  /** DB — DB 밖의 페이지 묶음이면 null */
+/** 그날 Notion에 쓴 것 하나 */
+export interface NotionItem extends NotionPage {
+  /** 속한 DB — DB 밖의 페이지면 null */
   source: NotionSource | null;
-  pages: Array<NotionPage & { date: string; fresh: boolean }>;
+  /** 그날 새로 만든 것인가 — 아니면 그날 마지막으로 고친 것 */
+  fresh: boolean;
+  /** 그날의 시각 `HH:MM` (만든 때 또는 고친 때) */
+  time: string;
+}
+
+export interface NotionDay {
+  date: string;
+  items: NotionItem[];
 }
 
 /**
- * 최근 `days`일(오늘 포함)에 고친 페이지를 DB별로 — 가장 최근에 움직인 DB가 위로.
+ * 어느 날에 무엇을 썼는가 — `from`부터 `today`까지, 최근 날짜부터.
+ * 페이지는 **만든 날**(새)과 **마지막으로 고친 날**(고침, 만든 날과 다를 때)에 나온다.
+ * Notion은 마지막으로 고친 때만 알려 주므로, 여러 날에 걸쳐 고친 페이지는 마지막 날에만 나온다.
  * 설정에서 고르지 않은 DB의 페이지(회의록 DB만 따로 읽은 경우 등)는 넣지 않는다.
  */
-export function recentGroups(pages: readonly NotionPage[], settings: NotionSettings, today: string): NotionGroup[] {
-  const from = addDays(today, -(Math.max(1, settings.days) - 1));
+export function notionByDate(pages: readonly NotionPage[], settings: NotionSettings, from: string, today: string): NotionDay[] {
   const names = new Map(settings.sources.map((s) => [s.id, s]));
-  const groups = new Map<string, NotionGroup>();
+  const days = new Map<string, NotionItem[]>();
+  const put = (date: string, item: NotionItem) => {
+    if (date < from || date > today) return;
+    days.set(date, [...(days.get(date) ?? []), item]);
+  };
   for (const p of pages) {
-    const date = localParts(p.editedAt).date;
-    if (date < from) continue;
     const source = p.sourceId ? (names.get(p.sourceId) ?? null) : null;
     if (p.sourceId ? !source : !settings.loose) continue;
-    const key = source?.id ?? '';
-    const g = groups.get(key) ?? { source, pages: [] };
-    g.pages.push({ ...p, date, fresh: localParts(p.createdAt).date >= from });
-    groups.set(key, g);
+    const made = localParts(p.createdAt);
+    const edited = localParts(p.editedAt);
+    put(made.date, { ...p, source, fresh: true, time: made.time });
+    if (edited.date !== made.date) put(edited.date, { ...p, source, fresh: false, time: edited.time });
   }
-  const list = [...groups.values()];
-  for (const g of list) g.pages.sort((a, b) => (a.editedAt < b.editedAt ? 1 : a.editedAt > b.editedAt ? -1 : 0));
-  return list.sort((a, b) => (a.pages[0].editedAt < b.pages[0].editedAt ? 1 : -1));
+  return [...days.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, items]) => ({ date, items: items.sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0)) }));
 }
 
 /** main에 읽어 달라고 할 DB — 홈에 보일 DB와 회의록 DB */

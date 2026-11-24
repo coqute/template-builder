@@ -10,7 +10,7 @@ import { plannerApi, type PlannerApi } from './api';
 import { classifyEvents, detectClient, diffEvents, sortEvents, type EventChange, type HomeEvent } from './classify';
 import { addDays, mondayOf, todayIso } from './dates';
 import { agendaDays, buildStrip, closedInWorklog, groupTasks, recentPastEvents, summarize, visibleCandidates } from './model';
-import { linkMeetingNotes, recentGroups, sourcesToRead } from './sources/notion';
+import { linkMeetingNotes, notionByDate, sourcesToRead } from './sources/notion';
 import { scanWeekly, type WeeklyScan } from './sources/weekly';
 import { scanWorklogs, type Candidate, type WorklogScan } from './sources/worklog';
 import { DEFAULT_NOTION, DEFAULT_SETTINGS, undoOps } from './ops';
@@ -29,8 +29,8 @@ const PAST_DAYS = 7;
 const AHEAD_DAYS = 28;
 /** 설정 화면이 Notion 키를 넣거나 지웠을 때 창에 띄우는 이벤트 이름 */
 export const NOTION_CHANGED = 'tb:notion-changed';
-/** Notion에서 읽는 범위(일) — 화면에 보이는 기간(설정)과 지난 일정의 회의록을 함께 덮는다 */
-const NOTION_DAYS = 14;
+/** Notion을 보이는 범위 — 지난 주 월요일부터 오늘까지(띠의 지난 주 줄과 같다) */
+export const notionFrom = (today: string): string => addDays(mondayOf(today), -7);
 /** 후보의 "더 오래된 것"을 세려고 읽는 일지 범위 */
 const WORKLOG_DAYS = 365;
 
@@ -192,7 +192,7 @@ export function usePlanner() {
           setNotion({ status, pages: [], failed: [], readAt: null, error: null });
           return;
         }
-        const since = new Date(`${addDays(todayIso(), -NOTION_DAYS)}T00:00:00`).toISOString();
+        const since = new Date(`${notionFrom(todayIso())}T00:00:00`).toISOString();
         const r = await api.notionRecent({ sources, since, loose: want.loose, force });
         if (!alive.current) return;
         if (r.ok) setNotion({ status, pages: r.pages, failed: r.failed, readAt: r.readAt, error: null });
@@ -245,7 +245,7 @@ export function usePlanner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 설정(읽을 달력·공휴일·후보 기간)이 바뀌면 — 도움말·설정(F1)에서 고쳤든 밖에서 고쳤든 — 달력과 일지를 그 설정으로 다시 읽는다.
+  // 설정(읽을 달력·공휴일·후보 기간)이 바뀌면 — 설정(F1)에서 고쳤든 밖에서 고쳤든 — 달력과 일지를 그 설정으로 다시 읽는다.
   // 전에는 [새로 고침]을 누르거나 창이 다시 앞에 올 때까지 예전 설정으로 읽은 내용이 남아 있었다.
   const settingsKey = state ? `${[...state.settings.calendars].sort().join(',')}|${state.settings.holidays}|${state.settings.lookbackDays}` : '';
   const lastSettings = useRef('');
@@ -271,7 +271,7 @@ export function usePlanner() {
 
   /** Notion을 다시 읽는다 — [다시 읽기], 설정에서 키를 넣은 뒤 */
   const reloadNotion = useCallback(() => loadNotion(stateRef.current?.settings ?? DEFAULT_SETTINGS, true), [loadNotion]);
-  // 도움말·설정(F1)에서 키를 넣거나 지우면 알려 온다 — 키는 저장소 밖에 있어 설정 변화로는 알 수 없다
+  // 설정(F1)에서 키를 넣거나 지우면 알려 온다 — 키는 저장소 밖에 있어 설정 변화로는 알 수 없다
   useEffect(() => {
     const on = () => void reloadNotion();
     window.addEventListener(NOTION_CHANGED, on);
@@ -363,22 +363,24 @@ export function usePlanner() {
     // Notion — 회의록 DB의 페이지는 본인 일정에 잇고, 고른 DB의 최근 페이지는 DB별로 묶는다
     const ns = state?.settings.notion ?? DEFAULT_NOTION;
     const notes = linkMeetingNotes(ns.meetings ? notion.pages.filter((x) => x.sourceId === ns.meetings) : [], events);
+    // Notion을 읽고 있으면 띠에 지난 주 줄을 붙인다 — 쓴 것은 지난 날에 있다
+    const notionOn = !!notion.status?.connected && sourcesToRead(ns).length > 0;
     return {
       groups,
       events,
       candidates,
       olderCandidates: wl.scan?.older ?? 0,
       closed: closedInWorklog(tasks, wl.scan),
-      strip: buildStrip(today, events, open),
+      strip: buildStrip(today, events, open, notionOn ? 1 : 0),
       summary: summarize(today, groups, events),
       agenda: agendaDays(today, events),
       past: recentPastEvents(today, events),
       changes,
       claudeChanged,
       notes,
-      notionGroups: recentGroups(notion.pages, ns, today),
+      notionDays: notionOn ? notionByDate(notion.pages, ns, notionFrom(today), today) : [],
     };
-  }, [state, today, cal.raw, cal.baseline, cal.calendars, wl.scan, weekly, seenAt, notion.pages]);
+  }, [state, today, cal.raw, cal.baseline, cal.calendars, wl.scan, weekly, seenAt, notion.pages, notion.status]);
 
   return { api, today, state, storePath, storeError, cal, wl, weekly, notion, busy, refresh, apply, reloadCalendar, reloadNotion, ackChanges, readLog, undo, ackClaude, ...view };
 }

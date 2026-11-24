@@ -66,7 +66,7 @@ export function useGmailDraft(): { busy: boolean; createDraft: (req: DraftReques
         if (api.openExternal) {
           await api.openExternal('https://mail.google.com/mail/u/0/#drafts').catch(() => undefined);
         }
-        const who = req.to ? '' : ' (받는사람 미설정 — 도움말 F1에서 지정)';
+        const who = req.to ? '' : ' (받는사람 미설정 — 설정 F1에서 지정)';
         toast.success(
           `${result.updated ? '기존 임시보관함 초안을 업데이트했습니다' : '임시보관함에 생성됨'}${who} — Gmail에서 검토 후 발송하세요.`,
         );

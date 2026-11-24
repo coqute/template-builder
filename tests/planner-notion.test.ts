@@ -1,12 +1,12 @@
 /**
- * Notion에서 읽은 페이지를 홈에 맞게 — 회의록을 본인 달력 일정에 잇는 규칙, 최근 바뀐 것을 DB별로 묶기,
+ * Notion에서 읽은 페이지를 홈에 맞게 — 회의록을 본인 달력 일정에 잇는 규칙, 어느 날에 무엇을 썼는지 날짜별로 묶기,
  * 설정을 저장할 때 다듬기, 일지 회의 블록의 회의록 줄. 값은 모두 합성이다.
  */
 import { describe, expect, it } from 'vitest';
 import { classifyEvents } from '../src/planner/classify';
 import { addDays } from '../src/planner/dates';
 import { applyOp, DEFAULT_NOTION, emptyState, newTaskId, normalizeState } from '../src/planner/ops';
-import { linkMeetingNotes, recentGroups, sharedWords, sourcesToRead } from '../src/planner/sources/notion';
+import { linkMeetingNotes, notionByDate, sharedWords, sourcesToRead } from '../src/planner/sources/notion';
 import type { NotionPage, NotionSettings, RawEvent } from '../src/planner/types';
 import { eventBlock } from '../src/planner/worklogWrite';
 
@@ -76,8 +76,9 @@ describe('linkMeetingNotes — 회의록을 본인 달력 일정에 잇는다', 
   });
 });
 
-describe('recentGroups — 최근 바뀐 것을 DB별로', () => {
+describe('notionByDate — 어느 날에 무엇을 썼는가', () => {
   const TODAY = '2026-11-24';
+  const FROM = '2026-11-16'; // 지난 주 월요일
   const settings: NotionSettings = {
     sources: [
       { id: 'ds-meet', name: '예시 회의', url: '' },
@@ -88,32 +89,39 @@ describe('recentGroups — 최근 바뀐 것을 DB별로', () => {
     days: 7,
   };
   const pages: NotionPage[] = [
-    note('s1', '수집 누락 문의', at('2026-11-10', '09:00'), at(TODAY, '09:10'), 'ds-support'),
-    note('s2', '알림 분류 요청', at('2026-11-23', '15:00'), at('2026-11-23', '15:00'), 'ds-support'),
+    note('s1', '수집 누락 문의', at('2026-11-17', '09:00'), at(TODAY, '09:10'), 'ds-support'), // 만든 날(새) + 마지막으로 고친 날(고침)
+    note('s2', '알림 분류 요청', at('2026-11-23', '15:00'), at('2026-11-23', '16:00'), 'ds-support'), // 같은 날 만들고 고침 → 한 번
+    note('s3', '재기동 절차 문의', at('2026-11-23', '17:30'), at('2026-11-23', '17:30'), 'ds-support'),
     note('m1', '정기 회의', at('2026-11-20', '10:00'), at('2026-11-20', '11:00'), 'ds-meet'),
-    note('old', '지난 회의', at('2026-11-01', '10:00'), at('2026-11-17', '10:00'), 'ds-meet'),
+    note('old', '오래된 문서', at('2026-10-01', '10:00'), at('2026-11-18', '10:00'), 'ds-meet'), // 만든 날은 범위 밖 → 고친 날에만
     note('x', '고르지 않은 DB의 행', at(TODAY, '08:00'), at(TODAY, '08:00'), 'ds-other'),
     note('p', '온보딩 안내', at('2026-10-01', '10:00'), at('2026-11-22', '10:00'), ''),
+    note('before', '범위 앞', at('2026-11-10', '10:00'), at('2026-11-12', '10:00'), 'ds-support'),
   ];
+  const ids = (s: NotionSettings) => notionByDate(pages, s, FROM, TODAY).flatMap((d) => d.items.map((i) => i.id));
 
-  it('기간 안의 것만, 가장 최근에 움직인 DB부터, 고르지 않은 DB는 빼고', () => {
-    const got = recentGroups(pages, settings, TODAY);
-    expect(got.map((g) => g.source?.name ?? 'DB 밖')).toEqual(['지원 기록', 'DB 밖', '예시 회의']);
-    expect(got[0].pages.map((p) => p.id)).toEqual(['s1', 's2']);
-    expect(got[2].pages.map((p) => p.id)).toEqual(['m1']); // 11/17에 고친 것은 7일(11/18~) 밖
+  it('최근 날짜부터 — 만든 날에는 새, 마지막으로 고친 날에는 고침으로 나온다', () => {
+    const got = notionByDate(pages, settings, FROM, TODAY);
+    expect(got.map((d) => d.date)).toEqual(['2026-11-24', '2026-11-23', '2026-11-22', '2026-11-20', '2026-11-18', '2026-11-17']);
+    expect(got[0].items.map((i) => [i.id, i.fresh, i.time])).toEqual([['s1', false, '09:10']]);
+    expect(got[5].items.map((i) => [i.id, i.fresh, i.time, i.source?.name])).toEqual([['s1', true, '09:00', '지원 기록']]);
+    expect(got[4].items.map((i) => [i.id, i.fresh])).toEqual([['old', false]]);
   });
 
-  it('그 기간에 새로 만든 페이지에만 fresh', () => {
-    const got = recentGroups(pages, settings, TODAY);
-    expect(got[0].pages.map((p) => [p.id, p.fresh])).toEqual([
-      ['s1', false],
-      ['s2', true],
+  it('같은 날 만들고 고친 페이지는 한 번만(새), 하루 안에서는 늦은 시각부터', () => {
+    const day = notionByDate(pages, settings, FROM, TODAY).find((d) => d.date === '2026-11-23');
+    expect(day?.items.map((i) => [i.id, i.fresh, i.time])).toEqual([
+      ['s3', true, '17:30'],
+      ['s2', true, '15:00'],
     ]);
   });
 
-  it('DB 밖의 페이지는 설정을 껐으면 넣지 않고, 기간을 줄이면 그만큼만', () => {
-    expect(recentGroups(pages, { ...settings, loose: false }, TODAY).some((g) => !g.source)).toBe(false);
-    expect(recentGroups(pages, { ...settings, days: 1 }, TODAY).flatMap((g) => g.pages.map((p) => p.id))).toEqual(['s1']);
+  it('고르지 않은 DB와 범위 밖은 빼고, DB 밖의 페이지는 설정을 켰을 때만', () => {
+    expect(ids(settings)).not.toContain('x');
+    expect(ids(settings)).not.toContain('before');
+    const loose = notionByDate(pages, settings, FROM, TODAY).find((d) => d.date === '2026-11-22')?.items[0];
+    expect([loose?.id, loose?.source]).toEqual(['p', null]);
+    expect(ids({ ...settings, loose: false })).not.toContain('p');
   });
 
   it('읽을 DB = 홈에 보일 DB + 회의록 DB (겹치면 한 번)', () => {

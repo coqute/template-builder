@@ -11,8 +11,8 @@ import { BTN_GHOST, BTN_SOLID, Modal, SOLID_STYLE } from '../components/Modal';
 import { Btn, MoreMenu } from '../components/ToolbarButton';
 import { Agenda, type EventActions } from '../planner/components/Agenda';
 import { EventDialog, eventPatch } from '../planner/components/EventDialog';
+import { DayPreview } from '../planner/components/DayPreview';
 import { ChangeBanner, EmptyBox, SummaryBar, WeekStrip } from '../planner/components/HomeParts';
-import { NotionCard } from '../planner/components/NotionCard';
 import { TaskList, type TaskActions } from '../planner/components/TaskList';
 import type { HomeEvent } from '../planner/classify';
 import { clock, mdw, parseQuickAdd } from '../planner/dates';
@@ -89,6 +89,18 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     window.setTimeout(() => setFlash((cur) => (cur === key ? null : cur)), 2600);
   }, [intent, loaded, clearIntent]);
 
+  /** 아래 목록에서 그 할 일·일정 줄로 가서 잠깐 테두리를 두른다 */
+  const reveal = useCallback((key: string) => {
+    setFlash(key);
+    window.setTimeout(() => {
+      const hit = [...(mainRef.current?.querySelectorAll('[data-task], [data-event]') ?? [])].find(
+        (el) => el.getAttribute('data-task') === key || el.getAttribute('data-event') === key,
+      );
+      hit?.scrollIntoView({ block: 'center' });
+    }, 60);
+    window.setTimeout(() => setFlash((cur) => (cur === key ? null : cur)), 2600);
+  }, []);
+
   const focusAdd = useCallback(() => {
     addRef.current?.focus();
     addRef.current?.scrollIntoView({ block: 'nearest' });
@@ -160,6 +172,14 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
   const notionSettings = state?.settings.notion ?? DEFAULT_NOTION;
   /** Notion 회의록이 이어진 일정 — 2주 띠의 조각 끝에 표지를 붙인다 */
   const noted = useMemo(() => new Set(p.notes.byEvent.keys()), [p.notes]);
+  /** 날짜 → 그날 Notion에 쓴 것 — 띠의 날 칸에 보인다 */
+  const wrote = useMemo(() => new Map(p.notionDays.map((d) => [d.date, d.items])), [p.notionDays]);
+  /** 고른 날 — 띠 아래에 그날의 일정·할 일·Notion을 펼쳐 보인다 */
+  const focusDay = useMemo(() => (focus ? (p.strip.flat().find((d) => d.date === focus) ?? null) : null), [focus, p.strip]);
+  const focusTasks = useMemo(
+    () => (focus ? (state?.tasks ?? []).filter((t) => !t.doneAt && t.state === 'todo' && !!t.due && (t.due === focus || (focus === today && t.due < today))) : []),
+    [focus, state?.tasks, today],
+  );
   const claudeIds = useMemo(() => new Set(p.claudeChanged.map((t) => t.id)), [p.claudeChanged]);
 
   const openLog = async () => setLog(await p.readLog());
@@ -376,13 +396,46 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
       <div className="flex h-full flex-col">
         <main className="hm min-h-0 flex-1" ref={mainRef}>
           <SummaryBar today={today} summary={p.summary} calendar={!!p.cal.status?.canRead} onJump={jump} />
-          <WeekStrip weeks={p.strip} focus={focus} onFocus={setFocus} noted={noted} />
+          <WeekStrip weeks={p.strip} focus={focus} onFocus={setFocus} noted={noted} notion={wrote} />
+          {focusDay && (
+            <DayPreview
+              today={today}
+              day={focusDay}
+              tasks={focusTasks}
+              notion={wrote.get(focusDay.date) ?? []}
+              notes={p.notes.byEvent}
+              linked={linked}
+              onOpenEvent={(e) => eventActions.open(e)}
+              onOpenCase={(e) => eventActions.openCase(e)}
+              onOpenUrl={(url, what) => void openOutside(url, what)}
+              onTask={reveal}
+              onClose={() => setFocus(null)}
+            />
+          )}
+          {p.notion.status?.connected && (p.notion.error || p.notion.failed.length > 0 || notionSettings.sources.length === 0) && (
+            <p className="hm-note" role="status" data-testid="home-notion-note">
+              {notionSettings.sources.length === 0
+                ? 'Notion에서 볼 DB를 아직 고르지 않았습니다.'
+                : p.notion.error
+                  ? `Notion을 읽지 못했습니다 — ${p.notion.error}`
+                  : `Notion에서 읽지 못한 DB ${p.notion.failed.length}개 — 그 DB에 이 연결을 더했는지 확인하세요.`}{' '}
+              {notionSettings.sources.length === 0 ? (
+                <button type="button" className="hm-mini" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}>
+                  DB 고르기 (설정 F1)
+                </button>
+              ) : (
+                <button type="button" className="hm-mini" onClick={() => void p.reloadNotion()}>
+                  다시 읽기
+                </button>
+              )}
+            </p>
+          )}
           <div className="hm-cols">
             <section aria-label="할 일">
               <div className="hm-h">
                 <h2>할 일</h2>
                 <small>남은 작업과 앞으로 할 작업</small>
-                {focus && <span className="hm-r">{mdw(focus)}만 또렷이 — 날짜 칸을 다시 누르면 풀림</span>}
+                {focus && <span className="hm-r">{mdw(focus)}만 또렷이 — 날 칸을 다시 누르면 풀림</span>}
               </div>
               <input
                 ref={addRef}
@@ -456,14 +509,6 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
                 canLog={p.wl.ready}
                 actions={eventActions}
                 onRetry={() => void p.reloadCalendar()}
-                onHelp={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}
-              />
-              <NotionCard
-                view={p.notion}
-                groups={p.notionGroups}
-                settings={notionSettings}
-                onOpen={(url, what) => void openOutside(url, what)}
-                onRetry={() => void p.reloadNotion()}
                 onHelp={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}
               />
             </section>

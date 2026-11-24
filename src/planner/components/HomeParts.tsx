@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { EventChange } from '../classify';
 import { dowOf, mdw, relDay, toDate } from '../dates';
 import type { StripDay, Summary } from '../model';
+import type { NotionItem } from '../sources/notion';
 
 const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
@@ -69,6 +70,18 @@ export function SummaryBar({ today, summary, calendar, onJump }: SummaryProps) {
   );
 }
 
+/**
+ * 달력 이름을 날 칸에 넣을 만큼 짧게 — 동료 달력의 이름은 대개 메일 주소라, 그대로 앞에 두면 일정 제목이 잘려 보이지 않는다.
+ * 주소면 골뱅이 앞부분만 쓴다. 전체 이름은 말풍선과 그날 미리보기에서 보인다.
+ */
+export function ownerLabel(owner: string | undefined): string {
+  const s = (owner ?? '').trim();
+  const at = s.indexOf('@');
+  return at > 0 ? s.slice(0, at) : s;
+}
+
+/** 날 칸에 보이는 Notion 작성 수 — 넘치면 "외 n건"으로 접는다 */
+const NOTION_SHOWN = 2;
 /** 날 칸에 보이는 남의 달력 일정 수 — 넘치면 "외 n건"으로 접는다(동료 달력을 여럿 켜면 2주에 수십 건이다) */
 const OTHERS_SHOWN = 3;
 
@@ -78,22 +91,29 @@ interface StripProps {
   onFocus(date: string | null): void;
   /** Notion 회의록이 이어진 일정의 키 — 조각 끝에 작은 표지 */
   noted?: Set<string>;
+  /** 날짜 → 그날 Notion에 쓴 것 — 날 칸에 표지와 제목으로 보인다 */
+  notion?: Map<string, NotionItem[]>;
 }
 
 /** 이번 주·다음 주 — 날 칸을 누르면 그날의 할 일·일정만 또렷이 (자리는 움직이지 않는다) */
-export function WeekStrip({ weeks, focus, onFocus, noted }: StripProps) {
+export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) {
+  // 오늘이 든 줄이 이번 주 — 그 앞은 지난 주, 뒤는 다음 주
+  const thisWeek = Math.max(0, weeks.findIndex((w) => w.some((d) => d.today)));
   return (
-    <section className="hm-strip" aria-label="이번 주와 다음 주">
+    <section className="hm-strip" aria-label={thisWeek > 0 ? '지난 주부터 다음 주까지' : '이번 주와 다음 주'}>
       {weeks.map((week, wi) => (
         <div className="hm-wk" key={week[0].date}>
-          <div className="hm-wk-l">{wi === 0 ? '이번 주' : '다음 주'}</div>
-          {week.map((day) => (
+          <div className="hm-wk-l">{wi < thisWeek ? '지난 주' : wi === thisWeek ? '이번 주' : '다음 주'}</div>
+          {week.map((day) => {
+            const wrote = notion?.get(day.date) ?? [];
+            return (
             <button
               type="button"
               key={day.date}
               className={cx('hm-day', day.today && 'is-today', day.weekend && 'is-we', day.off && !day.offPart && 'is-off', day.past && 'is-past', focus === day.date && 'is-sel')}
+              data-date={day.date}
               aria-pressed={focus === day.date}
-              aria-label={`${mdw(day.date)}${day.off ? ` ${day.off}` : ''} — 일정 ${day.events.length}건, 할 일 ${day.due}건${day.others.length ? `, 다른 달력 ${day.others.length}건` : ''}`}
+              aria-label={`${mdw(day.date)}${day.off ? ` ${day.off}` : ''} — 일정 ${day.events.length}건, 할 일 ${day.due}건${day.others.length ? `, 다른 달력 ${day.others.length}건` : ''}${wrote.length ? `, Notion 작성 ${wrote.length}건` : ''}`}
               onClick={() => onFocus(focus === day.date ? null : day.date)}
             >
               <span className="hm-day-h hm-num">
@@ -116,10 +136,8 @@ export function WeekStrip({ weeks, focus, onFocus, noted }: StripProps) {
               {day.others.slice(0, OTHERS_SHOWN).map((e) => (
                 <span className="hm-ev is-other" key={e.key} title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}>
                   {e.startTime && <i className="hm-num">{e.startTime}</i>}
-                  <b>
-                    {e.owner ? `${e.owner} · ` : ''}
-                    {e.title}
-                  </b>
+                  <b>{e.title}</b>
+                  {e.owner && <em>{ownerLabel(e.owner)}</em>}
                 </span>
               ))}
               {day.others.length > OTHERS_SHOWN && (
@@ -127,10 +145,24 @@ export function WeekStrip({ weeks, focus, onFocus, noted }: StripProps) {
                   <b>외 {day.others.length - OTHERS_SHOWN}건</b>
                 </span>
               )}
+              {/* 그날 Notion에 쓴 것 — 표지와 제목. 여는 것은 아래 "날짜별 Notion 작성"에서 */}
+              {wrote.slice(0, NOTION_SHOWN).map((n) => (
+                <span className="hm-ev is-notion" key={`${n.id}:${n.fresh ? 'new' : 'edit'}`} title={`Notion ${n.source?.name ?? '페이지'} — ${n.title} (${n.fresh ? '새로 만듦' : '고침'})`}>
+                  <NotionMark size={10} />
+                  <b>{n.title}</b>
+                </span>
+              ))}
+              {wrote.length > NOTION_SHOWN && (
+                <span className="hm-ev is-notion" title={wrote.slice(NOTION_SHOWN).map((n) => n.title).join(' · ')}>
+                  <NotionMark size={10} />
+                  <b>외 {wrote.length - NOTION_SHOWN}건</b>
+                </span>
+              )}
               {day.late > 0 && <span className="hm-due is-late">지남 {day.late}</span>}
               {day.due > 0 && <span className="hm-due">할 일 {day.due}</span>}
             </button>
-          ))}
+            );
+          })}
         </div>
       ))}
     </section>

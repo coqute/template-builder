@@ -1,4 +1,4 @@
-import { HelpCircle } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { DocTypeSwitch, type DocTypeOption } from './DocTypeSwitch';
 import { StampLogo } from './StampLogo';
 import { Btn } from './ToolbarButton';
@@ -50,7 +50,7 @@ export function Toolbar({
         {/* 활성 모듈의 액션 버튼 슬롯 */}
         <div ref={onToolbarSlot} className="flex shrink-0 items-center gap-1.5" />
         <span className="mx-1 h-5 w-px bg-rule" />
-        <Btn label="도움말" shortcut="F1 · 설정·가이드" icon={<HelpCircle size={14} />} onClick={onToggleHelp} />
+        <Btn label="설정" shortcut="F1 · 설정·도움말" icon={<Settings size={14} />} onClick={onToggleHelp} />
       </div>
     </header>
   );

@@ -313,7 +313,7 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     if (!range.start || !range.end) return void toast.info('일정 예정 범위(@CURRENT)가 없어 가져올 수 없습니다.');
     const api = plannerApi();
     const status = await api.calendarStatus();
-    if (!status.canRead) return void toast.info('Google 달력이 연결되지 않았습니다 — 홈 화면의 도움말·설정(F1)에서 연결 방법을 확인하세요.');
+    if (!status.canRead) return void toast.info('Google 달력이 연결되지 않았습니다 — 홈 화면의 설정(F1)에서 연결 방법을 확인하세요.');
     const store = await api.plannerGet();
     const s = store.ok ? store.state : null;
     // 홈과 다른 기간을 읽는다 — 홈이 견줄 기준(마지막으로 읽은 일정)을 덮지 않게 한 번 쓰고 버리는 읽기로
@@ -414,7 +414,7 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
             />
             <Btn
               label={w.draftBusy ? '생성 중…' : '임시보관함'}
-              shortcut="Ctrl+Enter · 받는사람·참조는 도움말(F1)"
+              shortcut="Ctrl+Enter · 받는사람·참조는 설정(F1)"
               icon={<Mails size={14} />}
               primary
               disabled={!canSend || w.draftBusy}

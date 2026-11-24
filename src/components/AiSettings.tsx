@@ -10,7 +10,7 @@ function optionText(c: ModelChoice): string {
   return `${c.label}${hint} (${priceText(c.id)} per 1M)${c.available === false ? ' · 이 키에서 사용 불가' : ''}`;
 }
 
-/** 도움말·설정 — AI 정돈(Claude API) 키와 모델. 키는 저장만 하고 화면에 다시 보여 주지 않는다 */
+/** 설정 — AI 정돈(Claude API) 키와 모델. 키는 저장만 하고 화면에 다시 보여 주지 않는다 */
 export function AiSettings({ mono, open }: { mono: boolean; open: boolean }) {
   const api = typeof window === 'undefined' ? undefined : window.reportApi;
   const [status, setStatus] = useState<AiKeyStatus | null>(null);
