@@ -21,9 +21,11 @@ export function doneBlock(task: Pick<Task, 'title' | 'origin'>, today: string): 
 }
 
 /** 지난 달력 일정 → 일지의 회의 블록 초안. 회의는 `■ 제목 회의 (캘린더 일정)`, 그 밖은 `■ 제목 (캘린더 일정)` */
-export function eventBlock(e: Pick<HomeEvent, 'title' | 'kind'>): string {
+export function eventBlock(e: Pick<HomeEvent, 'title' | 'kind'>, note?: { db: string; title: string }): string {
   const title = e.kind === 'meeting' && !/회의$/.test(e.title) ? `${e.title} 회의` : e.title;
-  return `■ ${title} (캘린더 일정)`;
+  const head = `■ ${title} (캘린더 일정)`;
+  // 이어진 Notion 회의록이 있으면 일지 루틴이 쓰는 줄과 같은 모양으로 한 줄 — 주소는 넣지 않는다
+  return note ? `${head}\n※ 회의록: Notion ${note.db ? `${note.db} > ` : ''}${note.title}` : head;
 }
 
 /** 그 일지에 같은 회의 블록이 이미 있는가 — 루틴과 같은 판정(캘린더 표시 + 같은 사안 키) */

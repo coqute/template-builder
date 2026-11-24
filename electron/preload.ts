@@ -27,6 +27,10 @@ import type {
   PlannerResult,
   PlannerLogResult,
   PlannerStatResult,
+  NotionRecentRequest,
+  NotionRecentResult,
+  NotionSourcesResult,
+  NotionStatus,
 } from '../src/planner/types';
 
 type SaveKind = 'md' | 'html' | 'json';
@@ -132,6 +136,13 @@ const api = {
   calendarPatch: (req: { ref: EventRef; patch: Partial<EventInput> }) =>
     ipcRenderer.invoke('calendar:patch', req) as Promise<CalendarWriteResult>,
   calendarDelete: (ref: EventRef) => ipcRenderer.invoke('calendar:delete', ref) as Promise<CalendarDeleteResult>,
+  // Notion — 읽기만 한다. 키는 main에만 저장되고 다시 읽어 오지 않는다(상태만)
+  notionStatus: () => ipcRenderer.invoke('notion:status') as Promise<NotionStatus>,
+  notionSetKey: (key: string) => ipcRenderer.invoke('notion:key-set', key) as Promise<{ ok: true } | { ok: false; error: string }>,
+  notionClearKey: () => ipcRenderer.invoke('notion:key-clear') as Promise<{ ok: boolean }>,
+  notionSources: () => ipcRenderer.invoke('notion:sources') as Promise<NotionSourcesResult>,
+  notionResolve: (input: string) => ipcRenderer.invoke('notion:resolve', input) as Promise<NotionSourcesResult>,
+  notionRecent: (req: NotionRecentRequest) => ipcRenderer.invoke('notion:recent', req) as Promise<NotionRecentResult>,
   onMenu: (handler: (channel: string) => void) => {
     const events = [
       'menu:new',

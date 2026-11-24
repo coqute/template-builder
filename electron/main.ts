@@ -11,6 +11,7 @@ import { registerAiIpc } from './ai';
 import { registerWorklogIpc } from './worklog';
 import { registerPlannerIpc } from './planner';
 import { registerCalendarIpc } from './calendar';
+import { registerNotionIpc } from './notion';
 import { writeFileAtomic } from './atomic';
 import { kindOf, rememberDir, startDir } from './dialog-dir';
 import { isAllowedExternalUrl } from './external-url';
@@ -366,7 +367,7 @@ ipcMain.handle('dialog:open-json', async () => {
 
 ipcMain.handle('shell:open-external', async (_evt, url: string) => {
   // Gmail(임시보관함)·Google 달력만 연다 (피싱/임의 URL 차단) — 허용 목록은 external-url.ts
-  if (!isAllowedExternalUrl(url)) return { ok: false, error: '열 수 없는 주소입니다 — Gmail·Google 달력 주소만 엽니다.' };
+  if (!isAllowedExternalUrl(url)) return { ok: false, error: '열 수 없는 주소입니다 — Gmail·Google 달력·Notion 주소만 엽니다.' };
   try {
     await shell.openExternal(url);
     return { ok: true };
@@ -407,6 +408,9 @@ registerPlannerIpc();
 
 // Google 달력 — 확정 일정 읽기·쓰기 (토큰의 권한 범위 안에서)
 registerCalendarIpc();
+
+// Notion — 워크스페이스에서 최근 바뀐 페이지와 회의록 읽기 (읽기만, 키는 암호화 저장)
+registerNotionIpc();
 
 
 

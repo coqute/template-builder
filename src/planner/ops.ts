@@ -7,6 +7,8 @@ import { isRealIsoDate } from '../core/types';
 import type {
   EventLink,
   EventRef,
+  NotionSettings,
+  NotionSource,
   PlannerLogEntry,
   PlannerOp,
   PlannerSettings,
@@ -18,8 +20,9 @@ import type {
   WorklogAnchor,
 } from './types';
 
-export const DEFAULT_SETTINGS: PlannerSettings = { lookbackDays: 30, calendars: ['primary'], holidays: true };
-const MAX = { title: 200, short: 60, note: 2000, list: 500, calendars: 20, id: 300 };
+export const DEFAULT_NOTION: NotionSettings = { sources: [], meetings: '', loose: true, days: 7 };
+export const DEFAULT_SETTINGS: PlannerSettings = { lookbackDays: 30, calendars: ['primary'], holidays: true, notion: DEFAULT_NOTION };
+const MAX = { title: 200, short: 60, note: 2000, list: 500, calendars: 20, id: 300, sources: 40, url: 400 };
 
 export class PlannerError extends Error {}
 
@@ -116,6 +119,32 @@ function cleanTask(v: unknown): Task | null {
   };
 }
 
+/** Notion 주소는 https의 Notion 호스트만 남긴다 — 저장 파일을 손으로 고쳐도 다른 곳으로 가는 링크가 되지 않게 */
+const notionUrl = (v: unknown): string => {
+  const s = str(v, MAX.url);
+  return /^https:\/\/(www\.notion\.so|notion\.so|app\.notion\.com)\//.test(s) ? s : '';
+};
+
+function cleanNotion(v: unknown, base: NotionSettings = DEFAULT_NOTION): NotionSettings {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return base;
+  const n = v as Partial<NotionSettings>;
+  const seen = new Set<string>();
+  const sources: NotionSource[] = [];
+  for (const x of Array.isArray(n.sources) ? n.sources : base.sources) {
+    const id = str((x as NotionSource | null)?.id, MAX.id);
+    if (!id || seen.has(id) || sources.length >= MAX.sources) continue;
+    seen.add(id);
+    sources.push({ id, name: str((x as NotionSource).name, MAX.title) || '이름 없는 DB', url: notionUrl((x as NotionSource).url) });
+  }
+  const days = Number.isFinite(n.days) ? Math.round(n.days as number) : base.days;
+  return {
+    sources,
+    meetings: n.meetings === undefined ? base.meetings : str(n.meetings, MAX.id),
+    loose: typeof n.loose === 'boolean' ? n.loose : base.loose,
+    days: Math.min(30, Math.max(1, days)),
+  };
+}
+
 function cleanSettings(v: unknown, base: PlannerSettings = DEFAULT_SETTINGS): PlannerSettings {
   const s = (v ?? {}) as Partial<PlannerSettings>;
   const days = Number.isFinite(s.lookbackDays) ? Math.round(s.lookbackDays as number) : base.lookbackDays;
@@ -124,6 +153,7 @@ function cleanSettings(v: unknown, base: PlannerSettings = DEFAULT_SETTINGS): Pl
     lookbackDays: Math.min(180, Math.max(7, days)),
     calendars: calendars.length ? calendars : ['primary'],
     holidays: typeof s.holidays === 'boolean' ? s.holidays : base.holidays,
+    notion: cleanNotion(s.notion, base.notion ?? DEFAULT_NOTION),
   };
 }
 

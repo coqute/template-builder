@@ -1,8 +1,8 @@
 /**
- * 홈 화면 상태 — 플래너 저장소 · 작업일지 후보 · 주간보고 표지 · Google 달력을 읽어 한 모양으로 내준다.
+ * 홈 화면 상태 — 플래너 저장소 · 작업일지 후보 · 주간보고 표지 · Google 달력 · Notion을 읽어 한 모양으로 내준다.
  *
  * - 읽는 때: 화면을 열 때, 창이 다시 앞에 올 때, 보이는 동안 5분마다(달력), [새로 고침].
- * - 원본(작업일지·주간보고·달력)은 여기서 바꾸지 않는다. 고치는 것은 플래너 저장소뿐이고 `apply(동작)` 하나로만 한다.
+ * - 원본(작업일지·주간보고·달력·Notion)은 여기서 바꾸지 않는다. 고치는 것은 플래너 저장소뿐이고 `apply(동작)` 하나로만 한다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,11 +10,12 @@ import { plannerApi, type PlannerApi } from './api';
 import { classifyEvents, detectClient, diffEvents, sortEvents, type EventChange, type HomeEvent } from './classify';
 import { addDays, mondayOf, todayIso } from './dates';
 import { agendaDays, buildStrip, closedInWorklog, groupTasks, recentPastEvents, summarize, visibleCandidates } from './model';
+import { linkMeetingNotes, recentGroups, sourcesToRead } from './sources/notion';
 import { scanWeekly, type WeeklyScan } from './sources/weekly';
 import { scanWorklogs, type Candidate, type WorklogScan } from './sources/worklog';
-import { DEFAULT_SETTINGS, undoOps } from './ops';
+import { DEFAULT_NOTION, DEFAULT_SETTINGS, undoOps } from './ops';
 import { safeSetItem } from '../lib/storage';
-import type { CalendarStatus, PlannerLogEntry, PlannerOp, PlannerSettings, PlannerState, RawEvent, Task } from './types';
+import type { CalendarStatus, NotionPage, NotionStatus, PlannerLogEntry, PlannerOp, PlannerSettings, PlannerState, RawEvent, Task } from './types';
 
 const DRAFT_KEY = 'tb:md-draft:v1';
 const FOLDER_MAP_KEY = 'tb:worklog:weekly-map:v1';
@@ -26,6 +27,10 @@ const SEEN_KEY = 'tb:home:seen-claude:v1';
 /** 달력을 읽는 범위 — 지난주 월요일(지난 일정 → 일지)부터 4주 뒤까지 */
 const PAST_DAYS = 7;
 const AHEAD_DAYS = 28;
+/** 설정 화면이 Notion 키를 넣거나 지웠을 때 창에 띄우는 이벤트 이름 */
+export const NOTION_CHANGED = 'tb:notion-changed';
+/** Notion에서 읽는 범위(일) — 화면에 보이는 기간(설정)과 지난 일정의 회의록을 함께 덮는다 */
+const NOTION_DAYS = 14;
 /** 후보의 "더 오래된 것"을 세려고 읽는 일지 범위 */
 const WORKLOG_DAYS = 365;
 
@@ -37,6 +42,16 @@ export interface CalendarView {
   baseline: RawEvent[] | null;
   readAt: number | null;
   /** 읽지 못했을 때의 안내 — raw는 마지막으로 읽은 것 */
+  error: string | null;
+}
+
+export interface NotionView {
+  /** 키가 있는가 — 아직 확인 전이면 null */
+  status: NotionStatus | null;
+  pages: NotionPage[];
+  /** 읽지 못한 DB의 ID */
+  failed: string[];
+  readAt: number | null;
   error: string | null;
 }
 
@@ -74,6 +89,7 @@ export function usePlanner() {
   const own = useRef(new Set<string>());
   const [wl, setWl] = useState<WorklogView>({ ready: false, folders: [], scan: null, error: null });
   const [weekly, setWeekly] = useState<WeeklyScan | null>(null);
+  const [notion, setNotion] = useState<NotionView>({ status: null, pages: [], failed: [], readAt: null, error: null });
   const [busy, setBusy] = useState(true);
   const [seenAt, setSeenAt] = useState(() => (typeof localStorage === 'undefined' ? '' : (localStorage.getItem(SEEN_KEY) ?? '')));
   /** 마지막으로 읽기 직전에 본 저장 파일의 시각 — 이것과 달라지면 다시 읽는다 */
@@ -162,6 +178,32 @@ export function usePlanner() {
     setWeekly(scanWeekly([{ name: '', text: draft }, ...history], todayIso()));
   }, [api]);
 
+  /** Notion — 키가 있고 볼 DB를 골랐을 때만 읽는다. 읽지 못해도 홈의 나머지는 그대로다 */
+  const loadNotion = useCallback(
+    async (settings: PlannerSettings, force = false) => {
+      // 통로가 없는 실행(옛 preload)에서도, Notion 쪽에서 무슨 일이 나도 홈의 나머지 읽기를 막지 않는다
+      if (typeof api.notionStatus !== 'function' || typeof api.notionRecent !== 'function') return;
+      try {
+        const status = await api.notionStatus();
+        if (!alive.current) return;
+        const want = settings.notion ?? DEFAULT_NOTION;
+        const sources = sourcesToRead(want);
+        if (!status?.connected || sources.length === 0) {
+          setNotion({ status, pages: [], failed: [], readAt: null, error: null });
+          return;
+        }
+        const since = new Date(`${addDays(todayIso(), -NOTION_DAYS)}T00:00:00`).toISOString();
+        const r = await api.notionRecent({ sources, since, loose: want.loose, force });
+        if (!alive.current) return;
+        if (r.ok) setNotion({ status, pages: r.pages, failed: r.failed, readAt: r.readAt, error: null });
+        else setNotion((prev) => ({ status, pages: prev.pages, failed: [], readAt: prev.readAt, error: r.message }));
+      } catch (err) {
+        if (alive.current) setNotion((prev) => ({ ...prev, error: err instanceof Error ? err.message : '알 수 없는 오류' }));
+      }
+    },
+    [api],
+  );
+
   /** 전부 다시 읽는다 — force면 달력의 5분 기억도 건너뛴다 */
   const refresh = useCallback(
     async (force = false) => {
@@ -169,10 +211,10 @@ export function usePlanner() {
       setToday(todayIso());
       const s = (await loadPlanner()) ?? stateRef.current;
       const settings = s?.settings ?? DEFAULT_SETTINGS;
-      await Promise.all([loadCalendar(settings, force), loadWorklog(settings.lookbackDays), loadWeekly()]);
+      await Promise.all([loadCalendar(settings, force), loadWorklog(settings.lookbackDays), loadWeekly(), loadNotion(settings, force)]);
       if (alive.current) setBusy(false);
     },
-    [loadPlanner, loadCalendar, loadWorklog, loadWeekly],
+    [loadPlanner, loadCalendar, loadWorklog, loadWeekly, loadNotion],
   );
 
   useEffect(() => {
@@ -182,6 +224,7 @@ export function usePlanner() {
       if (document.visibilityState !== 'visible') return;
       setToday(todayIso());
       void loadCalendar(stateRef.current?.settings ?? DEFAULT_SETTINGS);
+      void loadNotion(stateRef.current?.settings ?? DEFAULT_SETTINGS);
     }, CALENDAR_MS);
     // 명령줄·MCP 도구가 저장 파일을 고치면 3초 안에 받아 온다 (창이 보일 때만)
     const poll = window.setInterval(() => {
@@ -215,6 +258,25 @@ export function usePlanner() {
     }
     lastSettings.current = settingsKey;
   }, [settingsKey, loadCalendar, loadWorklog]);
+
+  // Notion 설정(볼 DB·회의록 DB)이 바뀌면 그 설정으로 다시 읽는다
+  const notionKey = state ? JSON.stringify([sourcesToRead(state.settings.notion ?? DEFAULT_NOTION).sort(), (state.settings.notion ?? DEFAULT_NOTION).loose]) : '';
+  const lastNotion = useRef('');
+  useEffect(() => {
+    const s = stateRef.current?.settings;
+    if (!notionKey || !s) return;
+    if (lastNotion.current && lastNotion.current !== notionKey) void loadNotion(s);
+    lastNotion.current = notionKey;
+  }, [notionKey, loadNotion]);
+
+  /** Notion을 다시 읽는다 — [다시 읽기], 설정에서 키를 넣은 뒤 */
+  const reloadNotion = useCallback(() => loadNotion(stateRef.current?.settings ?? DEFAULT_SETTINGS, true), [loadNotion]);
+  // 도움말·설정(F1)에서 키를 넣거나 지우면 알려 온다 — 키는 저장소 밖에 있어 설정 변화로는 알 수 없다
+  useEffect(() => {
+    const on = () => void reloadNotion();
+    window.addEventListener(NOTION_CHANGED, on);
+    return () => window.removeEventListener(NOTION_CHANGED, on);
+  }, [reloadNotion]);
 
   /** 저장소를 고친다 — 실패하면 알리고 null */
   const apply = useCallback(
@@ -298,6 +360,9 @@ export function usePlanner() {
     const changes: EventChange[] = diffEvents(baseline, cal.raw.filter((e) => !e.other), today).filter((c) => !own.current.has(c.key));
     // 명령줄·MCP 도구로 Claude가 고친 할 일 — 마지막으로 확인한 뒤의 것
     const claudeChanged: Task[] = tasks.filter((t) => t.by === 'claude' && t.updatedAt > seenAt);
+    // Notion — 회의록 DB의 페이지는 본인 일정에 잇고, 고른 DB의 최근 페이지는 DB별로 묶는다
+    const ns = state?.settings.notion ?? DEFAULT_NOTION;
+    const notes = linkMeetingNotes(ns.meetings ? notion.pages.filter((x) => x.sourceId === ns.meetings) : [], events);
     return {
       groups,
       events,
@@ -310,10 +375,12 @@ export function usePlanner() {
       past: recentPastEvents(today, events),
       changes,
       claudeChanged,
+      notes,
+      notionGroups: recentGroups(notion.pages, ns, today),
     };
-  }, [state, today, cal.raw, cal.baseline, cal.calendars, wl.scan, weekly, seenAt]);
+  }, [state, today, cal.raw, cal.baseline, cal.calendars, wl.scan, weekly, seenAt, notion.pages]);
 
-  return { api, today, state, storePath, storeError, cal, wl, weekly, busy, refresh, apply, reloadCalendar, ackChanges, readLog, undo, ackClaude, ...view };
+  return { api, today, state, storePath, storeError, cal, wl, weekly, notion, busy, refresh, apply, reloadCalendar, reloadNotion, ackChanges, readLog, undo, ackClaude, ...view };
 }
 
 export type PlannerView = ReturnType<typeof usePlanner>;

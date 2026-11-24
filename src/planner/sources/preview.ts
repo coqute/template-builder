@@ -6,7 +6,7 @@ import type { WorklogFileText } from '../../../electron/worklog-types';
 import type { PlannerApi } from '../api';
 import { addDays, mondayOf, todayIso } from '../dates';
 import { applyOp, emptyState, newTaskId, PlannerError } from '../ops';
-import type { PlannerLogEntry, PlannerState, RawEvent, TaskDraft } from '../types';
+import type { NotionPage, NotionSource, PlannerLogEntry, PlannerState, RawEvent, TaskDraft } from '../types';
 
 const FOLDER = 'AB Z+ 작업';
 
@@ -62,6 +62,35 @@ function seedEvents(today: string): RawEvent[] {
   ];
 }
 
+const NOTION_DBS: NotionSource[] = [
+  { id: 'ds-meet', name: '예시 회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
+  { id: 'ds-support', name: '지원 기록', url: 'https://www.notion.so/00000000000000000000000000000002' },
+  { id: 'ds-decision', name: '결정 기록', url: 'https://www.notion.so/00000000000000000000000000000003' },
+];
+
+function seedNotion(today: string): NotionPage[] {
+  const at = (date: string, time: string) => new Date(`${date}T${time}:00`).toISOString();
+  const page = (n: number, sourceId: string, title: string, created: string, edited = created): NotionPage => ({
+    id: `pg-${n}`,
+    sourceId,
+    title,
+    createdAt: created,
+    editedAt: edited,
+    url: `https://www.notion.so/${String(n).padStart(32, '0')}`,
+  });
+  return [
+    // 이틀 전 10:00 'MX 알림 설정 회의' 중에 만든 회의록 — 그 일정 줄에 이어진다
+    page(11, 'ds-meet', 'MX 알림 설정 회의', at(addDays(today, -2), '10:05'), at(addDays(today, -1), '09:20')),
+    page(21, 'ds-support', '수집 누락 원인 문의', at(addDays(today, -5), '11:00'), at(today, '09:10')),
+    page(22, 'ds-support', '알림 분류 개선 요청', at(addDays(today, -1), '15:30')),
+    page(23, 'ds-support', '에이전트 재기동 절차 문의', at(addDays(today, -2), '13:10')),
+    page(24, 'ds-support', '대시보드 권한 문의', at(addDays(today, -3), '10:40')),
+    page(25, 'ds-support', '저장소 사용량 경고 문의', at(addDays(today, -4), '16:00')),
+    page(31, 'ds-decision', '수집 서버 패치 순서 결정', at(addDays(today, -20), '14:00'), at(addDays(today, -1), '17:40')),
+    page(41, '', '예시 팀 온보딩 안내', at(addDays(today, -40), '09:00'), at(addDays(today, -3), '18:05')),
+  ];
+}
+
 function seedState(today: string): PlannerState {
   const mon = mondayOf(today);
   const drafts: TaskDraft[] = [
@@ -76,6 +105,7 @@ function seedState(today: string): PlannerState {
   let state = emptyState();
   const ctx = { now: new Date().toISOString(), today, by: 'app' as const, newId: newTaskId };
   for (const draft of drafts) state = applyOp(state, { type: 'task.add', draft }, ctx).state;
+  state = applyOp(state, { type: 'settings', patch: { notion: { sources: NOTION_DBS, meetings: 'ds-meet', loose: true, days: 7 } } }, ctx).state;
   return state;
 }
 
@@ -163,6 +193,18 @@ export function createPreviewApi(): PlannerApi {
     worklogCreate: async () => ({ ok: false, code: 'error', error: '미리보기에서는 일지를 만들 수 없습니다.' }),
     worklogReadAll: async () => ({ ok: true, files: logs }),
     worklogWeeklyHistory: async () => [],
+    notionStatus: async () => ({ connected: true, stored: true, encryption: true }),
+    notionSetKey: async () => ({ ok: false, error: '미리보기에서는 키를 저장하지 않습니다.' }),
+    notionClearKey: async () => ({ ok: false }),
+    notionSources: async () => ({ ok: true, sources: NOTION_DBS }),
+    notionResolve: async () => ({ ok: false, code: 'not-found', message: '미리보기에서는 주소로 찾을 수 없습니다.' }),
+    notionRecent: async (req) => ({
+      ok: true,
+      pages: seedNotion(todayIso()).filter((x) => (x.sourceId ? req.sources.includes(x.sourceId) : req.loose === true) && x.editedAt >= req.since),
+      readAt: Date.now(),
+      fromCache: false,
+      failed: [],
+    }),
     openExternal: async () => ({ ok: false, error: '미리보기' }),
   };
 }

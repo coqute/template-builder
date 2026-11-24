@@ -15,6 +15,10 @@ describe('isAllowedExternalUrl', () => {
       // 달력이 일정마다 주는 링크(htmlLink)
       'https://www.google.com/calendar/event?eid=YWJjZGVmZyBob25nQGV4YW1wbGUuY29t&ctz=Asia/Seoul',
       'https://calendar.google.com/calendar/event?eid=YWJjZGVmZw',
+      // Notion — 페이지·DB 주소 (홈의 Notion 구역과 일정 줄의 회의록 링크)
+      'https://www.notion.so/00000000000000000000000000000001',
+      'https://www.notion.so/workspace/Example-Page-00000000000000000000000000000001?pvs=4',
+      'https://app.notion.com/p/00000000000000000000000000000001',
     ]) {
       expect([url, isAllowedExternalUrl(url)]).toEqual([url, true]);
     }
@@ -23,6 +27,10 @@ describe('isAllowedExternalUrl', () => {
   it('그 밖의 주소는 열지 않는다 — 비슷하게 생긴 호스트, 다른 경로, 다른 프로토콜', () => {
     for (const url of [
       'https://www.google.com/search?q=calendar',
+      'https://www.notion.so.example.com/00000000000000000000000000000001',
+      'https://notion.site/00000000000000000000000000000001',
+      'http://www.notion.so/00000000000000000000000000000001',
+      'notion://www.notion.so/00000000000000000000000000000001',
       'https://www.google.com/calendarx/event',
       'https://www.google.com/',
       'https://mail.google.com.example.com/mail/',

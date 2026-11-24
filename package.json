@@ -1,6 +1,6 @@
 {
   "name": "template-builder",
-  "version": "0.19.2",
+  "version": "0.20.0",
   "private": true,
   "description": "Template Builder — 주간보고·반복 이메일·작업일지를 정해진 형식으로 쓰고 검증하는 데스크톱 앱",
   "author": "hojhk",

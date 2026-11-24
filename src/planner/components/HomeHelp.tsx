@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadStartMode, saveStartMode, type StartMode } from '../../hooks/useDocType';
 import { plannerApi } from '../api';
 import type { CalendarInfo, CalendarStatus, PlannerSettings } from '../types';
+import { NotionSettingsBox } from './NotionHelp';
 
 const BOX = 'mb-3 rounded-card border border-rule bg-bg p-3';
 const H3 = 'mb-2 text-xs font-semibold text-fg';
@@ -107,6 +108,8 @@ export function HomeSettings({ mono, open }: { mono: boolean; open: boolean }) {
         )}
       </section>
 
+      <NotionSettingsBox mono={mono} open={open} />
+
       <section className={BOX}>
         <h3 className={H3}>{mono ? '$ candidates' : '작업일지에서 후보 찾기'}</h3>
         <p className={`${P} mb-2`}>작업일지의 ‘회신 대기’·‘확인 필요’ 같은 상태로 끝난 사안을 후보로 보여 줍니다. 이 기간보다 오래된 것은 세지 않습니다.</p>
@@ -208,6 +211,18 @@ export function HomeGuide({ mono }: { mono: boolean }) {
             작업일지 탭에서 커서를 사안 안에 두고 <b>⋯ → 이 사안에 일정·할 일 달기</b>(Ctrl+Shift+D). ■ 줄 끝에 표지가 붙고, 표지를 누르면 홈으로 옵니다.
           </li>
           <li>같은 사안이 일지에서 ‘완료’로 닫히면 할 일 옆에 [끝냄으로]가 나옵니다.</li>
+        </ul>
+      </section>
+      <section className={BOX}>
+        <h3 className={H3}>{mono ? '$ notion' : 'Notion과 잇기'}</h3>
+        <ul className="space-y-1 text-[11px] text-fg-soft">
+          <li>
+            <b>Notion 구역</b> — 설정에서 고른 DB에서 최근에 바뀐 페이지를 DB별로 보여 줍니다. 줄을 누르면 그 페이지가, DB 이름을 누르면 그 DB가 브라우저에서 열립니다. ‘새’는 그 기간에 새로 만든 페이지입니다.
+          </li>
+          <li>
+            <b>회의록 ↗</b> — 회의록 DB의 페이지는 만든 시각이 본인 달력 일정의 시간(앞뒤 30분) 안이면 그 일정 줄에 이어집니다. 2주 띠의 일정 끝에도 작은 표지가 붙습니다.
+          </li>
+          <li>달력에도 Notion에도 쓰지 않습니다. 이어 놓은 것은 저장하지 않고 읽을 때마다 다시 맞춥니다.</li>
         </ul>
       </section>
       <section className={BOX}>

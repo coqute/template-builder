@@ -6,6 +6,16 @@ import type { StripDay, Summary } from '../model';
 
 const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
+/** Notion 표지 — 둥근 네모 안의 N을 직접 그린다(글자 색을 따라간다). 공식 로고 파일은 넣지 않는다 */
+export function NotionMark({ size = 12 }: { size?: number }) {
+  return (
+    <svg className="hm-nm" width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.4 11.4V4.6l5.2 6.8V4.6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface SummaryProps {
   today: string;
   summary: Summary;
@@ -66,10 +76,12 @@ interface StripProps {
   weeks: StripDay[][];
   focus: string | null;
   onFocus(date: string | null): void;
+  /** Notion 회의록이 이어진 일정의 키 — 조각 끝에 작은 표지 */
+  noted?: Set<string>;
 }
 
 /** 이번 주·다음 주 — 날 칸을 누르면 그날의 할 일·일정만 또렷이 (자리는 움직이지 않는다) */
-export function WeekStrip({ weeks, focus, onFocus }: StripProps) {
+export function WeekStrip({ weeks, focus, onFocus, noted }: StripProps) {
   return (
     <section className="hm-strip" aria-label="이번 주와 다음 주">
       {weeks.map((week, wi) => (
@@ -95,9 +107,10 @@ export function WeekStrip({ weeks, focus, onFocus }: StripProps) {
                 </span>
               )}
               {day.events.map((e) => (
-                <span className="hm-ev" key={e.key} title={`${e.startTime} ${e.title}`.trim()}>
+                <span className="hm-ev" key={e.key} title={`${e.startTime} ${e.title}${noted?.has(e.key) ? ' · Notion 회의록 있음' : ''}`.trim()}>
                   {e.startTime && <i className="hm-num">{e.startTime}</i>}
                   <b>{e.title}</b>
+                  {noted?.has(e.key) && <NotionMark size={10} />}
                 </span>
               ))}
               {day.others.slice(0, OTHERS_SHOWN).map((e) => (

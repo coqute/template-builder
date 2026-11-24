@@ -169,3 +169,16 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
   .hm-sum { flex-wrap: wrap; }
   .hm-next { flex-basis: 100%; order: 3; }
 }
+
+/* Notion — 일정 줄·띠의 표지와 "최근 바뀐 것" 구역 (읽기만, 설계 §19.10) */
+/* 바탕 스타일이 svg를 block으로 만든다 — 글자와 한 줄에 서게 inline-block으로 되돌린다 */
+.hm-nm { display: inline-block; flex: none; vertical-align: -1.5px; }
+.hm-ev .hm-nm { align-self: center; color: var(--fg-muted); }
+.hm-nt { margin-top: 26px; }
+.hm-nt .hm-h h2 { display: flex; align-items: center; gap: 6px; }
+.hm-ng .hm-cap { margin-top: 10px; }
+.hm-np { display: flex; width: 100%; min-width: 0; align-items: baseline; gap: 8px; padding: 4px 2px; border: 0; border-bottom: 1px solid var(--rule); background: none; font-size: 12.5px; line-height: 1.4; text-align: left; color: var(--fg); cursor: pointer; }
+.hm-np:hover { background: var(--bg-sunken); }
+.hm-np > .hm-num { flex: none; width: 34px; font-size: 11.5px; color: var(--fg-muted); }
+.hm-np b { overflow: hidden; min-width: 0; flex: 1; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.hm-np-m { margin-top: 6px; }

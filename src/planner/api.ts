@@ -23,6 +23,10 @@ import type {
   CalendarWriteResult,
   EventInput,
   EventRef,
+  NotionRecentRequest,
+  NotionRecentResult,
+  NotionSourcesResult,
+  NotionStatus,
   PlannerLogResult,
   PlannerOp,
   PlannerResult,
@@ -46,6 +50,13 @@ export interface PlannerApi {
   calendarInsert(input: EventInput): Promise<CalendarWriteResult>;
   calendarPatch(req: { ref: EventRef; patch: Partial<EventInput> }): Promise<CalendarWriteResult>;
   calendarDelete(ref: EventRef): Promise<CalendarDeleteResult>;
+  /** Notion — 읽기만. 키는 main에만 있다 */
+  notionStatus(): Promise<NotionStatus>;
+  notionSetKey(key: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  notionClearKey(): Promise<{ ok: boolean }>;
+  notionSources(): Promise<NotionSourcesResult>;
+  notionResolve(input: string): Promise<NotionSourcesResult>;
+  notionRecent(req: NotionRecentRequest): Promise<NotionRecentResult>;
   worklogConfig(): Promise<WorklogConfig>;
   worklogList(): Promise<{ ok: true; files: WorklogEntry[] } | { ok: false; error: string }>;
   worklogRead(ref: WorklogFileRef): Promise<WorklogReadResult>;

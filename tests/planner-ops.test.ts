@@ -275,9 +275,9 @@ describe('settings — 설정', () => {
 
   it('읽을 달력은 겹친 것을 빼고, 비면 본인 달력으로 돌린다. 주지 않은 칸은 그대로다', () => {
     const s = run([{ type: 'settings', patch: { calendars: ['primary', 'cal-holiday', 'primary', ' '] } }]);
-    expect(s.settings).toEqual({ lookbackDays: DEFAULT_SETTINGS.lookbackDays, calendars: ['primary', 'cal-holiday'], holidays: true });
+    expect(s.settings).toEqual({ lookbackDays: DEFAULT_SETTINGS.lookbackDays, calendars: ['primary', 'cal-holiday'], holidays: true, notion: DEFAULT_SETTINGS.notion });
     expect(run([{ type: 'settings', patch: { calendars: [] } }], s).settings.calendars).toEqual(['primary']);
-    expect(run([{ type: 'settings', patch: { lookbackDays: 14 } }], s).settings).toEqual({ lookbackDays: 14, calendars: ['primary', 'cal-holiday'], holidays: true });
+    expect(run([{ type: 'settings', patch: { lookbackDays: 14 } }], s).settings).toEqual({ lookbackDays: 14, calendars: ['primary', 'cal-holiday'], holidays: true, notion: DEFAULT_SETTINGS.notion });
   });
 });
 
@@ -405,7 +405,7 @@ describe('normalizeState — 파일에서 읽은 값을 저장 모양으로', ()
     expect(s.hiddenCandidates).toEqual([]);
     expect(s.hiddenEvents).toEqual(['primary/evt2']);
     expect(s.hiddenTitles).toEqual([]);
-    expect(s.settings).toEqual({ lookbackDays: 180, calendars: ['primary'], holidays: true });
+    expect(s.settings).toEqual({ lookbackDays: 180, calendars: ['primary'], holidays: true, notion: DEFAULT_SETTINGS.notion });
   });
 
   it('동작을 거친 상태는 다시 읽어도 같다', () => {

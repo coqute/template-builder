@@ -12,10 +12,11 @@ import { Btn, MoreMenu } from '../components/ToolbarButton';
 import { Agenda, type EventActions } from '../planner/components/Agenda';
 import { EventDialog, eventPatch } from '../planner/components/EventDialog';
 import { ChangeBanner, EmptyBox, SummaryBar, WeekStrip } from '../planner/components/HomeParts';
+import { NotionCard } from '../planner/components/NotionCard';
 import { TaskList, type TaskActions } from '../planner/components/TaskList';
 import type { HomeEvent } from '../planner/classify';
 import { clock, mdw, parseQuickAdd } from '../planner/dates';
-import { eventKey, undoOps } from '../planner/ops';
+import { DEFAULT_NOTION, eventKey, undoOps } from '../planner/ops';
 import type { Candidate } from '../planner/sources/worklog';
 import type { EventInput, PlannerLogEntry, Task, TaskOrigin } from '../planner/types';
 import { folderClient, usePlanner } from '../planner/usePlanner';
@@ -156,6 +157,9 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
   };
 
   const linked = useMemo(() => new Set((state?.links ?? []).map(eventKey)), [state?.links]);
+  const notionSettings = state?.settings.notion ?? DEFAULT_NOTION;
+  /** Notion 회의록이 이어진 일정 — 2주 띠의 조각 끝에 표지를 붙인다 */
+  const noted = useMemo(() => new Set(p.notes.byEvent.keys()), [p.notes]);
   const claudeIds = useMemo(() => new Set(p.claudeChanged.map((t) => t.id)), [p.claudeChanged]);
 
   const openLog = async () => setLog(await p.readLog());
@@ -184,8 +188,13 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
       const link = state?.links.find((l) => eventKey(l) === e.key);
       if (link) navigate('worklog', { kind: 'worklog-open', anchor: link.anchor });
     },
+    openNote: (n) => void openOutside(n.url, 'Notion 회의록을'),
     toWorklog: async (e) => {
-      const r = await appendToWorklog(api, { folder: folderFor(e.client), date: e.date, title: e.title, block: eventBlock(e), skipIfEventExists: true });
+      // 이어진 Notion 회의록이 있으면 일지 루틴과 같은 `※ 회의록:` 줄을 함께 넣는다
+      const note = p.notes.byEvent.get(e.key)?.[0];
+      const db = notionSettings.sources.find((s) => s.id === notionSettings.meetings)?.name ?? '';
+      const block = eventBlock(e, note ? { db, title: note.title } : undefined);
+      const r = await appendToWorklog(api, { folder: folderFor(e.client), date: e.date, title: e.title, block, skipIfEventExists: true });
       if (r.ok) toast.success(r.created ? `${mdw(e.date)} 일지를 만들어 회의 블록을 넣었습니다.` : `${mdw(e.date)} 일지 끝에 회의 블록을 덧붙였습니다.`);
       else if (r.duplicate) toast.info(r.error);
       else toast.error(`일지에 쓰지 못했습니다: ${r.error}`);
@@ -367,7 +376,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
       <div className="flex h-full flex-col">
         <main className="hm min-h-0 flex-1" ref={mainRef}>
           <SummaryBar today={today} summary={p.summary} calendar={!!p.cal.status?.canRead} onJump={jump} />
-          <WeekStrip weeks={p.strip} focus={focus} onFocus={setFocus} />
+          <WeekStrip weeks={p.strip} focus={focus} onFocus={setFocus} noted={noted} />
           <div className="hm-cols">
             <section aria-label="할 일">
               <div className="hm-h">
@@ -441,11 +450,20 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
                 cal={p.cal}
                 changes={p.changes}
                 linked={linked}
+                notes={p.notes.byEvent}
                 focus={focus}
                 flash={flash}
                 canLog={p.wl.ready}
                 actions={eventActions}
                 onRetry={() => void p.reloadCalendar()}
+                onHelp={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}
+              />
+              <NotionCard
+                view={p.notion}
+                groups={p.notionGroups}
+                settings={notionSettings}
+                onOpen={(url, what) => void openOutside(url, what)}
+                onRetry={() => void p.reloadNotion()}
                 onHelp={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}
               />
             </section>
@@ -466,6 +484,12 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
                   ? '달력을 읽지 못함'
                   : `Google 달력 연결됨${canWrite ? ' (쓰기 가능)' : ''}${p.cal.readAt ? ` · ${clock(p.cal.readAt)} 확인` : ''}`}
           </span>
+          {p.notion.status?.connected && (
+            <span data-testid="home-notion-status">
+              <i className={!p.notion.error && p.notion.readAt ? 'is-on' : undefined} />
+              {p.notion.error ? 'Notion을 읽지 못함' : p.notion.readAt ? `Notion 연결됨 · ${clock(p.notion.readAt)} 확인` : notionSettings.sources.length ? 'Notion 확인 중' : 'Notion — 볼 DB를 고르지 않음'}
+            </span>
+          )}
           <span className="hm-r">
             {api.preview ? '미리보기 — 합성 데이터, 저장되지 않음' : p.wl.ready ? `작업일지 ${p.wl.scan?.files ?? 0}개 읽음 (최근 ${state?.settings.lookbackDays ?? 30}일)` : '작업일지 폴더 없음'}
           </span>

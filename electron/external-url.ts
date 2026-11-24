@@ -7,7 +7,7 @@
  *
  * 2026-11-24: 전에는 Gmail 주소만 통과시켜, 홈의 "달력에서 열기"와 ⋯ "Google 달력 열기"가 아무 일도 하지 않았다.
  */
-const ANY_PATH_HOSTS = new Set(['mail.google.com', 'calendar.google.com']);
+const ANY_PATH_HOSTS = new Set(['mail.google.com', 'calendar.google.com', 'www.notion.so', 'notion.so', 'app.notion.com']);
 
 export function isAllowedExternalUrl(url: unknown): boolean {
   if (typeof url !== 'string' || url.length > 4000) return false;

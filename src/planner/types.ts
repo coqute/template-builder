@@ -76,6 +76,26 @@ export interface PlannerSettings {
   calendars: string[];
   /** 구독 중인 공휴일 달력도 함께 읽는다 (달력 목록을 읽을 수 있을 때) */
   holidays: boolean;
+  /** Notion에서 읽을 것 — 키는 여기에 두지 않는다(앱 데이터 폴더의 암호화 파일) */
+  notion: NotionSettings;
+}
+
+/** Notion의 DB 하나(데이터 소스) */
+export interface NotionSource {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface NotionSettings {
+  /** 홈의 "최근 바뀐 것"에 보일 DB — [DB 찾기]로 찾은 것 가운데 고른 것 */
+  sources: NotionSource[];
+  /** 회의록 DB의 ID — 그 DB의 페이지를 본인 달력 일정에 잇는다 (없으면 '') */
+  meetings: string;
+  /** DB에 들어 있지 않은 페이지도 보인다 */
+  loose: boolean;
+  /** 최근 바뀐 것을 보이는 기간(일) */
+  days: number;
 }
 
 export interface PlannerState {
@@ -251,3 +271,60 @@ export interface EventInput {
 
 export type CalendarWriteResult = { ok: true; event: RawEvent } | { ok: false; code: CalendarErrorCode; message: string };
 export type CalendarDeleteResult = { ok: true } | { ok: false; code: CalendarErrorCode; message: string };
+
+// ── Notion (읽기만) ──────────────────────────────────────────────────────────
+
+export type NotionErrorCode = 'no-key' | 'unauthorized' | 'forbidden' | 'not-found' | 'rate-limited' | 'network' | 'api-error' | 'unknown';
+
+export interface NotionStatus {
+  /** 키가 있다 (앱에 저장했거나 환경 변수) */
+  connected: boolean;
+  /** 앱에 저장한 키가 있다 */
+  stored: boolean;
+  /** 이 PC에서 키를 암호화해 저장할 수 있다 */
+  encryption: boolean;
+}
+
+/** Notion 페이지 한 줄 — 제목·시각·주소만 받는다(본문은 읽지 않는다) */
+export interface NotionPage {
+  id: string;
+  /** 속한 DB(데이터 소스)의 ID — DB 밖의 페이지면 '' */
+  sourceId: string;
+  title: string;
+  /** 만든 때 (ISO) */
+  createdAt: string;
+  /** 마지막으로 고친 때 (ISO) */
+  editedAt: string;
+  url: string;
+}
+
+export interface NotionFailure {
+  ok: false;
+  code: NotionErrorCode;
+  message: string;
+}
+
+export type NotionSourcesResult = { ok: true; sources: NotionSource[] } | NotionFailure;
+
+export interface NotionRecentRequest {
+  /** 읽을 DB(데이터 소스) ID */
+  sources: string[];
+  /** 이때 이후에 고친 페이지 (ISO) */
+  since: string;
+  /** DB 밖의 페이지도 찾는다 */
+  loose?: boolean;
+  /** 5분 기억을 건너뛰고 다시 읽는다 */
+  force?: boolean;
+}
+
+export type NotionRecentResult =
+  | {
+      ok: true;
+      pages: NotionPage[];
+      /** 읽은 시각 (ms) */
+      readAt: number;
+      fromCache: boolean;
+      /** 읽지 못한 DB의 ID — 나머지는 읽었다 */
+      failed: string[];
+    }
+  | NotionFailure;

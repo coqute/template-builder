@@ -12,7 +12,7 @@ import { DOC_TYPE_MODULES } from '../src/doctypes';
 import { saveStartMode, useDocType } from '../src/hooks/useDocType';
 import { addDays, mondayOf, todayIso } from '../src/planner/dates';
 import { applyOp, emptyState, newTaskId, PlannerError } from '../src/planner/ops';
-import type { CalendarStatus, PlannerLogEntry, PlannerOp, PlannerState, RawEvent, TaskDraft } from '../src/planner/types';
+import type { CalendarStatus, NotionPage, NotionSource, PlannerLogEntry, PlannerOp, PlannerState, RawEvent, TaskDraft } from '../src/planner/types';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -47,6 +47,8 @@ interface FakeOptions {
   logs?: WorklogFileText[];
   events?: RawEvent[];
   status?: CalendarStatus;
+  /** Notion — 주면 키가 있는 것으로 치고, 이 DB들을 고른 설정으로 시작한다 */
+  notion?: { sources: NotionSource[]; meetings?: string; pages: NotionPage[]; fail?: string };
 }
 
 function fakeApi(o: FakeOptions = {}) {
@@ -62,6 +64,7 @@ function fakeApi(o: FakeOptions = {}) {
     stamp++;
   };
   for (const draft of o.tasks ?? []) state = applyOp(state, { type: 'task.add', draft }, ctx()).state;
+  if (o.notion) state = applyOp(state, { type: 'settings', patch: { notion: { sources: o.notion.sources, meetings: o.notion.meetings ?? '', loose: true, days: 7 } } }, ctx()).state;
   const ok = () => ({ ok: true as const, state, path: 'C:/store/planner.json' });
   const api = {
     plannerGet: vi.fn(async () => ok()),
@@ -90,6 +93,16 @@ function fakeApi(o: FakeOptions = {}) {
     worklogCreate: vi.fn(),
     worklogReadAll: vi.fn(async () => ({ ok: true as const, files: o.logs ?? [] })),
     worklogWeeklyHistory: vi.fn(async () => []),
+    notionStatus: vi.fn(async () => ({ connected: !!o.notion, stored: !!o.notion, encryption: true })),
+    notionSetKey: vi.fn(async () => ({ ok: true as const })),
+    notionClearKey: vi.fn(async () => ({ ok: true })),
+    notionSources: vi.fn(async () => ({ ok: true as const, sources: o.notion?.sources ?? [] })),
+    notionResolve: vi.fn(),
+    notionRecent: vi.fn(async (_req: { sources: string[]; since: string; loose?: boolean; force?: boolean }) =>
+      o.notion?.fail
+        ? { ok: false as const, code: 'not-found' as const, message: o.notion.fail }
+        : { ok: true as const, pages: o.notion?.pages ?? [], readAt: Date.now(), fromCache: false, failed: [] as string[] },
+    ),
     openExternal: vi.fn(async () => ({ ok: true })),
   };
   /** 앱 밖(명령줄·MCP 도구)에서 저장소를 고친 것처럼 — 화면은 저장 파일의 시각을 보고 알아챈다 */
@@ -486,6 +499,99 @@ describe('홈 화면 — 앱 밖에서 바뀐 것 (명령줄·MCP 도구)', () =
     await screen.findByText('되돌렸습니다.');
     // 되돌린 것도 기록에 남는다(앱이 고친 것으로)
     await waitFor(() => expect(within(dialog).getAllByText('앱').length).toBeGreaterThan(0));
+  });
+});
+
+describe('홈 화면 — Notion (읽기만)', () => {
+  beforeEach(() => store.clear());
+  afterEach(() => {
+    cleanup();
+    (window as unknown as { reportApi: unknown }).reportApi = undefined;
+  });
+  const DBS: NotionSource[] = [
+    { id: 'ds-meet', name: '예시 회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
+    { id: 'ds-support', name: '지원 기록', url: 'https://www.notion.so/00000000000000000000000000000002' },
+  ];
+  const at = (date: string, time: string) => new Date(`${date}T${time}:00`).toISOString();
+  const page = (id: string, sourceId: string, title: string, created: string, edited = created): NotionPage => ({ id, sourceId, title, createdAt: created, editedAt: edited, url: `https://www.notion.so/${id}` });
+  const card = () => screen.getByTestId('home-notion');
+
+  it('키가 없으면 Notion 구역을 그리지 않고 읽지도 않는다', async () => {
+    const { api } = fakeApi();
+    renderHome(api);
+    await screen.findByTestId('home-status');
+    await waitFor(() => expect(api.notionStatus).toHaveBeenCalled());
+    expect(screen.queryByTestId('home-notion')).toBeNull();
+    expect(screen.queryByTestId('home-notion-status')).toBeNull();
+    expect(api.notionRecent).not.toHaveBeenCalled();
+  });
+
+  it('고른 DB에서 최근 바뀐 페이지를 DB별로 보이고, 줄을 누르면 그 페이지를, DB 이름을 누르면 그 DB를 연다', async () => {
+    const yesterday = addDays(TODAY, -1);
+    const pages = [
+      page('s1', 'ds-support', '수집 누락 원인 문의', at(addDays(TODAY, -9), '11:00'), at(TODAY, '00:10')),
+      page('s2', 'ds-support', '알림 분류 개선 요청', at(yesterday, '15:30')),
+      page('s3', 'ds-support', '에이전트 재기동 절차 문의', at(yesterday, '13:10')),
+      page('s4', 'ds-support', '대시보드 권한 문의', at(yesterday, '10:40')),
+      page('m1', 'ds-meet', '분기 정리 회의', at(yesterday, '09:00')),
+      page('old', 'ds-meet', '기간 밖의 회의', at(addDays(TODAY, -12), '10:00')),
+    ];
+    const { api } = fakeApi({ notion: { sources: DBS, meetings: 'ds-meet', pages } });
+    renderHome(api);
+    await waitFor(() => expect(within(card()).getByText('수집 누락 원인 문의')).toBeTruthy());
+    // 읽을 DB와 기간(2주)을 main에 넘긴다
+    expect(api.notionRecent).toHaveBeenCalledWith(expect.objectContaining({ sources: ['ds-meet', 'ds-support'], loose: true }));
+    // DB마다 세 줄까지 — 넘치면 "외 n건"
+    expect(within(card()).queryByText('대시보드 권한 문의')).toBeNull();
+    expect(within(card()).queryByText('기간 밖의 회의')).toBeNull();
+    fireEvent.click(within(card()).getByRole('button', { name: '외 1건' }));
+    expect(within(card()).getByText('대시보드 권한 문의')).toBeTruthy();
+    // 그 기간에 새로 만든 페이지에만 '새'
+    expect(within(card()).getByRole('button', { name: 'Notion에서 열기 — 알림 분류 개선 요청' }).textContent).toContain('새');
+    expect(within(card()).getByRole('button', { name: 'Notion에서 열기 — 수집 누락 원인 문의' }).textContent).not.toContain('새');
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Notion에서 열기 — 수집 누락 원인 문의' }));
+    await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith('https://www.notion.so/s1'));
+    fireEvent.click(within(card()).getByRole('button', { name: '지원 기록 ↗' }));
+    await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith(DBS[1].url));
+    expect(screen.getByTestId('home-notion-status').textContent).toContain('Notion 연결됨');
+  });
+
+  it('회의록은 만든 시각이 맞는 본인 일정 줄에 이어진다 — 누르면 Notion이 열리고 줄은 펼쳐지지 않는다', async () => {
+    const events = [event('e1', 'AB Z+ 현장 지원', TODAY, '10:00', '12:00'), event('e2', 'MX 주간 미팅', TODAY, '14:00', '15:00')];
+    const pages = [page('m1', 'ds-meet', '예시 고객사 협의', at(TODAY, '10:05'))];
+    const { api } = fakeApi({ events, notion: { sources: DBS, meetings: 'ds-meet', pages } });
+    renderHome(api);
+    const link = await screen.findByRole('button', { name: 'Notion 회의록 열기 — AB Z+ 현장 지원' });
+    expect(screen.queryByRole('button', { name: 'Notion 회의록 열기 — MX 주간 미팅' })).toBeNull();
+    fireEvent.click(link);
+    await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith('https://www.notion.so/m1'));
+    expect(document.querySelector('[data-event="primary/e1"]')?.getAttribute('aria-expanded')).toBe('false');
+    // 2주 띠의 그 일정 조각에도 표지가 붙는다
+    const chips = [...document.querySelectorAll('.hm-strip .hm-ev')].filter((c) => c.querySelector('.hm-nm'));
+    expect(chips.map((c) => c.querySelector('b')?.textContent)).toEqual(['AB Z+ 현장 지원']);
+    // 달력에는 쓰지 않는다
+    expect(api.calendarInsert).not.toHaveBeenCalled();
+    expect(api.calendarPatch).not.toHaveBeenCalled();
+  });
+
+  it('읽지 못하면 까닭과 [다시 읽기] — 홈의 나머지는 그대로 뜬다', async () => {
+    const { api } = fakeApi({ tasks: [{ title: '정기점검 체크리스트 갱신', due: TODAY }], notion: { sources: DBS, meetings: 'ds-meet', pages: [], fail: '찾지 못했습니다 — 연결을 더했는지 확인하세요.' } });
+    renderHome(api);
+    await waitFor(() => expect(within(card()).getByText(/Notion을 읽지 못했습니다/)).toBeTruthy());
+    expect(within(tasksBox()).getByText('정기점검 체크리스트 갱신')).toBeTruthy();
+    expect(screen.getByTestId('home-notion-status').textContent).toContain('읽지 못함');
+    const before = api.notionRecent.mock.calls.length;
+    fireEvent.click(within(card()).getByRole('button', { name: '다시 읽기' }));
+    await waitFor(() => expect(api.notionRecent.mock.calls.length).toBeGreaterThan(before));
+    expect(api.notionRecent.mock.calls.at(-1)?.[0]).toMatchObject({ force: true });
+  });
+
+  it('키는 있는데 볼 DB를 고르지 않았으면 고르라고 안내한다', async () => {
+    const { api } = fakeApi({ notion: { sources: [], pages: [] } });
+    renderHome(api);
+    await waitFor(() => expect(within(card()).getByText(/볼 DB를 아직 고르지 않았습니다/)).toBeTruthy());
+    expect(api.notionRecent).not.toHaveBeenCalled();
   });
 });
 

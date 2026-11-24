@@ -5,14 +5,17 @@
 import { useState } from 'react';
 import { KIND_LABEL, type EventChange, type HomeEvent } from '../classify';
 import { clock, mdw, relDay } from '../dates';
+import type { NotionPage } from '../types';
 import type { CalendarView } from '../usePlanner';
-import { cx, EmptyBox } from './HomeParts';
+import { cx, EmptyBox, NotionMark } from './HomeParts';
 
 export interface EventActions {
   open(e: HomeEvent): void;
   hide(e: HomeEvent, byTitle: boolean): void;
   /** 그 일정에 이어진 일지 사안을 연다 */
   openCase(e: HomeEvent): void;
+  /** 그 일정에 이어진 Notion 회의록을 연다 */
+  openNote(page: NotionPage): void;
   /** 지난 일정을 그날 일지의 회의 블록으로 */
   toWorklog(e: HomeEvent): void;
   /** 달력에 쓸 수 있을 때만 */
@@ -28,6 +31,8 @@ interface Props {
   changes: EventChange[];
   /** 일지 사안과 이어진 일정의 키 */
   linked: Set<string>;
+  /** 일정 키 → 그 일정의 Notion 회의록 */
+  notes: Map<string, NotionPage[]>;
   focus: string | null;
   flash: string | null;
   /** 작업일지 폴더가 있어 일지에 쓸 수 있는가 */
@@ -37,7 +42,7 @@ interface Props {
   onHelp(): void;
 }
 
-export function Agenda({ today, days, past, cal, changes, linked, focus, flash, canLog, actions, onRetry, onHelp }: Props) {
+export function Agenda({ today, days, past, cal, changes, linked, notes, focus, flash, canLog, actions, onRetry, onHelp }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
   const changed = new Map(changes.map((c) => [c.key, c.what]));
@@ -93,8 +98,13 @@ export function Agenda({ today, days, past, cal, changes, linked, focus, flash, 
           </span>
         </button>
         {/* 설계 §6.4 — 달력·일지로 가는 길은 줄에 바로 둔다(펼치지 않아도 보인다) */}
-        {(e.htmlLink || linked.has(e.key)) && (
+        {(e.htmlLink || linked.has(e.key) || notes.has(e.key)) && (
           <span className="hm-ag-l">
+            {(notes.get(e.key) ?? []).map((n) => (
+              <button key={n.id} type="button" className="hm-org" aria-label={`Notion 회의록 열기 — ${e.title}`} title={`Notion 회의록 — ${n.title}`} onClick={() => actions.openNote(n)}>
+                <NotionMark /> 회의록 ↗
+              </button>
+            ))}
             {linked.has(e.key) && (
               <button type="button" className="hm-org" aria-label={`이어진 일지 사안 열기 — ${e.title}`} title="작업일지 탭에서 이어진 사안을 엽니다" onClick={() => actions.openCase(e)}>
                 일지 ↗
