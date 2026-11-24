@@ -53,6 +53,15 @@ export function mdw(iso: string): string {
   return `${md(iso)} (${dowOf(iso)})`;
 }
 
+/** 오늘에서 본 그날 — 오늘 · 내일 · 어제 · n일 뒤 · n일 전. 기한이 아니라 날짜를 말할 때 쓴다(기한은 relDay — "n일 지남") */
+export function dayFromToday(today: string, iso: string): string {
+  const d = diffDays(today, iso);
+  if (d === 0) return '오늘';
+  if (d === 1) return '내일';
+  if (d === -1) return '어제';
+  return d > 0 ? `${d}일 뒤` : `${-d}일 전`;
+}
+
 /** 오늘 · 내일 · n일 뒤 · n일 지남 */
 export function relDay(today: string, iso: string): string {
   const n = diffDays(today, iso);

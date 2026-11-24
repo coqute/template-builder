@@ -147,7 +147,7 @@ function seedState(today: string): PlannerState {
   let state = emptyState();
   const ctx = { now: new Date().toISOString(), today, by: 'app' as const, newId: newTaskId };
   for (const draft of drafts) state = applyOp(state, { type: 'task.add', draft }, ctx).state;
-  state = applyOp(state, { type: 'settings', patch: { notion: { sources: NOTION_DBS, meetings: 'ds-meet', loose: true, days: 7 } } }, ctx).state;
+  state = applyOp(state, { type: 'settings', patch: { notion: { sources: NOTION_DBS, meetings: 'ds-meet', loose: true } } }, ctx).state;
   return state;
 }
 

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { rememberFocus, trapTab } from '../lib/dialog';
 import { fadeIn, growFrom, leave } from '../lib/motion';
 
 interface Props {
@@ -26,8 +27,16 @@ export function Modal({ title, subtitle, children, footer, onClose, width = 720,
     fadeIn(scrim.current);
   }, []);
   const close = useCallback(() => leave(panel.current, scrim.current, null, onClose), [onClose]);
+  // 열기 전에 초점이 있던 곳을 기억해 두었다가(안의 입력칸이 초점을 가져가기 전에) 닫히면 돌려준다.
+  // 안에 초점을 받은 것이 없으면 창이 받는다 — Tab이 가려진 화면에서 시작하지 않게
+  const [restoreFocus] = useState(rememberFocus);
+  useEffect(() => {
+    if (panel.current && !panel.current.contains(document.activeElement)) panel.current.focus();
+    return restoreFocus;
+  }, [restoreFocus]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      trapTab(e, panel.current);
       if (e.key === 'Escape') close();
     };
     window.addEventListener('keydown', onKey);
@@ -38,10 +47,11 @@ export function Modal({ title, subtitle, children, footer, onClose, width = 720,
     <div ref={scrim} className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onMouseDown={close}>
       <div
         ref={panel}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelId}
-        className="flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated"
+        className="flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated outline-none"
         style={{ boxShadow: 'var(--shadow-pop)', maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >

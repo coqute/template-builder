@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { KIND_LABEL, type EventChange, type HomeEvent } from '../classify';
-import { clock, mdw, relDay } from '../dates';
+import { clock, dayFromToday, mdw, relDay } from '../dates';
 import type { NotionPage } from '../types';
 import type { CalendarView } from '../usePlanner';
 import { cx, EmptyBox, NotionMark } from './HomeParts';
@@ -186,7 +186,16 @@ export function Agenda({ today, days, past, cal, changes, linked, notes, focus, 
               {showPast ? '접기' : '보기'}
             </button>
           </div>
-          {showPast && past.map((e) => row(e, e.date, true))}
+          {/* 날짜별로 — 최근 날부터. 전에는 시각만 보여 어느 날의 일정인지 알 수 없었다 */}
+          {showPast &&
+            [...new Set(past.map((e) => e.date))].map((date) => (
+              <div key={date} data-past-day={date}>
+                <div className="hm-agd-h hm-num is-past">
+                  {mdw(date)} <span>{dayFromToday(today, date)}</span>
+                </div>
+                {past.filter((e) => e.date === date).map((e) => row(e, date, true))}
+              </div>
+            ))}
         </section>
       )}
     </div>

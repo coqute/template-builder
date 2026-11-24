@@ -94,8 +94,6 @@ export interface NotionSettings {
   meetings: string;
   /** DB에 들어 있지 않은 페이지도 보인다 */
   loose: boolean;
-  /** 최근 바뀐 것을 보이는 기간(일) */
-  days: number;
 }
 
 export interface PlannerState {

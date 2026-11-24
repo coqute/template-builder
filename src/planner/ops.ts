@@ -20,7 +20,7 @@ import type {
   WorklogAnchor,
 } from './types';
 
-export const DEFAULT_NOTION: NotionSettings = { sources: [], meetings: '', loose: true, days: 7 };
+export const DEFAULT_NOTION: NotionSettings = { sources: [], meetings: '', loose: true };
 export const DEFAULT_SETTINGS: PlannerSettings = { lookbackDays: 30, calendars: ['primary'], holidays: true, notion: DEFAULT_NOTION };
 const MAX = { title: 200, short: 60, note: 2000, list: 500, calendars: 20, id: 300, sources: 40, url: 400 };
 
@@ -136,12 +136,10 @@ function cleanNotion(v: unknown, base: NotionSettings = DEFAULT_NOTION): NotionS
     seen.add(id);
     sources.push({ id, name: str((x as NotionSource).name, MAX.title) || '이름 없는 DB', url: notionUrl((x as NotionSource).url) });
   }
-  const days = Number.isFinite(n.days) ? Math.round(n.days as number) : base.days;
   return {
     sources,
     meetings: n.meetings === undefined ? base.meetings : str(n.meetings, MAX.id),
     loose: typeof n.loose === 'boolean' ? n.loose : base.loose,
-    days: Math.min(30, Math.max(1, days)),
   };
 }
 

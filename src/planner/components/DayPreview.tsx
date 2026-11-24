@@ -8,11 +8,12 @@
  * - 날을 넘겨도 창의 자리·너비·단 구성이 같다(왼쪽 = 일정·다른 달력, 오른쪽 = 할 일·Notion) — 같은 것이 늘 같은 자리에 있다.
  * - 읽기만 한다. 고치는 것은 아래 할 일·확정 일정에서 한다.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { KIND_LABEL, type HomeEvent } from '../classify';
+import { rememberFocus, trapTab } from '../../lib/dialog';
 import { fadeIn, growFrom, leave } from '../../lib/motion';
-import { diffDays, dowOf, toDate } from '../dates';
+import { dayFromToday, diffDays, dowOf, toDate } from '../dates';
 import type { StripDay } from '../model';
 import type { NotionItem } from '../sources/notion';
 import type { NotionPage, Task } from '../types';
@@ -43,15 +44,6 @@ interface Props {
   /** 그날에 일정을 만든다 — 달력에 쓸 수 있을 때만 */
   onAddEvent?(): void;
   onClose(): void;
-}
-
-/** 오늘에서 본 그날 — 기한이 아니라 날짜라서 지난 날은 "n일 전"이다 */
-function dayFrom(today: string, date: string): string {
-  const d = diffDays(today, date);
-  if (d === 0) return '오늘';
-  if (d === 1) return '내일';
-  if (d === -1) return '어제';
-  return d > 0 ? `${d}일 뒤` : `${-d}일 전`;
 }
 
 const fullDate = (iso: string): string => {
@@ -96,6 +88,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      trapTab(e, box.current);
       if (e.key === 'Escape') close();
       else if (e.key === 'ArrowLeft' && prev) onMove(prev);
       else if (e.key === 'ArrowRight' && next) onMove(next);
@@ -106,10 +99,12 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
     return () => window.removeEventListener('keydown', onKey);
   }, [close, onMove, prev, next]);
 
-  // 열릴 때 창으로 초점을 옮긴다(화면 낭독기·키보드)
+  // 열릴 때 창으로 초점을 옮기고(화면 낭독기·키보드), 닫히면 누른 날 칸으로 돌려준다
+  const [restoreFocus] = useState(rememberFocus);
   useEffect(() => {
     box.current?.focus();
-  }, []);
+    return restoreFocus;
+  }, [restoreFocus]);
 
   const left = day.events.length + day.others.length > 0;
   const right = tasks.length + notion.length > 0;
@@ -140,7 +135,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
             </button>
             <h2>
               {fullDate(day.date)}
-              <span className={cx('hm-pk-rel', day.today && 'is-today')}>{dayFrom(today, day.date)}</span>
+              <span className={cx('hm-pk-rel', day.today && 'is-today')}>{dayFromToday(today, day.date)}</span>
             </h2>
             <button type="button" className="hm-pk-nav hm-pk-x" aria-label="닫기 (Esc)" onClick={() => close()}>
               <X size={16} />

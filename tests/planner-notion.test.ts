@@ -86,7 +86,6 @@ describe('notionByDate — 어느 날에 무엇을 썼는가', () => {
     ],
     meetings: 'ds-meet',
     loose: true,
-    days: 7,
   };
   const pages: NotionPage[] = [
     note('s1', '수집 누락 문의', at('2026-11-17', '09:00'), at(TODAY, '09:10'), 'ds-support'), // 만든 날(새) + 마지막으로 고친 날(고침)
@@ -139,7 +138,7 @@ describe('Notion 설정 저장', () => {
     expect(state.settings.notion).toEqual(DEFAULT_NOTION);
   });
 
-  it('DB 목록은 ID가 겹치지 않게, 주소는 Notion의 https 주소만, 기간은 1~30일로', () => {
+  it('DB 목록은 ID가 겹치지 않게, 주소는 Notion의 https 주소만 — 모르는 칸은 버린다', () => {
     const { state } = applyOp(
       emptyState(),
       {
@@ -154,8 +153,9 @@ describe('Notion 설정 저장', () => {
             ],
             meetings: 'ds-1',
             loose: false,
+            // 옛 판이 저장해 둔 칸(보이는 기간) — 이제 쓰지 않으므로 읽을 때 버린다
             days: 90,
-          },
+          } as unknown as NotionSettings,
         },
       },
       ctx,
@@ -167,12 +167,11 @@ describe('Notion 설정 저장', () => {
       ],
       meetings: 'ds-1',
       loose: false,
-      days: 30,
     });
   });
 
   it('다른 설정만 고치면 Notion 설정은 그대로 남는다', () => {
-    const a = applyOp(emptyState(), { type: 'settings', patch: { notion: { sources: [{ id: 'ds-1', name: '회의', url: '' }], meetings: 'ds-1', loose: true, days: 3 } } }, ctx).state;
+    const a = applyOp(emptyState(), { type: 'settings', patch: { notion: { sources: [{ id: 'ds-1', name: '회의', url: '' }], meetings: 'ds-1', loose: true } } }, ctx).state;
     const b = applyOp(a, { type: 'settings', patch: { lookbackDays: 60 } }, ctx).state;
     expect(b.settings.lookbackDays).toBe(60);
     expect(b.settings.notion).toEqual(a.settings.notion);

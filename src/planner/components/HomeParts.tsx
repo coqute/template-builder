@@ -1,5 +1,5 @@
 /** 홈 화면의 위쪽 — 요약 줄, 2주 띠, 빈 상태 상자, 바뀐 것 한 줄 (설계 §6.2) */
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { EventChange } from '../classify';
 import { dowOf, mdw, relDay, toDate } from '../dates';
 import type { StripDay, Summary } from '../model';
@@ -109,7 +109,10 @@ interface StripProps {
   notion?: Map<string, NotionItem[]>;
 }
 
-/** 이번 주·다음 주 — 날 칸을 누르면 그날의 할 일·일정만 또렷이 (자리는 움직이지 않는다) */
+/**
+ * 2주 띠 — 이번 주·다음 주(Notion을 읽고 있으면 지난 주도). 날 칸은 한눈에 훑는 요약이고,
+ * 날 칸을 누르면 그날의 전부가 가운데 미리보기(DayPreview)에 열린다.
+ */
 export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) {
   // 오늘이 든 줄이 이번 주 — 그 앞은 지난 주, 뒤는 다음 주
   const thisWeek = Math.max(0, weeks.findIndex((w) => w.some((d) => d.today)));
@@ -166,18 +169,21 @@ export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) 
               {day.others.length === 1 &&
                 day.others.map((e) => (
                   <span
-                    className="hm-ev is-other"
+                    className={cx('hm-ev is-other', e.color && 'has-dot')}
                     key={e.key}
-                    style={e.color ? ({ borderLeftColor: e.color } as CSSProperties) : undefined}
                     title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}
                   >
+                    <CalendarDot color={e.color} />
                     {e.startTime && <i className="hm-num">{e.startTime}</i>}
                     <b>{e.title}</b>
                     {e.owner && <em>{ownerLabel(e.owner)}</em>}
                   </span>
                 ))}
               {day.others.length > 1 && (
-                <span className="hm-ev is-other" title={day.others.map((e) => `${ownerLabel(e.owner) || '다른 달력'} — ${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()).join('\n')}>
+                <span
+                  className={cx('hm-ev is-other', colorsOf(day.others).length > 0 && 'has-dot')}
+                  title={day.others.map((e) => `${ownerLabel(e.owner) || '다른 달력'} — ${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()).join('\n')}
+                >
                   {/* 그날 일정이 있는 달력들의 색 — 누가 있는지 색으로 먼저 보인다 */}
                   {colorsOf(day.others).length > 0 && (
                     <span className="hm-dots">

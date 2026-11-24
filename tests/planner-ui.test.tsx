@@ -64,7 +64,7 @@ function fakeApi(o: FakeOptions = {}) {
     stamp++;
   };
   for (const draft of o.tasks ?? []) state = applyOp(state, { type: 'task.add', draft }, ctx()).state;
-  if (o.notion) state = applyOp(state, { type: 'settings', patch: { notion: { sources: o.notion.sources, meetings: o.notion.meetings ?? '', loose: true, days: 7 } } }, ctx()).state;
+  if (o.notion) state = applyOp(state, { type: 'settings', patch: { notion: { sources: o.notion.sources, meetings: o.notion.meetings ?? '', loose: true } } }, ctx()).state;
   const ok = () => ({ ok: true as const, state, path: 'C:/store/planner.json' });
   const api = {
     plannerGet: vi.fn(async () => ok()),
@@ -427,7 +427,22 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     expect(screen.getByTestId('home-next').textContent).not.toContain('가나스토어');
   });
 
-  it('남의 달력의 일정은 그 달력의 색으로 가른다 — 하나면 왼쪽 선, 여럿이면 달력마다 색 점, 미리보기에도', async () => {
+  it('지난 일정은 날짜별로 묶어 날짜를 보인다 — 최근 날부터', async () => {
+    const d1 = addDays(TODAY, -1);
+    const d3 = addDays(TODAY, -3);
+    const { api } = fakeApi({ events: [event('p1', '가나스토어 정기점검', d3, '10:00', '11:00'), event('p2', 'MX 주간 미팅', d1, '14:00', '15:00'), event('p3', 'AB Z+ 현장 지원', d1, '09:00', '10:00')] });
+    renderHome(api);
+    const toggle = await screen.findByRole('button', { name: '보기' });
+    fireEvent.click(toggle);
+    const days = [...document.querySelectorAll('[data-past-day]')] as HTMLElement[];
+    expect(days.map((d) => d.getAttribute('data-past-day'))).toEqual([d1, d3]);
+    expect(days[0].querySelector('.hm-agd-h')?.textContent).toContain('어제');
+    expect(days[1].querySelector('.hm-agd-h')?.textContent).toContain('3일 전');
+    expect([...days[0].querySelectorAll('.hm-ag-n')].map((x) => x.textContent)).toHaveLength(2);
+    expect(days[1].querySelector('.hm-ag-n')?.textContent).toContain('가나스토어 정기점검');
+  });
+
+  it('남의 달력의 일정은 그 달력의 색 점으로 가른다 — 하나여도 여럿이어도 같은 표시, 미리보기에도', async () => {
     const their = (id: string, cal: string, color: string | undefined, title: string): RawEvent => ({
       ...event(id, title, TODAY, '23:00', '23:30'),
       calendarId: cal,
@@ -447,10 +462,12 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     const summary = cell(TODAY).querySelector('.hm-ev.is-other') as HTMLElement;
     expect(summary.querySelector('b')?.textContent).toBe('다른 달력 4건');
     expect([...summary.querySelectorAll('.hm-dot')].map(bg)).toHaveLength(2);
-    // 하나 — 왼쪽 선이 그 달력의 색
+    // 하나 — 제목 앞에 그 달력의 색 점(여럿일 때와 같은 표시)
     const single = cell(TOMORROW).querySelector('.hm-ev.is-other') as HTMLElement;
     expect(single.querySelector('b')?.textContent).toBe('가나스토어 정기점검');
-    expect(single.style.borderLeftColor).not.toBe('');
+    expect([...single.querySelectorAll('.hm-dot')].map(bg)).toHaveLength(1);
+    expect(single.classList.contains('has-dot')).toBe(true);
+    expect(summary.classList.contains('has-dot')).toBe(true);
     // 미리보기 — 줄마다 누구 것인지 앞에 색 점
     fireEvent.click(cell(TODAY));
     const rows = [...screen.getByTestId('home-day').querySelectorAll('[data-group="others"] .hm-pk-r')];
@@ -662,6 +679,25 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 가운데에
     // 미리보기는 물러나고 일정 창이 그 날짜로 열린다
     expect(screen.queryByTestId('home-day')).toBeNull();
     await waitFor(() => expect((document.querySelector('input[type="date"]') as HTMLInputElement | null)?.value).toBe(day));
+  });
+
+  it('열리면 창이 초점을 받고 Tab은 창 안에서 돈다 — 닫히면 누른 날 칸으로 초점이 돌아온다', async () => {
+    const { api } = fakeApi({ events: [{ ...event('e1', 'MX 주간 미팅', TODAY, '14:00', '15:00'), htmlLink: 'https://calendar.google.com/calendar/event?eid=ZTE' }] });
+    renderHome(api);
+    await waitFor(() => expect(dayCell(TODAY)).not.toBeNull());
+    dayCell(TODAY).focus();
+    fireEvent.click(dayCell(TODAY));
+    expect(document.activeElement).toBe(preview());
+    const inside = [...preview().querySelectorAll('button:not([disabled])')] as HTMLElement[];
+    // 마지막에서 Tab → 처음으로, 처음에서 Shift+Tab → 마지막으로
+    inside.at(-1)?.focus();
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(document.activeElement).toBe(inside[0]);
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(inside.at(-1));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('home-day')).toBeNull();
+    expect(document.activeElement).toBe(dayCell(TODAY));
   });
 
   it('아무것도 없는 날은 없다고 알린다', async () => {

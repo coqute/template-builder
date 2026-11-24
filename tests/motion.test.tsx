@@ -8,6 +8,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Modal } from '../src/components/Modal';
+import { rememberFocus, trapTab } from '../src/lib/dialog';
 import { canAnimate, CLOSE_MS, growFrom, leave, OPEN_MS, shrinkTo, SPRING, transformFrom } from '../src/lib/motion';
 
 const read = (rel: string) => readFileSync(path.resolve(__dirname, '..', rel), 'utf8');
@@ -135,6 +136,52 @@ describe('공용 창', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('창의 키보드 초점 (lib/dialog)', () => {
+  afterEach(cleanup);
+
+  it('Tab은 창 안에서 돌고, 창 밖에 초점이 있으면 안으로 데려온다', () => {
+    document.body.innerHTML = '<button id="out">밖</button><div id="box" tabindex="-1"><button id="a">a</button><button id="b" disabled>b</button><input id="c" /></div>';
+    const box = document.getElementById('box') as HTMLElement;
+    const key = (shiftKey = false) => {
+      const e = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+      trapTab(e, box);
+      return e.defaultPrevented;
+    };
+    (document.getElementById('c') as HTMLElement).focus();
+    expect(key()).toBe(true); // 마지막(끌 수 있는 것만 센다 — 꺼진 단추는 건너뛴다) → 처음
+    expect(document.activeElement?.id).toBe('a');
+    expect(key(true)).toBe(true); // 처음에서 뒤로 → 마지막
+    expect(document.activeElement?.id).toBe('c');
+    (document.getElementById('a') as HTMLElement).focus();
+    expect(key()).toBe(false); // 가운데에서는 브라우저에 맡긴다
+    (document.getElementById('out') as HTMLElement).focus();
+    expect(key()).toBe(true);
+    expect(document.activeElement?.id).toBe('a');
+    const other = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+    trapTab(other, box);
+    expect(other.defaultPrevented).toBe(false);
+    document.body.innerHTML = '';
+  });
+
+  it('공용 창 — 열리면 창이 초점을 받고, 닫히면 열기 전에 있던 단추로 돌아간다', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    const view = render(
+      <Modal title="예시 창" onClose={() => undefined}>
+        내용
+      </Modal>,
+    );
+    expect(document.activeElement).toBe(screen.getByRole('dialog'));
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    // 기억해 둔 곳이 사라졌으면 아무것도 하지 않는다
+    const restore = rememberFocus();
+    opener.remove();
+    expect(() => restore()).not.toThrow();
   });
 });
 
