@@ -81,8 +81,8 @@ describe('notionByDate — 어느 날에 무엇을 썼는가', () => {
   const FROM = '2026-11-16'; // 지난 주 월요일
   const settings: NotionSettings = {
     sources: [
-      { id: 'ds-meet', name: '예시 회의', url: '' },
-      { id: 'ds-support', name: '지원 기록', url: '' },
+      { id: 'ds-meet', name: '회의', url: '' },
+      { id: 'ds-support', name: 'SR', url: '' },
     ],
     meetings: 'ds-meet',
     loose: true,
@@ -104,7 +104,7 @@ describe('notionByDate — 어느 날에 무엇을 썼는가', () => {
     const got = notionByDate(pages, settings, FROM, TODAY);
     expect(got.map((d) => d.date)).toEqual(['2026-11-24', '2026-11-23', '2026-11-22', '2026-11-20', '2026-11-18', '2026-11-17']);
     expect(got[0].items.map((i) => [i.id, i.fresh, i.time])).toEqual([['s1', false, '09:10']]);
-    expect(got[5].items.map((i) => [i.id, i.fresh, i.time, i.source?.name])).toEqual([['s1', true, '09:00', '지원 기록']]);
+    expect(got[5].items.map((i) => [i.id, i.fresh, i.time, i.source?.name])).toEqual([['s1', true, '09:00', 'SR']]);
     expect(got[4].items.map((i) => [i.id, i.fresh])).toEqual([['old', false]]);
   });
 

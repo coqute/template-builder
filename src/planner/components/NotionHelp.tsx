@@ -21,6 +21,8 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
   const [addr, setAddr] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /** 이름을 고치는 중인 DB — 홈에는 여기서 정한 이름이 보인다(Notion의 DB 이름은 그대로) */
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,7 +67,11 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
     } else {
       // 이미 고른 DB의 이름·주소가 Notion에서 바뀌었으면 맞춘다
       const byId = new Map(r.sources.map((s) => [s.id, s]));
-      const next = base.sources.map((s) => byId.get(s.id) ?? s);
+      // 주소는 Notion 것으로 맞추되, 이름은 여기서 정한 것을 지킨다(SR·DL처럼 줄여 둔 이름)
+      const next = base.sources.map((s) => {
+        const fresh = byId.get(s.id);
+        return fresh ? { ...fresh, name: s.name } : s;
+      });
       if (JSON.stringify(next) !== JSON.stringify(base.sources)) await save(base, { sources: next });
     }
   };
@@ -98,6 +104,17 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
     const have = new Set(cfg.sources.map((s) => s.id));
     await save(cfg, { sources: [...cfg.sources, ...r.sources.filter((s) => !have.has(s.id))] });
     setMsg(`더했습니다 — ${r.sources.map((s) => s.name).join(', ')}`);
+  };
+
+  /** 홈에 보일 이름을 바꾼다 — 비우면 그대로 둔다 */
+  const rename = async () => {
+    if (!renaming) return;
+    const name = renaming.name.replace(/\s+/g, ' ').trim();
+    const id = renaming.id;
+    setRenaming(null);
+    if (!name) return;
+    setFound((f) => f?.map((x) => (x.id === id ? { ...x, name } : x)) ?? f);
+    if (cfg.sources.some((x) => x.id === id)) await save(cfg, { sources: cfg.sources.map((x) => (x.id === id ? { ...x, name } : x)) });
   };
 
   const toggle = (s: NotionSource, on: boolean) => {
@@ -171,13 +188,38 @@ export function NotionSettingsBox({ mono, open }: { mono: boolean; open: boolean
 
           {list.length > 0 && (
             <div className="mt-2">
-              <p className={`${P} mb-1`}>홈에 보일 DB — 회의록 DB를 하나 고르면 그 페이지를 일정 줄에 잇습니다</p>
+              <p className={`${P} mb-1`}>홈에 보일 DB — 회의록 DB를 하나 고르면 그 페이지를 일정 줄에 잇습니다. [이름]으로 홈에 보일 이름을 짧게 바꿀 수 있습니다(예: SR · DL · 회의).</p>
               {list.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 py-0.5 text-[11.5px] text-fg-soft">
-                  <label className="flex min-w-0 flex-1 items-center gap-2">
-                    <input type="checkbox" checked={chosen.has(s.id)} onChange={(e) => toggle(s, e.target.checked)} style={{ accentColor: 'var(--fg)' }} />
-                    <span className="min-w-0 truncate">{s.name}</span>
-                  </label>
+                  {renaming?.id === s.id ? (
+                    <input
+                      type="text"
+                      className={INPUT}
+                      value={renaming.name}
+                      aria-label={`${s.name} — 홈에 보일 이름`}
+                      autoFocus
+                      maxLength={40}
+                      onChange={(e) => setRenaming({ id: s.id, name: e.target.value })}
+                      onBlur={() => void rename()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void rename();
+                        if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setRenaming(null);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <label className="flex min-w-0 flex-1 items-center gap-2">
+                      <input type="checkbox" checked={chosen.has(s.id)} onChange={(e) => toggle(s, e.target.checked)} style={{ accentColor: 'var(--fg)' }} />
+                      <span className="min-w-0 truncate">{s.name}</span>
+                    </label>
+                  )}
+                  {chosen.has(s.id) && renaming?.id !== s.id && (
+                    <button type="button" className={SMALL_BTN} title="홈에 보일 이름을 바꿉니다 — Notion의 DB 이름은 그대로입니다" onClick={() => setRenaming({ id: s.id, name: s.name })}>
+                      이름
+                    </button>
+                  )}
                   {chosen.has(s.id) && (
                     <button
                       type="button"

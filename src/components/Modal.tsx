@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { fadeIn, growFrom, leave } from '../lib/motion';
 
 interface Props {
   title: string;
@@ -12,23 +13,40 @@ interface Props {
   labelId?: string;
 }
 
-/** 공용 대화 상자 틀 — 바깥 클릭·Esc로 닫힌다 (AI 확인 창과 같은 모양) */
+/**
+ * 공용 대화 상자 틀 — 바깥 클릭·Esc로 닫힌다 (AI 확인 창과 같은 모양).
+ * 가운데에서 살짝 작게 시작해 부드럽게 커지며 열리고, 바깥·Esc·[×]로 닫을 때는 줄어든 뒤에 사라진다(lib/motion).
+ * 안의 단추가 직접 닫는 경우(저장·취소)는 바로 사라진다.
+ */
 export function Modal({ title, subtitle, children, footer, onClose, width = 720, labelId = 'modal-title' }: Props) {
+  const panel = useRef<HTMLDivElement | null>(null);
+  const scrim = useRef<HTMLDivElement | null>(null);
+  const closing = useRef(false);
+  useLayoutEffect(() => {
+    growFrom(panel.current, null);
+    fadeIn(scrim.current);
+  }, []);
+  const close = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    leave(panel.current, scrim.current, null, onClose);
+  }, [onClose]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
 
   return (
-    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onMouseDown={onClose}>
+    <div ref={scrim} className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onMouseDown={close}>
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelId}
-        className="tb-pop flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated"
+        className="flex max-h-[88vh] w-full flex-col rounded-card border border-rule-strong bg-bg-elevated"
         style={{ boxShadow: 'var(--shadow-pop)', maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -39,7 +57,7 @@ export function Modal({ title, subtitle, children, footer, onClose, width = 720,
             </h2>
             {subtitle && <div className="mt-0.5 text-[11px] text-fg-muted">{subtitle}</div>}
           </div>
-          <button type="button" onClick={onClose} aria-label="닫기 (Esc)" className="rounded-sharp p-1 text-fg-muted hover:bg-bg-sunken hover:text-fg">
+          <button type="button" onClick={close} aria-label="닫기 (Esc)" className="rounded-sharp p-1 text-fg-muted hover:bg-bg-sunken hover:text-fg">
             <X size={16} />
           </button>
         </header>

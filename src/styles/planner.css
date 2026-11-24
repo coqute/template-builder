@@ -232,11 +232,13 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
 .hm-pk-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 18px; border-top: 1px solid var(--rule); font-size: 11px; color: var(--fg-muted); }
 @media (max-width: 760px) { .hm-pk-g { grid-template-columns: minmax(0, 1fr); } }
 
-/* 줄을 누르면 그 아래로 펼쳐지는 것 — 제자리에서 또렷해진다 (전환 토큰은 tokens.css) */
-.hm-ag-acts, .hm-edit { animation: tb-fade var(--motion-fast) linear backwards; }
+/* 줄을 누르면 그 아래로 펼쳐지는 것 — 높이가 0에서 부드럽게 열린다 (전환 토큰은 tokens.css) */
+.hm-ag-acts, .hm-edit { overflow: clip; transition: height calc(var(--motion) * 0.75) var(--ease-spring), padding-block calc(var(--motion) * 0.75) var(--ease-spring), opacity var(--motion-fast) ease-out; }
+@starting-style {
+  .hm-ag-acts, .hm-edit { height: 0; padding-block: 0; opacity: 0; }
+}
 /* 미리보기의 날 줄 — 고른 날의 바탕이 옮겨 갈 때 */
-.hm-pk-d { transition: background-color var(--motion-fast) linear, border-color var(--motion-fast) linear; }
+.hm-pk-d { transition: background-color var(--motion-fast) ease-out, border-color var(--motion-fast) ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  .hm-ag-acts, .hm-edit { animation: none; }
-  .hm-pk-d { transition: none; }
+  .hm-ag-acts, .hm-edit, .hm-pk-d { transition: none; }
 }

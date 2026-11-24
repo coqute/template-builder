@@ -63,9 +63,9 @@ function seedEvents(today: string): RawEvent[] {
 }
 
 const NOTION_DBS: NotionSource[] = [
-  { id: 'ds-meet', name: '예시 회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
-  { id: 'ds-support', name: '지원 기록', url: 'https://www.notion.so/00000000000000000000000000000002' },
-  { id: 'ds-decision', name: '결정 기록', url: 'https://www.notion.so/00000000000000000000000000000003' },
+  { id: 'ds-meet', name: '회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
+  { id: 'ds-support', name: 'SR', url: 'https://www.notion.so/00000000000000000000000000000002' },
+  { id: 'ds-decision', name: 'DL', url: 'https://www.notion.so/00000000000000000000000000000003' },
 ];
 
 function seedNotion(today: string): NotionPage[] {

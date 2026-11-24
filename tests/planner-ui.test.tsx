@@ -646,8 +646,8 @@ describe('홈 화면 — Notion (읽기만): 어느 날에 무엇을 썼는가',
     (window as unknown as { reportApi: unknown }).reportApi = undefined;
   });
   const DBS: NotionSource[] = [
-    { id: 'ds-meet', name: '예시 회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
-    { id: 'ds-support', name: '지원 기록', url: 'https://www.notion.so/00000000000000000000000000000002' },
+    { id: 'ds-meet', name: '회의', url: 'https://www.notion.so/00000000000000000000000000000001' },
+    { id: 'ds-support', name: 'SR', url: 'https://www.notion.so/00000000000000000000000000000002' },
   ];
   const at = (date: string, time: string) => new Date(`${date}T${time}:00`).toISOString();
   const page = (id: string, sourceId: string, title: string, created: string, edited = created): NotionPage => ({ id, sourceId, title, createdAt: created, editedAt: edited, url: `https://www.notion.so/${id}` });
@@ -694,13 +694,13 @@ describe('홈 화면 — Notion (읽기만): 어느 날에 무엇을 썼는가',
     fireEvent.click(dayCell(YESTERDAY));
     const group = screen.getByTestId('home-day').querySelector('[data-group="notion"]') as HTMLElement;
     expect([...group.querySelectorAll('.hm-pk-n b')].map((b) => b.textContent)).toEqual(['알림 분류 개선 요청', '에이전트 재기동 절차 문의', '대시보드 권한 문의', '분기 정리 회의']);
-    expect(group.textContent).toContain('지원 기록 · 새로 만듦');
-    expect(group.textContent).toContain('예시 회의 · 새로 만듦');
+    expect(group.textContent).toContain('SR · 새로 만듦');
+    expect(group.textContent).toContain('회의 · 새로 만듦');
     fireEvent.click(within(group).getByRole('button', { name: 'Notion에서 열기 — 대시보드 권한 문의' }));
     await waitFor(() => expect(api.openExternal).toHaveBeenCalledWith('https://www.notion.so/s4'));
     // 오늘 칸의 것은 만든 날이 아니라 고친 날이다 — 창 안에서 다음 날로 넘어가 본다
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(screen.getByTestId('home-day').querySelector('[data-group="notion"]')?.textContent).toContain('지원 기록 · 고침');
+    expect(screen.getByTestId('home-day').querySelector('[data-group="notion"]')?.textContent).toContain('SR · 고침');
     expect(screen.getByTestId('home-notion-status').textContent).toContain('Notion 연결됨');
   });
 

@@ -3,14 +3,15 @@
  * 날 칸은 좁아 여러 건이 겹치면 제목이 잘린다 — 여기서 전부를 제대로 읽고, 달력·일지·Notion으로 넘어간다.
  *
  * - 가운데에 띄운다(Notion의 가운데 미리보기처럼): 아래로 펼치면 화면이 밀리고 줄이 가로로 길게 늘어진다.
- *   열릴 때도 그것처럼 — 뒤 바탕이 어두워지고 창이 살짝 작게 시작해 커지며 또렷해진다(.tb-scrim · .tb-pop).
+ *   Mac의 훑어보기처럼 — 누른 날 칸의 자리와 크기에서 부드럽게 커지며 열리고, 닫을 때는 (지금 보고 있는 날의) 칸으로 돌아간다.
  * - 띠가 가려지므로 머리에 그 주의 날 줄과 ‹ ›를 둔다 — 닫지 않고 옆 날로 넘어간다(← → 키도 같다).
  * - 날을 넘겨도 창의 자리·너비·단 구성이 같다(왼쪽 = 일정·다른 달력, 오른쪽 = 할 일·Notion) — 같은 것이 늘 같은 자리에 있다.
  * - 읽기만 한다. 고치는 것은 아래 할 일·확정 일정에서 한다.
  */
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { KIND_LABEL, type HomeEvent } from '../classify';
+import { fadeIn, growFrom, leave } from '../../lib/motion';
 import { diffDays, dowOf, toDate } from '../dates';
 import type { StripDay } from '../model';
 import type { NotionItem } from '../sources/notion';
@@ -60,6 +61,36 @@ const fullDate = (iso: string): string => {
 
 export function DayPreview({ today, day, days, countOf, tasks, notion, notes, linked, onOpenEvent, onOpenCase, onOpenUrl, onTask, onMove, onAddEvent, onClose }: Props) {
   const box = useRef<HTMLDivElement | null>(null);
+  const scrim = useRef<HTMLDivElement | null>(null);
+  const closing = useRef(false);
+  /**
+   * 띠에서 그 날의 칸이 있는 자리 — 창이 여기서 커지고 여기로 닫힌다.
+   * 칸이 없거나 스크롤로 화면 밖으로 밀려나 있으면 null — 보이지 않는 곳으로 날아가지 않고 가운데에서 살짝 작아진다.
+   */
+  const cellRect = (date: string): DOMRect | null => {
+    const r = document.querySelector(`.hm-day[data-date="${date}"]`)?.getBoundingClientRect();
+    if (!r || r.bottom <= 0 || r.right <= 0 || r.top >= window.innerHeight || r.left >= window.innerWidth) return null;
+    return r;
+  };
+  // 열릴 때 — 그리기 전에 시작 모습을 잡아야 제자리에 한 번 번쩍이지 않는다
+  useLayoutEffect(() => {
+    growFrom(box.current, cellRect(day.date));
+    fadeIn(scrim.current);
+    // 처음 열릴 때 한 번만 — 옆 날로 넘어갈 때는 창이 그대로 있고 내용만 갈린다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** 닫는다 — 지금 보고 있는 날의 칸으로 줄어든 뒤에 떼어 낸다. `after`는 닫힌 다음에 할 일 */
+  const close = useCallback(
+    (after?: () => void) => {
+      if (closing.current) return;
+      closing.current = true;
+      leave(box.current, scrim.current, cellRect(day.date), () => {
+        onClose();
+        after?.();
+      });
+    },
+    [day.date, onClose],
+  );
   const at = days.findIndex((d) => d.date === day.date);
   const prev = at > 0 ? days[at - 1].date : null;
   const next = at >= 0 && at < days.length - 1 ? days[at + 1].date : null;
@@ -68,7 +99,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close();
       else if (e.key === 'ArrowLeft' && prev) onMove(prev);
       else if (e.key === 'ArrowRight' && next) onMove(next);
       else return;
@@ -76,7 +107,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, onMove, prev, next]);
+  }, [close, onMove, prev, next]);
 
   // 열릴 때 창으로 초점을 옮긴다(화면 낭독기·키보드)
   useEffect(() => {
@@ -100,8 +131,8 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
   );
 
   return (
-    <div className="hm-pk-scrim tb-scrim" onMouseDown={onClose}>
-      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${fullDate(day.date)} 미리보기`} className="hm-pk tb-pop" data-testid="home-day" data-date={day.date} onMouseDown={(e) => e.stopPropagation()}>
+    <div ref={scrim} className="hm-pk-scrim" onMouseDown={() => close()}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${fullDate(day.date)} 미리보기`} className="hm-pk" data-testid="home-day" data-date={day.date} onMouseDown={(e) => e.stopPropagation()}>
         <header className="hm-pk-h">
           <div className="hm-pk-top">
             <button type="button" className="hm-pk-nav" aria-label="앞 날" title="앞 날 (←)" disabled={!prev} onClick={() => prev && onMove(prev)}>
@@ -114,7 +145,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
               {fullDate(day.date)}
               <span className={cx('hm-pk-rel', day.today && 'is-today')}>{dayFrom(today, day.date)}</span>
             </h2>
-            <button type="button" className="hm-pk-nav hm-pk-x" aria-label="닫기 (Esc)" onClick={onClose}>
+            <button type="button" className="hm-pk-nav hm-pk-x" aria-label="닫기 (Esc)" onClick={() => close()}>
               <X size={16} />
             </button>
           </div>
@@ -229,7 +260,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                       {tasks.map((t) => {
                         const late = t.due && t.due < today ? diffDays(t.due, today) : 0;
                         return (
-                          <button type="button" className="hm-pk-r is-btn" key={t.id} aria-label={`할 일로 가기 — ${t.title}`} title="닫고, 아래 할 일 목록에서 이 줄로 갑니다" onClick={() => onTask(t.id)}>
+                          <button type="button" className="hm-pk-r is-btn" key={t.id} aria-label={`할 일로 가기 — ${t.title}`} title="닫고, 아래 할 일 목록에서 이 줄로 갑니다" onClick={() => close(() => onTask(t.id))}>
                             <span className={cx('hm-pk-t', late > 0 && 'is-late')}>{late > 0 ? `${late}일 지남` : '기한'}</span>
                             <span className="hm-pk-n">
                               <b>{t.title}</b>
