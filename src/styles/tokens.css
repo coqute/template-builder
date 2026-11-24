@@ -1224,9 +1224,9 @@ html[data-theme] {
   --motion-slow: 560ms;
   /* 튕기지 않는 스프링(임계 감쇠) — src/lib/motion.ts의 SPRING과 같은 값 */
   --ease-spring: linear(0, 0.015 2%, 0.0532 4%, 0.1064 6%, 0.1684 8%, 0.2348 10%, 0.3192 12.5%, 0.4012 15%, 0.493 18%, 0.5753 21%, 0.6691 25%, 0.762 30%, 0.8314 35%, 0.8902 41%, 0.9346 48%, 0.9644 56%, 0.9837 66%, 0.9937 78%, 0.9976 90%, 1);
-  /* 시작 크기 — 창·메뉴 / 탭의 본문(넓어서 조금만) */
+  --motion-close: 280ms;
+  /* 시작 크기 — 창·메뉴 */
   --zoom-pop: 0.9;
-  --zoom-page: 0.985;
   /* 높이를 auto까지 부드럽게 — 줄 아래로 펼쳐지는 것 */
   interpolate-size: allow-keywords;
 }
@@ -1243,16 +1243,17 @@ html[data-theme] {
 .tb-scrim { animation: tb-fade var(--motion-fast) ease-out backwards; }
 /* 가운데에 뜨는 창 — 살짝 작게 시작해 커진다 */
 .tb-pop { --zoom: var(--zoom-pop); transform-origin: center; animation: tb-zoom var(--motion) var(--ease-spring) backwards; }
-/* 탭의 본문 — 같은 방식, 넓은 화면이라 크기 변화는 조금만 */
-.tb-page { --zoom: var(--zoom-page); transform-origin: center top; animation: tb-zoom var(--motion) var(--ease-spring) backwards; }
+/* 탭의 본문 — 크기는 바꾸지 않고 또렷해지기만 한다. 안의 편집기가 글자 크기를 재는 때에 화면이 줄어 있으면 그 값이 남는다 */
+.tb-page { animation: tb-fade calc(var(--motion) * 0.6) var(--ease-spring) backwards; }
 /* 단추에서 열리는 메뉴 — 단추 쪽 모서리에서 커진다 */
 .tb-menu { --zoom: var(--zoom-pop); transform-origin: top right; animation: tb-zoom calc(var(--motion) * 0.7) var(--ease-spring) backwards; }
 /* 제자리에서 내용만 갈리는 것 — 미리보기의 옆 날 */
 .tb-swap { animation: tb-fade var(--motion-fast) ease-out backwards; }
-/* 옆에서 나오는 서랍 — 같은 스프링으로 */
+/* 옆에서 나오는 서랍 — 같은 스프링으로 나오고, 들어갈 때는 더 짧게 */
 .tb-drawer { transition-duration: var(--motion-slow); transition-timing-function: var(--ease-spring); }
+.tb-drawer-out { transition-duration: var(--motion-close); transition-timing-function: cubic-bezier(0.4, 0, 0.9, 0.6); }
 
 @media (prefers-reduced-motion: reduce) {
   .tb-scrim, .tb-pop, .tb-page, .tb-menu, .tb-swap { animation: none !important; }
-  .tb-drawer { transition: none !important; }
+  .tb-drawer, .tb-drawer-out { transition: none !important; }
 }

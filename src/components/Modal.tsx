@@ -21,16 +21,11 @@ interface Props {
 export function Modal({ title, subtitle, children, footer, onClose, width = 720, labelId = 'modal-title' }: Props) {
   const panel = useRef<HTMLDivElement | null>(null);
   const scrim = useRef<HTMLDivElement | null>(null);
-  const closing = useRef(false);
   useLayoutEffect(() => {
     growFrom(panel.current, null);
     fadeIn(scrim.current);
   }, []);
-  const close = useCallback(() => {
-    if (closing.current) return;
-    closing.current = true;
-    leave(panel.current, scrim.current, null, onClose);
-  }, [onClose]);
+  const close = useCallback(() => leave(panel.current, scrim.current, null, onClose), [onClose]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();

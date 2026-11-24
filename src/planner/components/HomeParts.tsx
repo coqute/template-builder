@@ -81,9 +81,12 @@ export function ownerLabel(owner: string | undefined): string {
 }
 
 /** 날 칸에 보이는 Notion 작성 수 — 넘치면 "외 n건"으로 접는다 */
-const NOTION_SHOWN = 2;
-/** 날 칸에 보이는 남의 달력 일정 수 — 넘치면 "외 n건"으로 접는다(동료 달력을 여럿 켜면 2주에 수십 건이다) */
-const OTHERS_SHOWN = 3;
+/**
+ * 날 칸에 보이는 내 일정 수 — 넘치면 "외 n건".
+ * 날 칸은 한눈에 훑는 곳이라 줄 수를 묶어 둔다: 내 일정 둘 + Notion 한 줄 + 다른 달력 한 줄. 전부는 날을 눌러 미리보기에서 읽는다.
+ * (동료 달력을 켜고 하루에 서너 건씩 쌓이면, 줄마다 다 그렸을 때 띠가 화면의 절반을 차지하고 내 일정이 묻혔다 — 2026-11-24 점검)
+ */
+const OWN_SHOWN = 2;
 
 interface StripProps {
   weeks: StripDay[][];
@@ -112,6 +115,7 @@ export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) 
               key={day.date}
               className={cx('hm-day', day.today && 'is-today', day.weekend && 'is-we', day.off && !day.offPart && 'is-off', day.past && 'is-past', focus === day.date && 'is-sel')}
               data-date={day.date}
+              title="눌러서 이 날의 일정·할 일·Notion 작성을 모아 보기"
               aria-pressed={focus === day.date}
               aria-label={`${mdw(day.date)}${day.off ? ` ${day.off}` : ''} — 일정 ${day.events.length}건, 할 일 ${day.due}건${day.others.length ? `, 다른 달력 ${day.others.length}건` : ''}${wrote.length ? `, Notion 작성 ${wrote.length}건` : ''}`}
               onClick={() => onFocus(focus === day.date ? null : day.date)}
@@ -126,36 +130,40 @@ export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) 
                   {day.off}
                 </span>
               )}
-              {day.events.map((e) => (
+              {/* 내 일정 — 둘까지 */}
+              {day.events.slice(0, OWN_SHOWN).map((e) => (
                 <span className="hm-ev" key={e.key} title={`${e.startTime} ${e.title}${noted?.has(e.key) ? ' · Notion 회의록 있음' : ''}`.trim()}>
                   {e.startTime && <i className="hm-num">{e.startTime}</i>}
                   <b>{e.title}</b>
                   {noted?.has(e.key) && <NotionMark size={10} />}
                 </span>
               ))}
-              {day.others.slice(0, OTHERS_SHOWN).map((e) => (
-                <span className="hm-ev is-other" key={e.key} title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}>
-                  {e.startTime && <i className="hm-num">{e.startTime}</i>}
-                  <b>{e.title}</b>
-                  {e.owner && <em>{ownerLabel(e.owner)}</em>}
-                </span>
-              ))}
-              {day.others.length > OTHERS_SHOWN && (
-                <span className="hm-ev is-other" title={day.others.slice(OTHERS_SHOWN).map((e) => `${e.owner ? `${e.owner} — ` : ''}${e.startTime} ${e.title}`.trim()).join(' · ')}>
-                  <b>외 {day.others.length - OTHERS_SHOWN}건</b>
+              {day.events.length > OWN_SHOWN && (
+                <span className="hm-ev is-more" title={day.events.slice(OWN_SHOWN).map((e) => `${e.startTime} ${e.title}`.trim()).join(' · ')}>
+                  <b>외 {day.events.length - OWN_SHOWN}건</b>
                 </span>
               )}
-              {/* 그날 Notion에 쓴 것 — 표지와 제목. 여는 것은 아래 "날짜별 Notion 작성"에서 */}
-              {wrote.slice(0, NOTION_SHOWN).map((n) => (
-                <span className="hm-ev is-notion" key={`${n.id}:${n.fresh ? 'new' : 'edit'}`} title={`Notion ${n.source?.name ?? '페이지'} — ${n.title} (${n.fresh ? '새로 만듦' : '고침'})`}>
+              {/* 그날 Notion에 쓴 것 — 한 줄: 가장 늦게 쓴 것의 제목과 나머지 수 */}
+              {wrote.length > 0 && (
+                <span className="hm-ev is-notion" title={wrote.map((n) => `${n.title} (${n.source?.name ?? '페이지'} · ${n.fresh ? '새로 만듦' : '고침'})`).join('\n')}>
                   <NotionMark size={10} />
-                  <b>{n.title}</b>
+                  <b>{wrote[0].title}</b>
+                  {wrote.length > 1 && <em>+{wrote.length - 1}</em>}
                 </span>
-              ))}
-              {wrote.length > NOTION_SHOWN && (
-                <span className="hm-ev is-notion" title={wrote.slice(NOTION_SHOWN).map((n) => n.title).join(' · ')}>
-                  <NotionMark size={10} />
-                  <b>외 {wrote.length - NOTION_SHOWN}건</b>
+              )}
+              {/* 다른 달력 — 한 줄: 하나면 제목과 누구 것인지, 여럿이면 몇 건인지와 그 가운데 휴가 */}
+              {day.others.length === 1 &&
+                day.others.map((e) => (
+                  <span className="hm-ev is-other" key={e.key} title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}>
+                    {e.startTime && <i className="hm-num">{e.startTime}</i>}
+                    <b>{e.title}</b>
+                    {e.owner && <em>{ownerLabel(e.owner)}</em>}
+                  </span>
+                ))}
+              {day.others.length > 1 && (
+                <span className="hm-ev is-other" title={day.others.map((e) => `${ownerLabel(e.owner) || '다른 달력'} — ${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()).join('\n')}>
+                  <b>다른 달력 {day.others.length}건</b>
+                  {day.others.some((e) => e.kind === 'leave') && <em>휴가 {day.others.filter((e) => e.kind === 'leave').length}</em>}
                 </span>
               )}
               {day.late > 0 && <span className="hm-due is-late">지남 {day.late}</span>}

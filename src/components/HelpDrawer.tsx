@@ -158,8 +158,9 @@ export function HelpDrawer({
         // 열 때는 즉시 visible(그래야 닫기 버튼에 포커스가 들어감), 닫을 때는 페이드 후 hidden
         'fixed inset-0 z-30',
         open
-          ? 'visible opacity-100 [transition:opacity_150ms,visibility_0s]'
-          : 'pointer-events-none invisible opacity-0 [transition:opacity_150ms,visibility_0s_linear_150ms]',
+          ? 'visible opacity-100 [transition:opacity_220ms,visibility_0s]'
+          : // 서랍이 다 들어간 뒤에 숨긴다 — 먼저 숨기면 들어가다 말고 사라진다 (tb-drawer-out과 같은 280ms)
+            'pointer-events-none invisible opacity-0 [transition:opacity_280ms,visibility_0s_linear_280ms]',
       ].join(' ')}
       style={{ background: 'var(--scrim)' }}
       onClick={onClose}
@@ -169,8 +170,8 @@ export function HelpDrawer({
         aria-modal="true"
         aria-labelledby="help-drawer-title"
         className={[
-          'tb-drawer absolute right-0 top-0 h-full w-[380px] border-l border-rule-strong bg-bg-elevated transition-transform',
-          open ? 'translate-x-0' : 'translate-x-full',
+          'absolute right-0 top-0 h-full w-[380px] border-l border-rule-strong bg-bg-elevated transition-transform',
+          open ? 'tb-drawer translate-x-0' : 'tb-drawer-out translate-x-full',
         ].join(' ')}
         style={{ boxShadow: 'var(--shadow-pop)' }}
         onClick={(e) => e.stopPropagation()}

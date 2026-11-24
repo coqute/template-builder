@@ -41,6 +41,11 @@ export function canAnimate(el: Element | null | undefined): el is HTMLElement {
   return r.width > 0 && r.height > 0;
 }
 
+/** 닫히는 중인 창 */
+const leaving = new WeakSet<HTMLElement>();
+/** 닫은 뒤 이만큼 지나도 창이 남아 있으면 되돌린다 */
+const STAY_CHECK_MS = 120;
+
 /** 요소마다 지금 돌고 있는 열림·닫힘 — 새로 시작하기 전에 멈춘다 */
 const active = new WeakMap<HTMLElement, Animation>();
 
@@ -106,6 +111,7 @@ export function shrinkTo(el: HTMLElement | null, to?: DOMRect | null): Promise<v
     ],
     { duration: CLOSE_MS, easing: LEAVE, fill: 'forwards' },
   );
+  active.set(el, anim);
   return anim.finished.then(
     () => undefined,
     () => undefined,
@@ -136,6 +142,19 @@ export function leave(panel: HTMLElement | null, scrim: HTMLElement | null, to: 
     done();
     return;
   }
+  // 줄어드는 중에 또 닫으라고 하면(Esc를 두 번) 한 번만 한다
+  if (leaving.has(panel)) return;
+  leaving.add(panel);
   if (scrim) scrim.style.pointerEvents = 'none';
-  void Promise.all([shrinkTo(panel, to), fadeOut(scrim)]).then(done);
+  void Promise.all([shrinkTo(panel, to), fadeOut(scrim)]).then(() => {
+    done();
+    // 닫으라고 했는데 창이 남아 있으면(닫기를 받아 주지 않은 경우) 사라진 모습으로 멈춰 있지 않게 되돌린다
+    setTimeout(() => {
+      leaving.delete(panel);
+      if (!panel.isConnected) return;
+      settle(panel);
+      for (const a of scrim?.getAnimations?.() ?? []) a.cancel();
+      if (scrim) scrim.style.pointerEvents = '';
+    }, STAY_CHECK_MS);
+  });
 }

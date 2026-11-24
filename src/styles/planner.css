@@ -179,11 +179,19 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
 /* 날 칸의 Notion 작성 — 일정 조각과 같은 줄 모양, 왼쪽 선 대신 표지 */
 .hm-ev.is-notion { align-items: center; gap: 4px; padding-left: 0; border-left: 0; color: var(--fg-soft); }
 .hm-ev.is-notion b { font-weight: 400; }
-/* 지난 날은 옅게 하되, 그날 쓴 Notion은 읽을 수 있게 둔다 — 칸 전체가 아니라 칸 안의 것을 옅게 */
+/*
+ * 지난 날 — 한 발 물러나 보이되 읽을 수는 있어야 한다(지난 주 줄은 "무엇을 했는지" 돌아보는 곳이다).
+ * 전에는 칸 전체를 절반으로 흐려 글자 대비가 3.4:1쯤으로 떨어졌다. 칸 안의 것을 0.72로만 낮춘다(검은 글자 기준 약 5:1).
+ */
 .hm-day.is-past { opacity: 1; }
-.hm-day.is-past > * { opacity: 0.5; }
-.hm-day.is-past > .hm-ev.is-other { opacity: 0.3; }
+.hm-day.is-past > * { opacity: 0.72; }
+.hm-day.is-past > .hm-ev.is-other { opacity: 0.55; }
 .hm-day.is-past > .hm-ev.is-notion { opacity: 0.9; }
+/* "외 n건" — 내 일정이 더 있다는 표시 */
+.hm-ev.is-more { border-left-color: transparent; color: var(--fg-muted); }
+.hm-ev.is-more b { font-weight: 400; }
+/* Notion 한 줄의 "+n" — 제목이 잘려도 수는 남는다 */
+.hm-ev.is-notion em { max-width: none; flex: none; font-weight: 600; color: var(--fg-soft); }
 /* 동료 일정 — 제목이 먼저, 누구 것인지는 뒤에 짧게(자리가 모자라면 이쪽이 먼저 잘린다) */
 .hm-ev em { overflow: hidden; flex: 0 1 auto; max-width: 42%; margin-left: auto; font-size: 10.5px; font-style: normal; color: var(--fg-muted); white-space: nowrap; text-overflow: ellipsis; }
 .hm-ev.is-other b { flex: 1 1 auto; min-width: 2.5em; }
@@ -207,11 +215,13 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
 .hm-pk-d { display: flex; align-items: baseline; justify-content: center; gap: 5px; padding: 5px 2px; border: 1px solid var(--rule); border-radius: var(--radius-sharp); background: transparent; font-size: 11.5px; color: var(--fg-soft); cursor: pointer; }
 .hm-pk-d:hover { border-color: var(--fg); }
 .hm-pk-d b { font-size: 13px; font-weight: 700; color: var(--fg); }
-.hm-pk-d i { min-width: 0.6em; font-size: 10.5px; font-style: normal; color: var(--fg-muted); }
+/* 그날에 든 것의 수 — 날짜 숫자와 헷갈리지 않게 작은 딱지로 */
+.hm-pk-d i { align-self: center; padding: 0 5px; border-radius: 8px; background: var(--bg-sunken); font-size: 10px; font-style: normal; line-height: 15px; color: var(--fg-soft); }
 .hm-pk-d.is-red span, .hm-pk-d.is-red b { color: var(--stamp-red); }
 .hm-pk-d.is-today { border-color: var(--fg); }
 .hm-pk-d.is-sel { border-color: var(--accent); background: var(--accent); }
-.hm-pk-d.is-sel span, .hm-pk-d.is-sel b, .hm-pk-d.is-sel i { color: var(--bg); }
+.hm-pk-d.is-sel span, .hm-pk-d.is-sel b { color: var(--bg); }
+.hm-pk-d.is-sel i { background: var(--bg); color: var(--fg); }
 .hm-pk-b { min-height: 250px; flex: 1; overflow-y: auto; padding: 6px 18px 16px; }
 .hm-pk-none { margin: 34px 0; font-size: 13px; text-align: center; color: var(--fg-muted); }
 .hm-pk-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; align-items: start; }
@@ -229,6 +239,7 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
 .hm-pk-n small { font-size: 11.5px; color: var(--fg-muted); overflow-wrap: anywhere; }
 .hm-pk-l { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 3px; }
 .hm-pk-go { flex: none; font-size: 12px; color: var(--fg-muted); }
+.hm-pk-side { align-self: flex-start; margin-top: 2px; }
 .hm-pk-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 18px; border-top: 1px solid var(--rule); font-size: 11px; color: var(--fg-muted); }
 @media (max-width: 760px) { .hm-pk-g { grid-template-columns: minmax(0, 1fr); } }
 

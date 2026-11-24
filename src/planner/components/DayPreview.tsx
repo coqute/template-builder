@@ -62,7 +62,6 @@ const fullDate = (iso: string): string => {
 export function DayPreview({ today, day, days, countOf, tasks, notion, notes, linked, onOpenEvent, onOpenCase, onOpenUrl, onTask, onMove, onAddEvent, onClose }: Props) {
   const box = useRef<HTMLDivElement | null>(null);
   const scrim = useRef<HTMLDivElement | null>(null);
-  const closing = useRef(false);
   /**
    * 띠에서 그 날의 칸이 있는 자리 — 창이 여기서 커지고 여기로 닫힌다.
    * 칸이 없거나 스크롤로 화면 밖으로 밀려나 있으면 null — 보이지 않는 곳으로 날아가지 않고 가운데에서 살짝 작아진다.
@@ -82,8 +81,6 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
   /** 닫는다 — 지금 보고 있는 날의 칸으로 줄어든 뒤에 떼어 낸다. `after`는 닫힌 다음에 할 일 */
   const close = useCallback(
     (after?: () => void) => {
-      if (closing.current) return;
-      closing.current = true;
       leave(box.current, scrim.current, cellRect(day.date), () => {
         onClose();
         after?.();
@@ -169,7 +166,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                 >
                   <span>{dowOf(d.date)}</span>
                   <b className="hm-num">{toDate(d.date).getDate()}</b>
-                  <i className="hm-num">{n > 0 ? n : ''}</i>
+                  {n > 0 && <i className="hm-num">{n}</i>}
                 </button>
               );
             })}
@@ -237,14 +234,12 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                               {ownerLabel(e.owner) || '다른 달력'}
                               {e.location ? ` · ${e.location}` : ''}
                             </small>
-                            {e.htmlLink && (
-                              <span className="hm-pk-l">
-                                <button type="button" className="hm-org" aria-label={`달력에서 열기 — ${e.title}`} onClick={() => onOpenEvent(e)}>
-                                  달력 ↗
-                                </button>
-                              </span>
-                            )}
                           </span>
+                          {e.htmlLink && (
+                            <button type="button" className="hm-org hm-pk-side" aria-label={`달력에서 열기 — ${e.title}`} onClick={() => onOpenEvent(e)}>
+                              달력 ↗
+                            </button>
+                          )}
                         </div>
                       ))}
                     </section>
@@ -261,7 +256,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                         const late = t.due && t.due < today ? diffDays(t.due, today) : 0;
                         return (
                           <button type="button" className="hm-pk-r is-btn" key={t.id} aria-label={`할 일로 가기 — ${t.title}`} title="닫고, 아래 할 일 목록에서 이 줄로 갑니다" onClick={() => close(() => onTask(t.id))}>
-                            <span className={cx('hm-pk-t', late > 0 && 'is-late')}>{late > 0 ? `${late}일 지남` : '기한'}</span>
+                            <span className={cx('hm-pk-t', late > 0 && 'is-late')}>{late > 0 ? `${late}일 지남` : '이 날까지'}</span>
                             <span className="hm-pk-n">
                               <b>{t.title}</b>
                               {(t.client || t.who) && <small>{[t.client, t.who].filter(Boolean).join(' · ')}</small>}
@@ -304,7 +299,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
 
         <footer className="hm-pk-f">
           <span>← → 옆 날 · Esc 닫기</span>
-          {onAddEvent && (
+          {onAddEvent && day.date >= today && (
             <button type="button" className="hm-mini" onClick={onAddEvent} title="Google 달력에 이 날의 일정을 만듭니다">
               ＋ 이 날에 일정 추가
             </button>

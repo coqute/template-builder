@@ -46,6 +46,26 @@ function seedEvents(today: string): RawEvent[] {
   });
   const allDay = (id: string, summary: string, date: string, extra: Partial<RawEvent> = {}): RawEvent =>
     ev(id, summary, date, '00:00', '00:00', '', { allDay: true, start: date, end: addDays(date, 1), ...extra });
+  // 동료 달력 — 실제 모양을 닮게 만든다: 달력 이름은 메일 주소이고, 하루에 여러 건이 겹치며, 종일 일정(현장·재택·휴가)이 많고 제목이 길다.
+  // 짧은 이름·하루 한 건으로만 보면 날 칸에서 제목이 잘리는 문제가 보이지 않는다.
+  const people = ['damdang-a', 'damdang-b', 'damdang-c', 'damdang-d'].map((id) => [id, 'example.com'].join('@'));
+  const dayLong = ['AB Z+ 누리사옥 현장 지원', '재택', '가나스토어 물류센터 상주', '휴가', '예시IT 정기점검 방문'];
+  const timed = ['가나스토어 물류센터 서버 증설 사전 점검과 일정 협의', 'MX 모니터링 대시보드 개편 회의', '분기 보안 점검 준비 회의', 'AB Z+ 수집 서버 패치 리허설'];
+  const team: RawEvent[] = [];
+  for (let d = -8; d <= 12; d++) {
+    const date = addDays(today, d);
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    if (dow === 0 || dow === 6) continue;
+    people.forEach((name, i) => {
+      const k = (d + 24 + i * 3) % 7;
+      if (k === 6) return; // 그날은 일정이 없다
+      const extra = { calendarId: `team-${i}`, other: true, calendarName: name, canWrite: false };
+      if (k % 3 === 0) {
+        const h = 9 + ((d + 24 + i) % 7);
+        team.push(ev(`t${d}-${i}`, timed[(d + 24 + i) % timed.length], date, `${String(h).padStart(2, '0')}:00`, `${String(h + 1).padStart(2, '0')}:30`, '', extra));
+      } else team.push(allDay(`t${d}-${i}`, dayLong[(d + 24 + i * 2) % dayLong.length], date, extra));
+    });
+  }
   return [
     ev('p1', 'MX 주간 미팅', addDays(mon, 1), '14:00', '15:00', '온라인', { meet: true }),
     ev('p2', '사무실', addDays(mon, 2), '09:00', '10:00', ''),
@@ -57,8 +77,7 @@ function seedEvents(today: string): RawEvent[] {
     ev('p8', 'MX 알림 설정 회의', addDays(today, -2), '10:00', '11:00', '온라인', { meet: true }),
     // 반차(시각이 있는 휴가)와 동료 달력의 일정 — 띠에서 어떻게 보이는지
     ev('p9', '오후 반차', addDays(mon, 4), '14:00', '18:00', ''),
-    ev('p10', '가나스토어 현장 점검', addDays(mon, 3), '13:00', '17:00', '', { calendarId: 'team', other: true, calendarName: '담당A', canWrite: false }),
-    allDay('p11', '휴가', addDays(mon, 8), { calendarId: 'team', other: true, calendarName: '담당A', canWrite: false }),
+    ...team,
   ];
 }
 
@@ -78,7 +97,25 @@ function seedNotion(today: string): NotionPage[] {
     editedAt: edited,
     url: `https://www.notion.so/${String(n).padStart(32, '0')}`,
   });
+  // 지원 기록은 하루에 여러 건 생기고 제목이 길다 — 날 칸에 다 들어가지 않는 양을 보려고 지난 8일의 평일마다 2~4건을 만든다
+  const topics = [
+    '[AB Z+] 수집 에이전트 재기동 후 지표 누락 문의',
+    '[MX] 알림 정책 분류 기준 변경 요청',
+    '[가나스토어] 대시보드 공유 권한 설정 문의',
+    '[예시IT] 저장소 사용량 경고 임계값 조정',
+    '[AB Z+] 패치 적용 뒤 로그 수집 지연',
+    '[MX] 웹훅 연동 실패 원인 확인',
+  ];
+  const many: NotionPage[] = [];
+  for (let d = 8; d >= 1; d--) {
+    const date = addDays(today, -d);
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    if (dow === 0 || dow === 6) continue;
+    const count = 2 + (d % 3);
+    for (let i = 0; i < count; i++) many.push(page(100 + d * 10 + i, 'ds-support', topics[(d + i * 2) % topics.length], at(date, `${String(9 + i * 2).padStart(2, '0')}:${i % 2 ? '40' : '10'}`)));
+  }
   return [
+    ...many,
     // 이틀 전 10:00 'MX 알림 설정 회의' 중에 만든 회의록 — 그 일정 줄에 이어진다
     page(11, 'ds-meet', 'MX 알림 설정 회의', at(addDays(today, -2), '10:05'), at(addDays(today, -1), '09:20')),
     page(21, 'ds-support', '수집 누락 원인 문의', at(addDays(today, -5), '11:00'), at(today, '09:10')),

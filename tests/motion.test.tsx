@@ -167,20 +167,21 @@ describe('움직임 규칙 (src/styles/tokens.css)', () => {
     expect(motion).not.toContain("[data-theme='mono']");
   });
 
-  it('창·메뉴는 조금 작게 시작해 커지고, 넓은 본문은 그보다 덜 줄인다', () => {
+  it('창·메뉴는 조금 작게 시작해 커진다 — 탭의 본문은 크기를 바꾸지 않는다(안의 편집기가 글자 크기를 잰다)', () => {
     const pick = (name: string) => Number(new RegExp(`${name}:\\s*([0-9.]+);`).exec(motion)?.[1]);
     expect(pick('--zoom-pop')).toBeGreaterThanOrEqual(0.85);
     expect(pick('--zoom-pop')).toBeLessThan(1);
-    expect(pick('--zoom-page')).toBeGreaterThan(pick('--zoom-pop'));
-    expect(pick('--zoom-page')).toBeLessThan(1);
     expect(block('.tb-menu {')).toContain('transform-origin: top right');
+    const page = block('.tb-page {');
+    expect(page).toContain('tb-fade');
+    expect(page).not.toMatch(/tb-zoom|transform/);
   });
 
   it('움직임 줄이기를 켰으면 전부 끈다', () => {
     const reduce = motion.slice(motion.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
     for (const cls of MOVING) expect(reduce).toContain(cls);
     expect(reduce).toMatch(/animation:\s*none\s*!important/);
-    expect(reduce).toMatch(/\.tb-drawer\s*\{\s*transition:\s*none/);
+    expect(reduce).toMatch(/\.tb-drawer, \.tb-drawer-out\s*\{\s*transition:\s*none/);
   });
 
   it('끝난 뒤에는 값을 남기지 않는다 (backwards) — 안에서 뜨는 창의 자리가 흔들리지 않게', () => {
@@ -207,7 +208,13 @@ describe('움직임이 붙는 곳', () => {
   it('탭의 본문 · 메뉴 · 서랍 · 다른 창', () => {
     expect(read('src/App.tsx')).toMatch(/key=\{active\.id\} className="tb-page h-full"/);
     expect(read('src/components/ToolbarButton.tsx')).toContain('className="tb-menu fixed');
-    expect(read('src/components/HelpDrawer.tsx')).toContain("'tb-drawer absolute");
+    // 서랍 — 나올 때와 들어갈 때의 곡선이 다르고, 다 들어간 뒤에 숨긴다(먼저 숨기면 들어가다 말고 사라진다)
+    const drawer = read('src/components/HelpDrawer.tsx');
+    expect(drawer).toContain("open ? 'tb-drawer translate-x-0' : 'tb-drawer-out translate-x-full'");
+    expect(drawer).toContain('visibility_0s_linear_280ms');
+    const css = read('src/styles/tokens.css');
+    expect(css).toMatch(/\.tb-drawer-out \{[^}]*var\(--motion-close\)/);
+    expect(css).toMatch(/--motion-close:\s*280ms;/);
     for (const f of ['src/components/AiReviewDialog.tsx', 'src/components/OnboardingModal.tsx']) {
       expect([f, read(f).includes('tb-scrim') && read(f).includes('tb-pop')]).toEqual([f, true]);
     }

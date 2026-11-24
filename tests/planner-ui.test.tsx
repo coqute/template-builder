@@ -427,14 +427,17 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     expect(screen.getByTestId('home-next').textContent).not.toContain('가나스토어');
   });
 
-  it('남의 달력의 일정이 한 날에 많으면 셋까지만 보이고 나머지는 "외 n건"으로 접는다', async () => {
+  it('남의 달력의 일정이 한 날에 여럿이면 한 줄로 줄인다 — 몇 건인지와 그 가운데 휴가', async () => {
     const theirs = Array.from({ length: 5 }, (_, i): RawEvent => ({ ...event(`t${i}`, `동료 일정 ${i + 1}`, TODAY, `1${i}:00`, `1${i}:30`), calendarId: 'damdang-a@example.com', other: true, calendarName: '담당A', canWrite: false }));
     const { api } = fakeApi({ events: [...theirs, event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });
     renderHome(api);
     await waitFor(() => expect(rowOf('e1')).not.toBeNull());
-    const dim = [...document.querySelectorAll('.hm-day.is-today .hm-ev.is-other')].map((x) => x.textContent);
-    expect(dim).toHaveLength(4);
-    expect(dim[3]).toBe('외 2건');
+    const dim = [...document.querySelectorAll('.hm-day.is-today .hm-ev.is-other')];
+    expect(dim).toHaveLength(1);
+    expect(dim[0].querySelector('b')?.textContent).toBe('다른 달력 5건');
+    expect(dim[0].querySelector('em')).toBeNull(); // 휴가가 없으면 적지 않는다
+    // 전부는 말풍선과 그날 미리보기에서 읽는다
+    expect(dim[0].getAttribute('title')).toContain('동료 일정 5');
   });
 
   it('읽을 달력 설정이 바뀌면 그 설정으로 달력을 다시 읽는다 (새로 고침을 누르지 않아도)', async () => {
@@ -590,7 +593,7 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 가운데에
     expect(pills.map((x) => x.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false', 'false', 'false', 'false']);
     expect(pills[2].querySelector('i')?.textContent).toBe('2');
     expect(pills[3].querySelector('i')?.textContent).toBe('1');
-    expect(pills[0].querySelector('i')?.textContent).toBe('');
+    expect(pills[0].querySelector('i')).toBeNull(); // 아무것도 없는 날에는 수를 적지 않는다
     // › 로 다음 날
     fireEvent.click(within(preview()).getByRole('button', { name: '뒷 날' }));
     expect(shown()).toBe(addDays(mon, 3));
@@ -682,14 +685,17 @@ describe('홈 화면 — Notion (읽기만): 어느 날에 무엇을 썼는가',
     // 읽는 범위 = 지난 주 월요일부터
     const since = new Date(`${addDays(mondayOf(TODAY), -7)}T00:00:00`).toISOString();
     expect(api.notionRecent).toHaveBeenCalledWith(expect.objectContaining({ sources: ['ds-meet', 'ds-support'], since, loose: true }));
-    // 날 칸 — 둘까지 제목, 나머지는 "외 n건". 늦게 쓴 것부터
-    const chips = [...dayCell(YESTERDAY).querySelectorAll('.hm-ev.is-notion')].map((c) => c.textContent);
-    expect(chips).toEqual(['알림 분류 개선 요청', '에이전트 재기동 절차 문의', '외 2건']);
-    expect(dayCell(YESTERDAY).querySelectorAll('.hm-ev.is-notion .hm-nm')).toHaveLength(3);
+    // 날 칸 — 한 줄: 가장 늦게 쓴 것의 제목과 나머지 수
+    const chips = [...dayCell(YESTERDAY).querySelectorAll('.hm-ev.is-notion')];
+    expect(chips).toHaveLength(1);
+    expect(chips[0].querySelector('b')?.textContent).toBe('알림 분류 개선 요청');
+    expect(chips[0].querySelector('em')?.textContent).toBe('+3');
+    expect(chips[0].querySelectorAll('.hm-nm')).toHaveLength(1);
     expect(dayCell(YESTERDAY).getAttribute('aria-label')).toContain('Notion 작성 4건');
     // 6일 전에 만들고 오늘 고친 페이지 — 만든 날과 고친 날 두 곳에
-    expect(dayCell(TODAY).querySelector('.hm-ev.is-notion')?.textContent).toBe('수집 누락 원인 문의');
-    expect(dayCell(addDays(TODAY, -6)).querySelector('.hm-ev.is-notion')?.textContent).toBe('수집 누락 원인 문의');
+    expect(dayCell(TODAY).querySelector('.hm-ev.is-notion b')?.textContent).toBe('수집 누락 원인 문의');
+    expect(dayCell(TODAY).querySelector('.hm-ev.is-notion em')).toBeNull(); // 하나뿐이면 수를 붙이지 않는다
+    expect(dayCell(addDays(TODAY, -6)).querySelector('.hm-ev.is-notion b')?.textContent).toBe('수집 누락 원인 문의');
 
     fireEvent.click(dayCell(YESTERDAY));
     const group = screen.getByTestId('home-day').querySelector('[data-group="notion"]') as HTMLElement;
