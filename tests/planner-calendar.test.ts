@@ -8,6 +8,7 @@ import {
   calendarScopes,
   deleteEvent,
   insertEvent,
+  hexColor,
   listCalendars,
   listEvents,
   localRfc3339,
@@ -369,6 +370,34 @@ describe('listEvents — 정규화', () => {
       ['primary', true, false], // 'primary'는 목록의 본인 달력으로 찾는다
       [TEAM, true, false],
       [HOLIDAY, false, true],
+    ]);
+  });
+
+  it('달력에 정해 둔 색을 목록에서 읽고, 남의 달력의 일정에만 싣는다 — #rrggbb 모양이 아니면 쓰지 않는다', async () => {
+    // 색은 달력 목록에 함께 온다(권한을 더할 것이 없다). 화면이 이 값을 style에 그대로 넣으므로 모양을 가려 받는다
+    const { deps } = fake((url) =>
+      url.pathname.endsWith('/calendarList')
+        ? jsonRes(200, {
+            items: [
+              { id: 'me@example.com', summary: '홍길동', primary: true, accessRole: 'owner', backgroundColor: '#AC725E' },
+              { id: TEAM, summary: '담당A', accessRole: 'reader', backgroundColor: '#4986e7', foregroundColor: '#000000' },
+              { id: 'odd@example.com', summary: '색이 이상한 달력', accessRole: 'reader', backgroundColor: 'red; background: url(x)' },
+            ],
+          })
+        : jsonRes(200, { items: [{ id: 'e1', start: { date: '2026-12-25' }, end: { date: '2026-12-26' } }] }),
+    );
+    const list = await listCalendars(deps);
+    expect(list.ok && list.calendars.map((c) => c.color)).toEqual(['#ac725e', '#4986e7', undefined]);
+    expect(list.ok && 'color' in list.calendars[2]).toBe(false);
+    expect(hexColor('#16A765')).toBe('#16a765');
+    for (const bad of ['16a765', '#16a76', '#16a7655', 'rgb(1,2,3)', '', null, 7]) expect(hexColor(bad)).toBe('');
+
+    const known = list.ok ? list.calendars : [];
+    const got = await listEvents(deps, { ...RANGE, calendars: ['primary', TEAM, 'odd@example.com'] }, known);
+    expect(got.ok && got.events.map((e) => [e.calendarId, e.other ?? false, e.calendarColor])).toEqual([
+      ['primary', false, undefined], // 내 일정에는 싣지 않는다
+      [TEAM, true, '#4986e7'],
+      ['odd@example.com', true, undefined],
     ]);
   });
 

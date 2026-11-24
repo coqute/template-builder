@@ -427,6 +427,37 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
     expect(screen.getByTestId('home-next').textContent).not.toContain('가나스토어');
   });
 
+  it('남의 달력의 일정은 그 달력의 색으로 가른다 — 하나면 왼쪽 선, 여럿이면 달력마다 색 점, 미리보기에도', async () => {
+    const their = (id: string, cal: string, color: string | undefined, title: string): RawEvent => ({
+      ...event(id, title, TODAY, '23:00', '23:30'),
+      calendarId: cal,
+      other: true,
+      calendarName: [cal, 'example.com'].join('@'),
+      canWrite: false,
+      ...(color ? { calendarColor: color } : {}),
+    });
+    const many = [their('a1', 'damdang-a', '#4986e7', '현장 지원'), their('a2', 'damdang-a', '#4986e7', '점검'), their('b1', 'damdang-b', '#f83a22', '회의'), their('c1', 'damdang-c', undefined, '색 없는 달력')];
+    const one = { ...their('z1', 'damdang-d', '#16a765', '가나스토어 정기점검'), start: new Date(`${TOMORROW}T10:00:00`).toISOString(), end: new Date(`${TOMORROW}T11:00:00`).toISOString() };
+    const { api } = fakeApi({ events: [...many, one, event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });
+    renderHome(api);
+    await waitFor(() => expect(rowOf('e1')).not.toBeNull());
+    const cell = (date: string) => document.querySelector(`.hm-day[data-date="${date}"]`) as HTMLElement;
+    const bg = (el: Element) => (el as HTMLElement).style.background || (el as HTMLElement).style.backgroundColor;
+    // 여럿 — 달력마다 색 점 하나씩(같은 달력의 두 건은 점 하나, 색이 없는 달력은 점이 없다)
+    const summary = cell(TODAY).querySelector('.hm-ev.is-other') as HTMLElement;
+    expect(summary.querySelector('b')?.textContent).toBe('다른 달력 4건');
+    expect([...summary.querySelectorAll('.hm-dot')].map(bg)).toHaveLength(2);
+    // 하나 — 왼쪽 선이 그 달력의 색
+    const single = cell(TOMORROW).querySelector('.hm-ev.is-other') as HTMLElement;
+    expect(single.querySelector('b')?.textContent).toBe('가나스토어 정기점검');
+    expect(single.style.borderLeftColor).not.toBe('');
+    // 미리보기 — 줄마다 누구 것인지 앞에 색 점
+    fireEvent.click(cell(TODAY));
+    const rows = [...screen.getByTestId('home-day').querySelectorAll('[data-group="others"] .hm-pk-r')];
+    // 색이 있는 달력의 세 줄에만 점이 붙는다(줄의 차례는 일정을 읽은 순서라 여기서 따지지 않는다)
+    expect(rows.map((r) => r.querySelectorAll('.hm-dot').length).sort()).toEqual([0, 1, 1, 1]);
+  });
+
   it('남의 달력의 일정이 한 날에 여럿이면 한 줄로 줄인다 — 몇 건인지와 그 가운데 휴가', async () => {
     const theirs = Array.from({ length: 5 }, (_, i): RawEvent => ({ ...event(`t${i}`, `동료 일정 ${i + 1}`, TODAY, `1${i}:00`, `1${i}:30`), calendarId: 'damdang-a@example.com', other: true, calendarName: '담당A', canWrite: false }));
     const { api } = fakeApi({ events: [...theirs, event('e1', 'MX 주간 미팅', TOMORROW, '14:00', '15:00')] });

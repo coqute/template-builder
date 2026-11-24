@@ -37,6 +37,8 @@ export interface HomeEvent {
   other?: boolean;
   /** 그 달력의 이름 (남의 달력일 때) */
   owner?: string;
+  /** 그 달력의 색 `#rrggbb` (남의 달력일 때, 있으면) */
+  color?: string;
   source: 'gcal' | 'plan';
 }
 
@@ -100,7 +102,7 @@ export function classifyEvents(raw: readonly RawEvent[], opts: ClassifyOptions =
       htmlLink: e.htmlLink,
       canWrite: e.canWrite && !e.holiday,
       ...(e.recurring ? { recurring: true } : {}),
-      ...(e.other ? { other: true, owner: (e.calendarName ?? '').trim() } : {}),
+      ...(e.other ? { other: true, owner: (e.calendarName ?? '').trim(), ...(e.calendarColor ? { color: e.calendarColor } : {}) } : {}),
       source: 'gcal',
     });
   }

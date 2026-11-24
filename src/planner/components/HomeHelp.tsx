@@ -96,6 +96,8 @@ export function HomeSettings({ mono, open }: { mono: boolean; open: boolean }) {
               return (
                 <label key={c.id} className="flex items-center gap-2 py-0.5 text-[11.5px] text-fg-soft">
                   <input type="checkbox" checked={on} disabled={c.primary} onChange={(e) => toggleCalendar(c, e.target.checked)} style={{ accentColor: 'var(--fg)' }} />
+                  {/* 남의 달력은 Google 달력에서 정해 둔 색을 함께 보인다 — 홈의 띠·미리보기에서 그 색으로 가른다 */}
+                  {!c.primary && !c.holiday && !c.mine && c.color && <i className="hm-dot" style={{ background: c.color }} aria-hidden="true" />}
                   <span className="min-w-0 truncate">
                     {c.primary ? '내 달력' : c.summary}
                     {c.holiday && ' · 공휴일'}

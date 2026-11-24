@@ -189,9 +189,16 @@ interface GCalendar {
   primary?: boolean;
   accessRole?: string;
   deleted?: boolean;
+  /** 사용자가 이 달력에 정해 둔 색 */
+  backgroundColor?: string;
 }
 
 /** 구독 중인 달력 목록 */
+/** `#rrggbb` 모양일 때만 색으로 쓴다 — 화면이 이 값을 그대로 style에 넣는다 */
+export function hexColor(v: unknown): string {
+  return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : '';
+}
+
 export async function listCalendars(deps: CalendarDeps): Promise<CalendarListResult> {
   return guard(async (): Promise<CalendarListResult> => {
     const send = session(deps);
@@ -210,6 +217,7 @@ export async function listCalendars(deps: CalendarDeps): Promise<CalendarListRes
           canWrite: c.accessRole === 'owner' || c.accessRole === 'writer',
           mine: c.primary === true || c.accessRole === 'owner',
           holiday: c.id.includes(HOLIDAY_MARK),
+          ...(hexColor(c.backgroundColor) ? { color: hexColor(c.backgroundColor) } : {}),
         });
       }
       pageToken = typeof json.nextPageToken === 'string' ? json.nextPageToken : '';
@@ -251,6 +259,8 @@ interface CalendarFlags {
   other?: boolean;
   /** 달력 이름 — 남의 달력일 때 누구 것인지 보이는 데 쓴다 */
   name?: string;
+  /** 달력 색 — 남의 달력일 때 */
+  color?: string;
 }
 
 function toRawEvent(calendarId: string, e: GEvent | null, cal: CalendarFlags): RawEvent | null {
@@ -284,7 +294,7 @@ function toRawEvent(calendarId: string, e: GEvent | null, cal: CalendarFlags): R
     // 반복 일정의 한 회차 — 고치거나 지우면 그 회차만 바뀐다
     ...(typeof e.recurringEventId === 'string' && e.recurringEventId ? { recurring: true } : {}),
     // 남의 달력의 일정 — 화면은 2주 띠에만 옅게 그린다 (설계 §5.5)
-    ...(cal.other ? { other: true, ...(cal.name ? { calendarName: cal.name } : {}) } : {}),
+    ...(cal.other ? { other: true, ...(cal.name ? { calendarName: cal.name } : {}), ...(cal.color ? { calendarColor: cal.color } : {}) } : {}),
   };
 }
 
@@ -351,7 +361,7 @@ export async function listEvents(deps: CalendarDeps, req: CalendarEventsRequest,
       const holiday = info?.holiday ?? id.includes(HOLIDAY_MARK);
       // 내 달력(본인 달력·내가 만든 달력)도 공휴일 달력도 아니면 남의 달력이다. 달력 목록이 없으면 본인 달력만 내 것으로 본다
       const other = !holiday && !(info ? info.mine : id === 'primary');
-      const cal: CalendarFlags = { canWrite: info?.canWrite ?? id === 'primary', holiday, other, name: other ? (info?.summary ?? '') : '' };
+      const cal: CalendarFlags = { canWrite: info?.canWrite ?? id === 'primary', holiday, other, name: other ? (info?.summary ?? '') : '', color: other ? (info?.color ?? '') : '' };
       const got = await readCalendar(send, id, timeMin, timeMax, cal);
       if (Array.isArray(got)) {
         events.push(...got);

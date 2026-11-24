@@ -1,5 +1,5 @@
 /** 홈 화면의 위쪽 — 요약 줄, 2주 띠, 빈 상태 상자, 바뀐 것 한 줄 (설계 §6.2) */
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { EventChange } from '../classify';
 import { dowOf, mdw, relDay, toDate } from '../dates';
 import type { StripDay, Summary } from '../model';
@@ -80,6 +80,17 @@ export function ownerLabel(owner: string | undefined): string {
   return at > 0 ? s.slice(0, at) : s;
 }
 
+/** 남의 달력의 색 점 — Google 달력에서 그 달력에 정해 둔 색. 누구 일정인지 색으로도 가른다(이름은 말풍선·미리보기에) */
+export function CalendarDot({ color }: { color?: string }) {
+  if (!color) return null;
+  return <i className="hm-dot" style={{ background: color }} aria-hidden="true" />;
+}
+
+/** 그날 남의 달력들의 색 — 겹치지 않게, 나온 순서대로 */
+function colorsOf(list: readonly { color?: string }[]): string[] {
+  return [...new Set(list.map((e) => e.color).filter((c): c is string => !!c))];
+}
+
 /** 날 칸에 보이는 Notion 작성 수 — 넘치면 "외 n건"으로 접는다 */
 /**
  * 날 칸에 보이는 내 일정 수 — 넘치면 "외 n건".
@@ -154,7 +165,12 @@ export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) 
               {/* 다른 달력 — 한 줄: 하나면 제목과 누구 것인지, 여럿이면 몇 건인지와 그 가운데 휴가 */}
               {day.others.length === 1 &&
                 day.others.map((e) => (
-                  <span className="hm-ev is-other" key={e.key} title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}>
+                  <span
+                    className="hm-ev is-other"
+                    key={e.key}
+                    style={e.color ? ({ borderLeftColor: e.color } as CSSProperties) : undefined}
+                    title={`${e.owner ? `${e.owner} — ` : '다른 달력 — '}${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()}
+                  >
                     {e.startTime && <i className="hm-num">{e.startTime}</i>}
                     <b>{e.title}</b>
                     {e.owner && <em>{ownerLabel(e.owner)}</em>}
@@ -162,6 +178,14 @@ export function WeekStrip({ weeks, focus, onFocus, noted, notion }: StripProps) 
                 ))}
               {day.others.length > 1 && (
                 <span className="hm-ev is-other" title={day.others.map((e) => `${ownerLabel(e.owner) || '다른 달력'} — ${e.startTime} ${e.title}`.replace(/\s+/g, ' ').trim()).join('\n')}>
+                  {/* 그날 일정이 있는 달력들의 색 — 누가 있는지 색으로 먼저 보인다 */}
+                  {colorsOf(day.others).length > 0 && (
+                    <span className="hm-dots">
+                      {colorsOf(day.others).slice(0, 6).map((c) => (
+                        <CalendarDot key={c} color={c} />
+                      ))}
+                    </span>
+                  )}
                   <b>다른 달력 {day.others.length}건</b>
                   {day.others.some((e) => e.kind === 'leave') && <em>휴가 {day.others.filter((e) => e.kind === 'leave').length}</em>}
                 </span>

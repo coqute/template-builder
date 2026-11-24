@@ -45,9 +45,18 @@
 [data-theme='mono'] .hm-ev { border-left-color: var(--accent); }
 .hm-ev i { flex: none; font-style: normal; color: var(--fg-soft); }
 .hm-ev b { overflow: hidden; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
-/* 남의 달력의 일정 — 옅게, 점선 */
-.hm-ev.is-other { border-left-style: dotted; opacity: 0.55; }
+/*
+ * 남의 달력의 일정 — 내 일정보다 한 발 물러나 보이게 글자를 옅은 색으로(읽을 수 있는 대비의 --fg-muted).
+ * 전에는 줄 전체를 0.55로 흐렸는데, 그러면 달력 색도 같이 흐려져 누구 것인지 가르는 데 쓸 수 없다.
+ * 왼쪽 선은 그 달력의 색(없으면 옅은 선) — Google 달력에서 달력마다 정해 둔 색이다.
+ */
+.hm-ev.is-other { border-left-color: var(--rule-strong); color: var(--fg-muted); }
 .hm-ev.is-other b { font-weight: 400; }
+.hm-ev.is-other i { color: var(--fg-muted); }
+/* 달력 색 점 — 옅은 색(노랑 등)도 보이게 가는 테두리를 두른다 */
+.hm-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); vertical-align: -0.5px; }
+.hm-dots { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+.hm-pk-n small .hm-dot { margin-right: 5px; }
 .hm-off { padding-top: 2px; border-top: 2px solid var(--stamp-red); overflow: hidden; font-size: 11.5px; font-weight: 600; color: var(--stamp-red); white-space: nowrap; text-overflow: ellipsis; }
 .hm-due { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-soft); }
 .hm-due:first-of-type { margin-top: auto; }
@@ -185,7 +194,7 @@ textarea.hm-in { height: auto; min-height: 54px; padding: 6px 10px; line-height:
  */
 .hm-day.is-past { opacity: 1; }
 .hm-day.is-past > * { opacity: 0.72; }
-.hm-day.is-past > .hm-ev.is-other { opacity: 0.55; }
+.hm-day.is-past > .hm-ev.is-other { opacity: 0.8; }
 .hm-day.is-past > .hm-ev.is-notion { opacity: 0.9; }
 /* "외 n건" — 내 일정이 더 있다는 표시 */
 .hm-ev.is-more { border-left-color: transparent; color: var(--fg-muted); }

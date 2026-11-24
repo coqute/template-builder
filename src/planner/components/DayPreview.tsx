@@ -16,7 +16,7 @@ import { diffDays, dowOf, toDate } from '../dates';
 import type { StripDay } from '../model';
 import type { NotionItem } from '../sources/notion';
 import type { NotionPage, Task } from '../types';
-import { cx, NotionMark, ownerLabel } from './HomeParts';
+import { CalendarDot, cx, NotionMark, ownerLabel } from './HomeParts';
 
 interface Props {
   today: string;
@@ -231,6 +231,7 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                           <span className="hm-pk-n">
                             <b>{e.title}</b>
                             <small title={e.owner}>
+                              <CalendarDot color={e.color} />
                               {ownerLabel(e.owner) || '다른 달력'}
                               {e.location ? ` · ${e.location}` : ''}
                             </small>

@@ -185,6 +185,8 @@ export interface CalendarInfo {
   holiday: boolean;
   /** 내 달력인가 — 본인 달력이거나 내가 만든 달력. 아니면 남의 달력(동료 등)이다 */
   mine: boolean;
+  /** Google 달력에서 이 달력에 정해 둔 색 `#rrggbb` — 달력 목록에 함께 온다(없거나 모양이 다르면 칸이 없다) */
+  color?: string;
 }
 
 /** 달력에서 읽은 일정 — 분류(회의·작업·휴가…)는 renderer의 classify.ts가 한다 */
@@ -218,6 +220,8 @@ export interface RawEvent {
   other?: boolean;
   /** 그 달력의 이름 — 누구 일정인지 보이는 데 쓴다 (남의 달력일 때만) */
   calendarName?: string;
+  /** 그 달력의 색 `#rrggbb` — 누구 일정인지 색으로도 가른다 (남의 달력일 때만) */
+  calendarColor?: string;
 }
 
 export interface CalendarEventsRequest {

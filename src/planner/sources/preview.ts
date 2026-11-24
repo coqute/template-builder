@@ -9,6 +9,12 @@ import { applyOp, emptyState, newTaskId, PlannerError } from '../ops';
 import type { NotionPage, NotionSource, PlannerLogEntry, PlannerState, RawEvent, TaskDraft } from '../types';
 
 const FOLDER = 'AB Z+ 작업';
+/** 동료 달력 — 이름은 메일 주소 모양, 색은 달력마다 다르다(Google 달력에서 달력에 정해 두는 색) */
+const TEAM = ['damdang-a', 'damdang-b', 'damdang-c', 'damdang-d'].map((id, i) => ({
+  id: `team-${i}`,
+  name: [id, 'example.com'].join('@'),
+  color: ['#b99aff', '#f83a22', '#4986e7', '#16a765'][i],
+}));
 
 function seedLogs(today: string): WorklogFileText[] {
   const file = (date: string, title: string, body: string): WorklogFileText => {
@@ -48,7 +54,6 @@ function seedEvents(today: string): RawEvent[] {
     ev(id, summary, date, '00:00', '00:00', '', { allDay: true, start: date, end: addDays(date, 1), ...extra });
   // 동료 달력 — 실제 모양을 닮게 만든다: 달력 이름은 메일 주소이고, 하루에 여러 건이 겹치며, 종일 일정(현장·재택·휴가)이 많고 제목이 길다.
   // 짧은 이름·하루 한 건으로만 보면 날 칸에서 제목이 잘리는 문제가 보이지 않는다.
-  const people = ['damdang-a', 'damdang-b', 'damdang-c', 'damdang-d'].map((id) => [id, 'example.com'].join('@'));
   const dayLong = ['AB Z+ 누리사옥 현장 지원', '재택', '가나스토어 물류센터 상주', '휴가', '예시IT 정기점검 방문'];
   const timed = ['가나스토어 물류센터 서버 증설 사전 점검과 일정 협의', 'MX 모니터링 대시보드 개편 회의', '분기 보안 점검 준비 회의', 'AB Z+ 수집 서버 패치 리허설'];
   const team: RawEvent[] = [];
@@ -56,10 +61,10 @@ function seedEvents(today: string): RawEvent[] {
     const date = addDays(today, d);
     const dow = new Date(`${date}T00:00:00`).getDay();
     if (dow === 0 || dow === 6) continue;
-    people.forEach((name, i) => {
+    TEAM.forEach(({ id, name, color }, i) => {
       const k = (d + 24 + i * 3) % 7;
       if (k === 6) return; // 그날은 일정이 없다
-      const extra = { calendarId: `team-${i}`, other: true, calendarName: name, canWrite: false };
+      const extra = { calendarId: id, other: true, calendarName: name, calendarColor: color, canWrite: false };
       if (k % 3 === 0) {
         const h = 9 + ((d + 24 + i) % 7);
         team.push(ev(`t${d}-${i}`, timed[(d + 24 + i) % timed.length], date, `${String(h).padStart(2, '0')}:00`, `${String(h + 1).padStart(2, '0')}:30`, '', extra));
@@ -177,7 +182,7 @@ export function createPreviewApi(): PlannerApi {
       calendars: [
         { id: 'primary', summary: '내 달력', primary: true, canWrite: true, holiday: false, mine: true },
         { id: 'holiday', summary: '예시 공휴일 달력', primary: false, canWrite: false, holiday: true, mine: false },
-        { id: 'team', summary: '담당A', primary: false, canWrite: false, holiday: false, mine: false },
+        ...TEAM.map(({ id, name, color }) => ({ id, summary: name, primary: false, canWrite: false, holiday: false, mine: false, color })),
       ],
     }),
     calendarEvents: async () => ({ ok: true, events, readAt: Date.now(), fromCache: false, baseline: null }),
