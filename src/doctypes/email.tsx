@@ -1,17 +1,17 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import { ClipboardCopy, FileDown, FileText, Mail, Mails, RotateCcw, Wand2 } from 'lucide-react';
+import { ClipboardCopy, FileDown, FileText, Mail, Mails, RotateCcw, ScrollText } from 'lucide-react';
 import { EmailWorkspace } from '../email/components/EmailWorkspace';
 import { EmailStatusBar } from '../email/components/EmailStatusBar';
+import { ComposeFromTextDialog } from '../email/components/ComposeFromTextDialog';
 import { useEmailDoc } from '../email/useEmailDoc';
 import { useEmailState } from '../email/useEmailState';
 import { useEmailExport } from '../email/useEmailExport';
 import { getTemplates } from '../email/templates';
 import { Btn, MoreMenu } from '../components/ToolbarButton';
-import { useAiTidy } from '../ai/useAiTidy';
-import { applyEmail, planEmailTidy, reviewEmail } from '../ai/emailTidy';
-import { loadAiModel } from '../ai/settings';
+import { composeNames } from '../ai/emailCompose';
+import type { EmailDocState } from '../email/types';
 import { useDocTypeHost, useRegisterDocTypeHandlers } from './DocTypeHost';
 import type { DocTypeModule, DocTypeWorkspaceProps } from './registry';
 
@@ -34,44 +34,38 @@ function EmailModuleWorkspace({
   const allowHtmlCopy = !emailState.template?.hasBody;
   const weeklyOnly = () => toast.info('주간보고서 모드 전용 기능입니다.');
 
-  // AI 정돈 — 지금 입력값을 기준으로 계획하고, 적용 직전에 입력값이 그대로인지 확인한다
-  const ai = useAiTidy();
-  const docRef = useRef(emailDoc.doc);
-  docRef.current = emailDoc.doc;
-  const tidyWithAi = async () => {
-    const template = emailState.template;
-    if (!template) {
+  // 서술 → 문의(메일) — 편하게 적은 글을 이 서식의 칸에 맞는 글로 바꿔 넣는다 (작업일지의 대화 → 블록과 같은 흐름)
+  const compose = composeNames(emailState.template);
+  const [composeOpen, setComposeOpen] = useState(false);
+  // 이 메일에 적어 둔 서술 — 창을 닫았다 열어도 남고, 다른 메일로 바꾸면 비운다
+  const composeText = useRef('');
+  useEffect(() => {
+    composeText.current = '';
+  }, [emailDoc.docGen]);
+  const openCompose = () => {
+    if (!emailState.template) {
       toast.error('템플릿을 먼저 고르세요.');
       return;
     }
+    setComposeOpen(true);
+  };
+  const insertComposed = (next: EmailDocState, count: number) => {
     const base = emailDoc.doc;
-    await ai.run({
-      title: `AI 정돈 — ${template.name}`,
-      empty: '다듬을 내용이 없습니다. 제목·이슈·요청내용을 쓴 뒤 실행하세요.',
-      plan: () => planEmailTidy(template, base, loadAiModel()),
-      request: (p) => p.request,
-      review: (p, res) => reviewEmail(p, res),
-      apply: (_p, review, picked) => {
-        if (docRef.current !== base) {
-          toast.error('정돈하는 동안 입력값이 바뀌어 적용하지 않았습니다. 다시 실행하세요.');
-          return;
-        }
-        emailDoc.loadDoc(applyEmail(base, review, picked));
-        const gen = emailDoc.gen();
-        toast.success(`${picked.size}곳을 다듬었습니다.`, {
-          duration: 8000,
-          action: {
-            label: '되돌리기',
-            onClick: () => {
-              // 그 사이 새 이메일·다른 템플릿으로 바꿨으면 정돈 전 내용을 그 메일에 덮어쓰게 된다
-              if (emailDoc.gen() !== gen) {
-                toast.info('그 사이 다른 메일로 바꿔 되돌리지 않았습니다.');
-                return;
-              }
-              emailDoc.loadDoc(base);
-            },
-          },
-        });
+    setComposeOpen(false);
+    emailDoc.loadDoc(next);
+    const gen = emailDoc.gen();
+    toast.success(`서식에 ${count}곳을 넣었습니다 — 미리보기에서 확인하세요.`, {
+      duration: 8000,
+      action: {
+        label: '되돌리기',
+        onClick: () => {
+          // 그 사이 새 이메일·다른 템플릿으로 바꿨으면 넣기 전 내용을 그 메일에 덮어쓰게 된다
+          if (emailDoc.gen() !== gen) {
+            toast.info('그 사이 다른 메일로 바꿔 되돌리지 않았습니다.');
+            return;
+          }
+          emailDoc.loadDoc(base);
+        },
       },
     });
   };
@@ -104,8 +98,8 @@ function EmailModuleWorkspace({
         case 'enter':
           void emailExport.createDraft();
           return true;
-        case 'shift+a':
-          if (!ai.busy) void tidyWithAi();
+        case 'shift+b':
+          openCompose();
           return true;
         default:
           return false;
@@ -152,11 +146,12 @@ function EmailModuleWorkspace({
               />
             )}
             <Btn
-              label="AI 정돈"
-              shortcut="Ctrl+Shift+A · 제목·이슈·요청내용을 Claude로 다듬고 바뀔 곳을 확인한 뒤 적용"
-              icon={<Wand2 size={14} />}
-              disabled={ai.busy}
-              onClick={() => void tidyWithAi()}
+              label={compose.label}
+              shortcut="Ctrl+Shift+B · 편하게 적은 글을 이 서식의 칸에 맞는 글로 바꿔 채움 (Claude)"
+              icon={<ScrollText size={14} />}
+              primary
+              disabled={!emailState.template}
+              onClick={openCompose}
             />
             <Btn
               label={emailExport.busy ? '생성 중…' : '임시보관함'}
@@ -192,7 +187,20 @@ function EmailModuleWorkspace({
           </>,
           toolbarSlot,
         )}
-      {ai.view}
+      {composeOpen && emailState.template && (
+        <ComposeFromTextDialog
+          template={emailState.template}
+          doc={emailDoc.doc}
+          myName={profile.name}
+          company={profile.company}
+          initialText={composeText.current}
+          onTextChange={(t) => {
+            composeText.current = t;
+          }}
+          onInsert={insertComposed}
+          onClose={() => setComposeOpen(false)}
+        />
+      )}
       <div className="flex h-full flex-col">
         <main className="min-h-0 flex-1">
           <EmailWorkspace

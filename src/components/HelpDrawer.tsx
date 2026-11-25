@@ -318,7 +318,7 @@ export function HelpDrawer({
             <ThemeToggle theme={theme} onChange={onThemeChange} />
           </section>
 
-          {/* AI 정돈 — 양 모드 공통 (키·모델) */}
+          {/* AI(Claude API) — 모든 탭 공통 (키·모델) */}
           <AiSettings mono={isMono} open={open} />
 
           <GroupTitle mono={isMono}>{isMono ? '# guide' : '가이드'}</GroupTitle>
@@ -334,13 +334,26 @@ export function HelpDrawer({
                 </h3>
                 <ul className="space-y-1 text-[11px] text-fg-soft">
                   <li>1. 상단 드롭다운에서 템플릿 선택 → <b>입력항목</b>에 고정 항목(요청일자·고객사 등) 입력</li>
-                  <li>2. <b>본문</b> 탭에 자유 작성 — 굵게/글머리/표/이미지 붙여넣기 지원. 이미지를 누르면 모서리 끌기·<b>작게/최적 크기/원래 크기</b>로 크기 조절 (Gmail과 같음)</li>
-                  <li>3. 우측 <b>미리보기</b>로 실제 메일 모양 확인</li>
-                  <li>4. <b>임시보관함</b>(Ctrl+Enter) → Gmail 초안(이미지 인라인 포함) → Gmail에서 검토 후 발송</li>
+                  <li>2. <b>서술 → 문의</b>(Ctrl+Shift+B) — 문의하려는 내용·발생한 이슈·확인하거나 검토한 것을 편하게 적으면 제목·도입 문장·이슈·요청내용과 표의 빈 칸에 맞는 글로 바꿉니다. 결과를 고친 뒤 서식에 넣습니다</li>
+                  <li>3. <b>본문</b> 탭에서 고치거나 자유 작성 — 굵게/글머리/표/이미지 붙여넣기 지원. 이미지를 누르면 모서리 끌기·<b>작게/최적 크기/원래 크기</b>로 크기 조절 (Gmail과 같음)</li>
+                  <li>4. 우측 <b>미리보기</b>로 실제 메일 모양 확인</li>
+                  <li>5. <b>임시보관함</b>(Ctrl+Enter) → Gmail 초안(이미지 인라인 포함) → Gmail에서 검토 후 발송</li>
                 </ul>
                 <p className="mt-2 text-[11px] leading-relaxed text-fg-muted">
                   본문 없는 서식(라이선스 전달 등)은 <b>HTML 복사</b>도 제공합니다. 입력값 .json 열기·저장은 툴바 ⋯ 메뉴에 있습니다.
                 </p>
+              </section>
+
+              <section className="mb-3 rounded-card border border-rule bg-bg p-3">
+                <h3 className="mb-2 text-xs font-semibold text-fg">
+                  {isMono ? '$ compose' : '서술 → 문의'}
+                </h3>
+                <ul className="space-y-1 text-[11px] leading-relaxed text-fg-soft">
+                  <li>• 서술 칸에 순서 없이 적거나 고객과 나눈 대화를 붙여 넣습니다. 기술 문의는 <b>발생한 이슈 → [확인 내용] → ■ 확인 요청 사항 → ※ 참고</b> 순서의 글로 바뀝니다. 기술 문의가 아닌 서식에서는 버튼이 <b>서술 → 메일</b>로 보입니다.</li>
+                  <li>• <b>서술에 없는 것은 만들지 않습니다.</b> 확인·검토한 내용이 없으면 그 단락을 비우고 "확인할 점"에 알립니다. 표의 칸은 비어 있을 때만, 서술에 글자 그대로 있는 값으로만 채웁니다.</li>
+                  <li>• 날짜와 라이선스·키 칸은 읽지도 보내지도 않습니다. IP·URL·메일 주소·전화번호·키와 이름(대화 참여자·직함이 붙은 이름·내 이름)은 가려서 보냅니다.</li>
+                  <li>• 본문에 이미 내용(캡처 등)이 있으면 <b>지금 본문 위에 넣기</b>와 <b>본문을 바꿔 넣기</b> 중에 고릅니다. 넣은 뒤 토스트의 <b>되돌리기</b>로 돌립니다.</li>
+                </ul>
               </section>
 
               <section className="mb-3 rounded-card border border-rule bg-bg p-3">
@@ -362,6 +375,7 @@ export function HelpDrawer({
                   {isMono ? '$ shortcuts' : '단축키'}
                 </h3>
                 <ul className="space-y-1 text-[11px] text-fg-soft">
+                  <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Shift</kbd>+<kbd className="kbd">B</kbd> &nbsp;서술 → 문의 (편하게 적은 글을 서식에 맞는 글로)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Enter</kbd> &nbsp;임시보관함 (Gmail 초안)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Shift</kbd>+<kbd className="kbd">C</kbd> &nbsp;HTML 복사 (본문 없는 서식)</li>
                   <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">N</kbd> &nbsp;새 이메일 (현재 템플릿 초기화 · 되돌리기 가능)</li>

@@ -10,7 +10,7 @@ function optionText(c: ModelChoice): string {
   return `${c.label}${hint} (${priceText(c.id)} per 1M)${c.available === false ? ' · 이 키에서 사용 불가' : ''}`;
 }
 
-/** 설정 — AI 정돈(Claude API) 키와 모델. 키는 저장만 하고 화면에 다시 보여 주지 않는다 */
+/** 설정 — AI 기능(Claude API)의 키와 모델. 키는 저장만 하고 화면에 다시 보여 주지 않는다 */
 export function AiSettings({ mono, open }: { mono: boolean; open: boolean }) {
   const api = typeof window === 'undefined' ? undefined : window.reportApi;
   const [status, setStatus] = useState<AiKeyStatus | null>(null);
@@ -59,7 +59,7 @@ export function AiSettings({ mono, open }: { mono: boolean; open: boolean }) {
   if (!api?.aiKeyStatus) {
     return (
       <section className="mb-3 rounded-card border border-rule bg-bg p-3">
-        <h3 className="mb-1 text-xs font-semibold text-fg">{mono ? '$ ai' : 'AI 정돈 (Claude)'}</h3>
+        <h3 className="mb-1 text-xs font-semibold text-fg">{mono ? '$ ai' : 'AI (Claude API)'}</h3>
         <p className="text-[11px] text-fg-muted">데스크톱 앱에서 쓸 수 있습니다.</p>
       </section>
     );
@@ -95,11 +95,11 @@ export function AiSettings({ mono, open }: { mono: boolean; open: boolean }) {
   return (
     <section className="mb-3 rounded-card border border-rule bg-bg p-3">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-semibold text-fg">{mono ? '$ ai' : 'AI 정돈 (Claude)'}</h3>
+        <h3 className="text-xs font-semibold text-fg">{mono ? '$ ai' : 'AI (Claude API)'}</h3>
         <span className="text-[11px] text-fg-muted">{keyState}</span>
       </div>
       <p className="mb-2 text-[11px] leading-relaxed text-fg-muted">
-        툴바의 [AI 정돈](Ctrl+Shift+A) — 주간보고 항목, 이메일(고른 서식의 구성·예시에 맞춰), 작업일지 문장을 다듬고, 바뀔 곳을 확인한 뒤 고른 것만 적용합니다. 보내기 전에 IP·URL·메일 주소·전화번호·키 문자열을 가리고, 이미지·표·코드 블록·날짜·라이선스 키 칸·담당자 이름은 보내지 않습니다. 작업일지는 요청자·대화 참여자·직함이 붙은 이름도 가립니다.
+        이메일의 [서술 → 문의](Ctrl+Shift+B)는 편하게 적은 글을 고른 서식의 칸에 맞는 글로 바꾸고, 작업일지의 [대화 → 블록](Ctrl+Shift+B)은 대화를 일지 블록으로 정리합니다 — 둘 다 결과를 고친 뒤 넣습니다. 주간보고·작업일지의 [AI 정돈](Ctrl+Shift+A)은 문장만 다듬고, 바뀔 곳을 확인한 뒤 고른 것만 적용합니다. 보내기 전에 IP·URL·메일 주소·전화번호·키 문자열을 가리고, 날짜·라이선스 키 칸·주간보고의 담당자 이름은 보내지 않습니다. 이메일의 서술과 작업일지는 대화 참여자·직함이 붙은 이름도 가립니다.
       </p>
       <div className="space-y-1.5">
         <label className="flex items-center gap-2">

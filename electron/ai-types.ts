@@ -1,4 +1,4 @@
-/** AI 정돈 — renderer ↔ main IPC 계약. 키는 main에만 있고 renderer로 돌아가지 않는다. */
+/** AI 호출(Claude API) — renderer ↔ main IPC 계약. 키는 main에만 있고 renderer로 돌아가지 않는다. */
 
 /**
  * 지금 주력 모델(강한 순) — 단가·설명은 src/ai/settings.ts.

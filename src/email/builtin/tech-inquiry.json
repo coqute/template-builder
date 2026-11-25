@@ -14,7 +14,7 @@
           "key": "topic",
           "label": "메일 제목",
           "type": "text",
-          "placeholder": "예: [제트플러스] 알림 이름이 같을 때 규칙 활성화/비활성화 개선 요청",
+          "placeholder": "예: [{company}] 알림 이름이 같을 때 규칙 활성화/비활성화 개선 요청 (제트플러스)",
           "required": true,
           "subjectOnly": true,
           "wide": true

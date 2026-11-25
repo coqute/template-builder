@@ -1,5 +1,5 @@
 /**
- * AI 정돈 — Claude API 호출 (main 프로세스 전용).
+ * AI 기능 — Claude API 호출 (main 프로세스 전용).
  * API 키는 OS 암호화(safeStorage, Windows DPAPI)로 userData/ai-key.bin에 저장하고 renderer로 돌려주지 않는다.
  * 입력은 renderer가 마스킹을 마친 문자열이다 — 여기서는 보내고 받기만 한다. 요청·응답 해석은 ai-core.ts.
  */
@@ -80,7 +80,7 @@ export interface CompleteJsonOptions {
 export async function completeJson(req: AiCompleteRequest, opts: CompleteJsonOptions = {}): Promise<AiCompleteResult> {
   const key = opts.apiKey ?? (await resolveKey());
   if (!key) {
-    return { ok: false, code: 'no-key', message: 'API 키가 없습니다. 설정(F1) > AI 정돈에서 키를 저장하세요.' };
+    return { ok: false, code: 'no-key', message: 'API 키가 없습니다. 설정(F1) > AI에서 키를 저장하세요.' };
   }
   if (typeof req?.model !== 'string' || !AI_MODEL_RE.test(req.model)) {
     return { ok: false, code: 'bad-request', message: `모델 이름이 올바르지 않습니다: ${String(req?.model)}` };

@@ -397,7 +397,7 @@ ipcMain.handle(
   },
 );
 
-// AI 정돈 — Claude API (키 저장·연결 확인·호출)
+// AI 기능 — Claude API (키 저장·연결 확인·호출)
 registerAiIpc();
 
 // 작업일지 — 작업일지 폴더의 [YYYY-MM-DD] 제목.txt 읽기·쓰기

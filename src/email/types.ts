@@ -17,9 +17,9 @@ export interface EmailField {
   /** true면 표 위(인사말 아래)에 문단으로 렌더 — 라벨 없이 값만 (예: 기술 문의 도입 문장) */
   introLead?: boolean;
   /**
-   * AI 정돈이 이 칸을 다루는 방식 (생략하면 칸의 종류로 정한다 — src/ai/emailTidy.ts fieldRole).
-   * - 'prose': 문장 칸 — 다듬는다
-   * - 'fill': 사실 칸 — 비어 있을 때만 원문에 있는 값으로 채운다
+   * [서술 → 문의](AI)가 이 칸을 다루는 방식 (생략하면 칸의 종류로 정한다 — src/ai/emailCompose.ts fieldRole).
+   * - 'prose': 문장 칸 — 서술에서 쓴다
+   * - 'fill': 사실 칸 — 비어 있을 때만 서술에 글자 그대로 있는 값으로 채운다
    * - 'locked': 보내지도 바꾸지도 않는다 (라이선스 키처럼 글자 그대로여야 하고 밖으로 나가면 안 되는 값)
    */
   ai?: 'prose' | 'fill' | 'locked';

@@ -1,4 +1,4 @@
-/** AI 정돈 확인 창의 공용 모델 — 주간보고·이메일 모두 "바뀔 곳 목록"으로 보여 주고 고른 것만 적용한다. */
+/** AI 정돈 확인 창의 공용 모델 — 주간보고·작업일지 모두 "바뀔 곳 목록"으로 보여 주고 고른 것만 적용한다. */
 import type { AiUsage } from '../../electron/ai-types';
 
 export interface ReviewChange {

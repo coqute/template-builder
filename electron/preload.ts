@@ -84,7 +84,7 @@ const api = {
   createGmailDraft: (payload: DraftPayload) =>
     ipcRenderer.invoke('gmail:create-draft', payload) as Promise<GmailDraftResult>,
   loadSample: () => ipcRenderer.invoke('asset:load-sample') as Promise<string | null>,
-  // AI 정돈 — 키는 main에만 저장되고 다시 읽어 오지 않는다(상태만)
+  // AI 기능 — 키는 main에만 저장되고 다시 읽어 오지 않는다(상태만)
   aiKeyStatus: () => ipcRenderer.invoke('ai:key-status') as Promise<AiKeyStatus>,
   aiSetKey: (key: string) =>
     ipcRenderer.invoke('ai:key-set', key) as Promise<{ ok: true } | { ok: false; error: string }>,

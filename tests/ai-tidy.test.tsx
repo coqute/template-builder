@@ -1,5 +1,5 @@
 /**
- * AI 정돈 (v0.6.0) — 마스킹·검증·주간보고/이메일 계획→응답→적용·확인 창.
+ * AI 정돈 (v0.6.0) — 마스킹·검증·주간보고 계획→응답→적용·확인 창. (이메일은 v0.25.0에서 서술 → 문의로 바뀌었다 — email-compose.test.tsx)
  * Claude API 호출 자체는 앱(main)에서 실측한다 — 여기서는 보내는 내용과 받은 결과를 다루는 규칙을 고정한다.
  * 픽스처의 주소·이름은 모두 합성 값이다.
  */
@@ -10,10 +10,8 @@ import { resolve } from 'node:path';
 import { parseTolerant, serialize } from '../src/core/index';
 import { Masker, missingFacts, sameTokens } from '../src/ai/mask';
 import { applyWeekly, checkLine, planWeeklyTidy, reviewWeekly, stripLineIds } from '../src/ai/weeklyTidy';
-import { applyEmail, bodyToSkeleton, planEmailTidy, reviewEmail, skeletonToBody } from '../src/ai/emailTidy';
 import { estimateUsd } from '../src/ai/settings';
 import { diffWords } from '../src/ai/diff';
-import { getTemplate } from '../src/email/templates';
 import { AiReviewDialog } from '../src/components/AiReviewDialog';
 import type { AiCompleteResult } from '../electron/ai-types';
 
@@ -166,92 +164,6 @@ describe('주간보고 정돈', () => {
     it('쓴 항목이 없으면 보낼 것이 없다', () => {
     const blank = '@PREV 2026-10-12 ~ 2026-10-18\n\n# 2026-10-12(월)\n';
     expect(planWeeklyTidy(parseTolerant(blank).report, 'claude-opus-5-5')).toBeNull();
-  });
-});
-
-describe('이메일(기술 문의) 정돈', () => {
-  const template = getTemplate('tech-inquiry', { name: '홍길동', email: '', company: '예시IT' })!;
-  const body =
-    '<p>서버 192.0.2.5 에서 이벤트가 두번씩 와요 확인좀 부탁드려요</p>' +
-    '<p><img src="data:image/png;base64,iVBORw0KGgo=" alt="캡처" width="320"></p>' +
-    '<pre>ERROR dup event id=42</pre>' +
-    '<table><tbody><tr><td>항목</td><td>값</td></tr></tbody></table>' +
-    '<p>OS 는 RHEL 8.10 입니다</p>';
-  const doc = {
-    templateId: 'tech-inquiry',
-    fieldValues: { topic: '[제트플러스] 이벤트 두번 옴', intro: '', issue: '이벤트 중복', requestDate: '2026-10-21', serverOs: '' },
-    bodyHtml: body,
-  };
-
-  it('본문 뼈대 — 이미지·코드·표는 자리표시, 글은 마스킹, 되돌리면 원본 그대로', () => {
-    const m = new Masker();
-    const { skeleton, blocks } = bodyToSkeleton(body, m);
-    expect(skeleton).toBe('<p>서버 ⟦IP1⟧ 에서 이벤트가 두번씩 와요 확인좀 부탁드려요</p><p>⟦IMG1⟧</p>⟦CODE1⟧⟦TABLE1⟧<p>OS 는 RHEL 8.10 입니다</p>');
-    expect(blocks.size).toBe(3);
-    const out = '<p>서버 ⟦IP1⟧에서 이벤트가 두 번씩 수신됩니다.</p><p>⟦IMG1⟧</p><p>⟦CODE1⟧</p><p>⟦TABLE1⟧</p><p>수집서버 OS는 RHEL 8.10입니다.</p>';
-    const back = skeletonToBody(out, { skeleton, blocks, masker: m });
-    expect(back.ok).toBe(true);
-    const html = (back as { html: string }).html;
-    expect(html).toContain('192.0.2.5');
-    expect(html).toContain('<img src="data:image/png;base64,iVBORw0KGgo=" alt="캡처"');
-    expect(html).toContain('<pre>ERROR dup event id=42</pre>');
-    expect(html).toContain('<table>');
-    expect(html).not.toContain('<p><pre>');
-    // 이미지는 원래처럼 문단 안에
-    expect(html).toMatch(/<p><img [^>]*><\/p>/);
-    // 자리표시가 빠지면 본문은 받지 않는다
-    const lost = skeletonToBody(out.replace('<p>⟦IMG1⟧</p>', ''), { skeleton, blocks, masker: m });
-    expect(lost).toEqual({ ok: false, reason: '⟦IMG1⟧ 자리표시가 빠짐' });
-  });
-
-  it('계획 — 글 칸·채움 칸·잠긴 칸을 나누고, 본문의 IP·이미지는 보내지 않는다', () => {
-    const plan = planEmailTidy(template, doc, 'claude-sonnet-5-5')!;
-    const payload = JSON.parse(plan.request.user.slice(plan.request.user.indexOf('{')));
-    const roles = Object.fromEntries(payload.fields.map((f: { key: string; role: string }) => [f.key, f.role]));
-    expect(roles).toMatchObject({ topic: 'prose', intro: 'prose', issue: 'prose', serverOs: 'fill', contractType: 'fill' });
-    expect(roles.requestDate).toBeUndefined(); // 날짜는 잠금
-    expect(plan.request.user).not.toContain('192.0.2.5');
-    expect(plan.request.user).not.toContain('base64');
-    expect(plan.request.system).toContain('제조사지원');
-  });
-
-  it('검토 — [고객사] 머리 보존, 빈 칸은 원문 근거가 있을 때만, 보기 밖 값은 제외', () => {
-    const plan = planEmailTidy(template, doc, 'claude-opus-5-5')!;
-    const json = {
-      fields: [
-        { key: 'topic', value: '[제트플러스] 동일 이벤트 중복 수신 문의' },
-        { key: 'intro', value: '제트플러스 지원 중 확인이 필요한 사항이 있어 메일 드립니다.' },
-        { key: 'issue', value: '[ABZ+] 이벤트 중복' }, // 머리 없던 칸 — 허용
-        { key: 'serverOs', value: 'RHEL 8.10' }, // 본문에 그대로 있음 → 채움 OK
-        { key: 'agentVersion', value: '2.1.0' }, // 원문에 없음 → 제외
-        { key: 'contractType', value: '연간계약' }, // 보기 밖 → 제외
-        { key: 'requestDate', value: '2026-10-22' }, // 잠금 → 무시
-      ],
-      body: '<p>서버 ⟦IP1⟧에서 이벤트가 두 번씩 수신됩니다. 확인 부탁드립니다.</p><p>⟦IMG1⟧</p><p>⟦CODE1⟧</p><p>⟦TABLE1⟧</p><p>수집서버 OS는 RHEL 8.10입니다.</p>',
-      notes: ['중복 발생 시각과 이벤트 설정 화면 캡처가 있으면 좋습니다.'],
-    };
-    const review = reviewEmail(plan, ok(json));
-    const byId = Object.fromEntries(review.changes.map((c) => [c.id, c]));
-    expect(byId['field:topic'].ok).toBe(true);
-    expect(byId['field:intro'].ok).toBe(true);
-    expect(byId['field:serverOs']).toMatchObject({ ok: true, label: '수집서버 OS 및 버전 (빈 칸 채움)' });
-    expect(byId['field:agentVersion']).toMatchObject({ ok: false, reason: '원문에 없는 값(추측)' });
-    expect(byId['field:contractType']).toMatchObject({ ok: false, reason: '보기에 없는 값' });
-    expect(byId['field:requestDate']).toBeUndefined();
-    expect(byId.body.ok).toBe(true);
-    expect(byId.body.before).toBe(body);
-
-    const next = applyEmail(doc, review, new Set(['field:topic', 'field:serverOs', 'body']));
-    expect(next.fieldValues.topic).toBe('[제트플러스] 동일 이벤트 중복 수신 문의');
-    expect(next.fieldValues.serverOs).toBe('RHEL 8.10');
-    expect(next.fieldValues.intro).toBe(''); // 고르지 않음
-    expect(next.bodyHtml).toContain('192.0.2.5에서 이벤트가 두 번씩 수신됩니다');
-    expect(next.bodyHtml).toContain('data:image/png;base64,iVBORw0KGgo=');
-
-    // 제목의 [고객사] 머리를 바꾸면 받지 않는다
-    const bad = reviewEmail(plan, ok({ ...json, fields: [{ key: 'topic', value: '[AB Z+] 동일 이벤트 중복 수신 문의' }] }));
-    expect(bad.changes[0]).toMatchObject({ ok: false });
-    expect(bad.changes[0].reason).toContain('[제트플러스]');
   });
 });
 
