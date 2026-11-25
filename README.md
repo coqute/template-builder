@@ -37,22 +37,17 @@
 flowchart TB
   subgraph R["Renderer · React"]
     direction LR
-    P["문서 플러그인<br/>홈 · 주간보고<br/>이메일 · 작업일지"] --> C["core<br/>문법 파서 · 검증기 · 렌더러"]
+    P["문서 플러그인<br/>홈 · 주간보고<br/>이메일 · 작업일지"] --> C["core<br/>문법 파서<br/>검증기 · 렌더러"]
   end
 
   subgraph M["Main · Electron"]
-    direction TB
-    F["파일 · 작업일지 폴더<br/>원자적 쓰기"]
-    S["할 일 저장소<br/>잠금 · 백업 · 바뀐 기록"]
-    K["API 키<br/>OS 암호화 저장"]
+    direction LR
+    F["파일 · 작업일지<br/>원자적 쓰기"] ~~~ S["할 일 저장소<br/>잠금 · 백업 · 기록"] ~~~ K["API 키<br/>OS 암호화 저장"]
   end
 
   subgraph E["외부 서비스"]
-    direction TB
-    G["Gmail API"]
-    GC["Google Calendar API"]
-    N["Notion API"]
-    A["Claude API"]
+    direction LR
+    G["Gmail API"] ~~~ GC["Google Calendar API"] ~~~ N["Notion API"] ~~~ A["Claude API"]
   end
 
   T["플래너 도구<br/>MCP 서버 · CLI"]
