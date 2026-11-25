@@ -4,7 +4,19 @@
 
 주간보고·반복 이메일·작업일지를 **정해진 형식으로 쓰고, 검증하고, 메일 초안까지 만드는** Windows 데스크톱 앱
 
-[Electron](https://www.electronjs.org/) [React](https://react.dev/) [TypeScript](https://www.typescriptlang.org/) [Vite](https://vite.dev/) [Tailwind CSS](https://tailwindcss.com/) [CodeMirror](https://codemirror.net/) [Vitest](https://vitest.dev/) [Gmail API](https://developers.google.com/gmail/api) [Google Calendar API](https://developers.google.com/calendar) [Notion API](https://developers.notion.com/) [Claude API](https://platform.claude.com/docs) [MCP](https://modelcontextprotocol.io/)
+[![Electron](https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![CodeMirror](https://img.shields.io/badge/CodeMirror-D30707?style=for-the-badge&logo=codemirror&logoColor=white)](https://codemirror.net/)
+[![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+
+[![Gmail API](https://img.shields.io/badge/Gmail_API-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](https://developers.google.com/gmail/api)
+[![Google Calendar API](https://img.shields.io/badge/Google_Calendar_API-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://developers.google.com/calendar)
+[![Notion API](https://img.shields.io/badge/Notion_API-000000?style=for-the-badge&logo=notion&logoColor=white)](https://developers.notion.com/)
+[![Claude API](https://img.shields.io/badge/Claude_API-D97757?style=for-the-badge&logo=claude&logoColor=white)](https://platform.claude.com/docs)
+[![MCP](https://img.shields.io/badge/MCP-000000?style=for-the-badge&logo=modelcontextprotocol&logoColor=white)](https://modelcontextprotocol.io/)
 
 ![홈 화면 — 남은 작업과 앞으로 2주의 일정](docs/screenshots/home.png)
 
