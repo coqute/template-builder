@@ -1,12 +1,15 @@
 /**
  * 홈 화면 상태 — 플래너 저장소 · 작업일지 후보 · 주간보고 표지 · Google 달력 · Notion을 읽어 한 모양으로 내준다.
  *
- * - 읽는 때: 화면을 열 때, 창이 다시 앞에 올 때, 보이는 동안 5분마다(달력), [새로 고침].
+ * - 읽는 때: 화면을 열 때, 창이 다시 앞에 올 때, [새로 고침] — 저장소·작업일지·주간보고(이 PC의 파일)는 그때마다 읽는다.
+ *   달력·Notion(인터넷 호출)은 읽은 지 5분이 지났을 때만 다시 부른다: main이 5분 기억하고(달력 목록·일정·Notion),
+ *   홈이 보이는 동안에는 1분마다 "읽은 지 5분이 지났는가"를 본다. [새로 고침]은 기억을 건너뛴다.
+ * - 마지막으로 읽은 것은 창이 떠 있는 동안 기억해 둔다(`Kept`) — 탭을 바꿨다 돌아와도 빈 화면에서 다시 시작하지 않는다.
  * - 원본(작업일지·주간보고·달력·Notion)은 여기서 바꾸지 않는다. 고치는 것은 플래너 저장소뿐이고 `apply(동작)` 하나로만 한다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { plannerApi, type PlannerApi } from './api';
+import { plannerApi, plannerApiSource, type PlannerApi } from './api';
 import { classifyEvents, detectClient, diffEvents, sortEvents, type EventChange, type HomeEvent } from './classify';
 import { addDays, mondayOf, todayIso } from './dates';
 import { agendaDays, buildStrip, closedInWorklog, groupTasks, recentPastEvents, summarize, visibleCandidates } from './model';
@@ -19,7 +22,10 @@ import type { CalendarStatus, NotionPage, NotionStatus, PlannerLogEntry, Planner
 
 const DRAFT_KEY = 'tb:md-draft:v1';
 const FOLDER_MAP_KEY = 'tb:worklog:weekly-map:v1';
-const CALENDAR_MS = 5 * 60 * 1000;
+/** 달력·Notion을 다시 읽는 주기 — main의 기억과 같은 길이다(읽은 시각 `readAt`이 두 쪽의 같은 시계) */
+export const REMOTE_MS = 5 * 60 * 1000;
+/** 홈이 보이는 동안 "읽은 지 REMOTE_MS가 지났는가"를 보는 간격 */
+export const CHECK_MS = 60 * 1000;
 /** 저장 파일이 바깥(명령줄·MCP 도구)에서 바뀌었는지 보는 주기 — 작업일지 탭과 같다 */
 const STORE_POLL_MS = 3000;
 /** Claude가 고친 할 일을 마지막으로 확인한 시각 (ISO) */
@@ -78,18 +84,63 @@ export function folderClient(folder: string): string {
   return saved?.[folder]?.client?.trim() || detectClient(folder);
 }
 
+/**
+ * 마지막으로 읽은 것 — 탭을 바꾸면 홈 화면이 새로 만들어지는데, 그때 빈 화면("달력 확인 중")에서 다시 시작하지 않게
+ * 창이 떠 있는 동안 기억해 둔다. 파일로 남기지 않는다. 통로(main 또는 미리보기)마다 하나.
+ */
+interface Kept {
+  state: PlannerState | null;
+  storePath: string;
+  cal: CalendarView;
+  wl: WorklogView;
+  weekly: WeeklyScan | null;
+  notion: NotionView;
+  /** 이 화면에서 내가 고치거나 지운 일정 */
+  own: Set<string>;
+  /** 달력·Notion을 마지막으로 읽은 시각(읽지 못했으면 읽으려 한 시각) — 주기 확인이 이것으로 "다시 읽을 때가 됐는가"를 본다 */
+  calAt: number;
+  notionAt: number;
+}
+
+const kept = new WeakMap<object, Kept>();
+
+function keptOf(source: object): Kept {
+  let k = kept.get(source);
+  if (!k) {
+    k = {
+      state: null,
+      storePath: '',
+      cal: { status: null, calendars: [], raw: [], baseline: null, readAt: null, error: null },
+      wl: { ready: false, folders: [], scan: null, error: null },
+      weekly: null,
+      notion: { status: null, pages: [], failed: [], readAt: null, error: null },
+      own: new Set<string>(),
+      calAt: 0,
+      notionAt: 0,
+    };
+    kept.set(source, k);
+  }
+  return k;
+}
+
 export function usePlanner() {
   const api: PlannerApi = useMemo(plannerApi, []);
+  /** 지난번에 읽어 둔 것 — 처음이면 비어 있다 */
+  const keep = useMemo(() => keptOf(plannerApiSource()), []);
   const [today, setToday] = useState(todayIso);
-  const [state, setState] = useState<PlannerState | null>(null);
-  const [storePath, setStorePath] = useState('');
+  const [state, setState] = useState<PlannerState | null>(keep.state);
+  const [storePath, setStorePath] = useState(keep.storePath);
   const [storeError, setStoreError] = useState<string | null>(null);
-  const [cal, setCal] = useState<CalendarView>({ status: null, calendars: [], raw: [], baseline: null, readAt: null, error: null });
+  const [cal, setCal] = useState<CalendarView>(keep.cal);
   /** 이 화면에서 내가 고치거나 지운 일정 — '바뀜'으로 띄우지 않는다 */
-  const own = useRef(new Set<string>());
-  const [wl, setWl] = useState<WorklogView>({ ready: false, folders: [], scan: null, error: null });
-  const [weekly, setWeekly] = useState<WeeklyScan | null>(null);
-  const [notion, setNotion] = useState<NotionView>({ status: null, pages: [], failed: [], readAt: null, error: null });
+  const own = useRef(keep.own);
+  const [wl, setWl] = useState<WorklogView>(keep.wl);
+  const [weekly, setWeekly] = useState<WeeklyScan | null>(keep.weekly);
+  const [notion, setNotion] = useState<NotionView>(keep.notion);
+  // 읽은 것을 기억해 둔다 — 다음에 홈을 열면 여기서 시작한다
+  useEffect(() => {
+    Object.assign(keep, { state, storePath, cal, wl, weekly, notion });
+  }, [keep, state, storePath, cal, wl, weekly, notion]);
   const [busy, setBusy] = useState(true);
   const [seenAt, setSeenAt] = useState(() => (typeof localStorage === 'undefined' ? '' : (localStorage.getItem(SEEN_KEY) ?? '')));
   /** 마지막으로 읽기 직전에 본 저장 파일의 시각 — 이것과 달라지면 다시 읽는다 */
@@ -127,19 +178,22 @@ export function usePlanner() {
       const status = await api.calendarStatus();
       if (!alive.current) return null;
       if (!status.canRead) {
+        keep.calAt = Date.now();
         setCal({ status, calendars: [], raw: [], baseline: null, readAt: null, error: null });
         return null;
       }
       // 읽을 달력 = 설정에서 고른 것 + (켜 두었으면) 구독 중인 공휴일 달력
       let calendars = settings.calendars;
       if (settings.holidays && status.canList) {
-        const list = await api.calendarList();
+        const list = await api.calendarList({ force });
         if (!alive.current) return null;
         if (list.ok) calendars = [...new Set([...calendars, ...list.calendars.filter((c) => c.holiday).map((c) => c.id)])];
       }
       const day = todayIso();
       const r = await api.calendarEvents({ from: addDays(mondayOf(day), -PAST_DAYS), to: addDays(day, AHEAD_DAYS), calendars, force });
       if (!alive.current) return null;
+      // main이 기억해 둔 것을 돌려줬으면 readAt은 그때의 시각이다 — 그 시각에서 5분이 지나면 다시 읽을 때다
+      keep.calAt = r.ok ? r.readAt : Date.now();
       if (r.ok) {
         setCal({ status, calendars, raw: r.events, baseline: r.baseline, readAt: r.readAt, error: null });
         return { raw: r.events, baseline: r.baseline };
@@ -147,7 +201,7 @@ export function usePlanner() {
       setCal((prev) => ({ status, calendars, raw: r.cached?.events ?? prev.raw, baseline: null, readAt: r.cached?.readAt ?? prev.readAt, error: r.message }));
       return null;
     },
-    [api],
+    [api, keep],
   );
 
   const loadWorklog = useCallback(
@@ -189,22 +243,28 @@ export function usePlanner() {
         const want = settings.notion ?? DEFAULT_NOTION;
         const sources = sourcesToRead(want);
         if (!status?.connected || sources.length === 0) {
+          keep.notionAt = Date.now();
           setNotion({ status, pages: [], failed: [], readAt: null, error: null });
           return;
         }
         const since = new Date(`${notionFrom(todayIso())}T00:00:00`).toISOString();
         const r = await api.notionRecent({ sources, since, loose: want.loose, force });
         if (!alive.current) return;
+        keep.notionAt = r.ok ? r.readAt : Date.now();
         if (r.ok) setNotion({ status, pages: r.pages, failed: r.failed, readAt: r.readAt, error: null });
         else setNotion((prev) => ({ status, pages: prev.pages, failed: [], readAt: prev.readAt, error: r.message }));
       } catch (err) {
+        keep.notionAt = Date.now();
         if (alive.current) setNotion((prev) => ({ ...prev, error: err instanceof Error ? err.message : '알 수 없는 오류' }));
       }
     },
-    [api],
+    [api, keep],
   );
 
-  /** 전부 다시 읽는다 — force면 달력의 5분 기억도 건너뛴다 */
+  /**
+   * 다시 읽는다 — 저장소·작업일지·주간보고는 늘 파일에서, 달력·Notion은 main이 기억해 둔 것(5분)이 있으면 그것을 받는다.
+   * force([새로 고침])면 그 기억도 건너뛰고 지금 것을 부른다.
+   */
   const refresh = useCallback(
     async (force = false) => {
       setBusy(true);
@@ -220,12 +280,16 @@ export function usePlanner() {
   useEffect(() => {
     void refresh();
     const onFocus = () => void refresh();
+    // 홈이 보이는 동안: 읽은 지 5분이 지난 것만 다시 읽는다. 전에는 화면을 연 때부터 5분마다 불렀는데,
+    // main의 기억도 5분이라 한 번 걸러 기억해 둔 것이 돌아왔다(실제로는 10분에 한 번) — 이제 읽은 시각으로 잰다.
     const tick = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       setToday(todayIso());
-      void loadCalendar(stateRef.current?.settings ?? DEFAULT_SETTINGS);
-      void loadNotion(stateRef.current?.settings ?? DEFAULT_SETTINGS);
-    }, CALENDAR_MS);
+      const settings = stateRef.current?.settings ?? DEFAULT_SETTINGS;
+      const now = Date.now();
+      if (now - keep.calAt >= REMOTE_MS) void loadCalendar(settings);
+      if (now - keep.notionAt >= REMOTE_MS) void loadNotion(settings);
+    }, CHECK_MS);
     // 명령줄·MCP 도구가 저장 파일을 고치면 3초 안에 받아 온다 (창이 보일 때만)
     const poll = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;

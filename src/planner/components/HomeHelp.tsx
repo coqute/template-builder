@@ -33,7 +33,8 @@ export function HomeSettings({ mono, open }: { mono: boolean; open: boolean }) {
         setPath(store.path);
       }
       if (s.canRead && s.canList) {
-        const list = await api.calendarList();
+        // 설정을 열면 지금 목록을 읽는다 — 방금 구독한 달력이 바로 보이게(홈은 5분 기억한 것을 쓴다)
+        const list = await api.calendarList({ force: true });
         if (alive) setCalendars(list.ok ? list.calendars : null);
       } else setCalendars(null);
     })();

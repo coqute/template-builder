@@ -256,7 +256,8 @@ export type CalendarEventsResult =
       cached?: { events: RawEvent[]; readAt: number };
     };
 
-export type CalendarListResult = { ok: true; calendars: CalendarInfo[] } | { ok: false; code: CalendarErrorCode; message: string };
+/** `fromCache` — main이 기억해 둔 목록을 돌려준 것인가(5분, 홈을 열 때마다 다시 부르지 않게) */
+export type CalendarListResult = { ok: true; calendars: CalendarInfo[]; fromCache?: boolean } | { ok: false; code: CalendarErrorCode; message: string };
 
 export interface EventInput {
   /** 없으면 본인 달력 */

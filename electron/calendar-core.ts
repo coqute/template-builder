@@ -227,6 +227,30 @@ export async function listCalendars(deps: CalendarDeps): Promise<CalendarListRes
   });
 }
 
+/**
+ * 달력 목록의 기억 — 홈을 열 때마다 목록을 다시 부르지 않게 한다(목록은 거의 바뀌지 않는다).
+ * `maxAge`(ms) 안에 읽은 것이 있으면 그것을(`fromCache: true`), 없으면 읽어서 돌려준다.
+ * 읽지 못한 결과는 기억하지 않고, 겹쳐 들어온 요청은 한 번만 부른다.
+ */
+export function createCalendarListMemo(now: () => number = Date.now) {
+  let kept: { calendars: CalendarInfo[]; readAt: number } | null = null;
+  let flying: Promise<CalendarListResult> | null = null;
+  return {
+    get(deps: CalendarDeps, maxAge: number): Promise<CalendarListResult> {
+      if (kept && now() - kept.readAt < maxAge) return Promise.resolve({ ok: true, calendars: kept.calendars, fromCache: true });
+      flying ??= listCalendars(deps)
+        .then((got) => {
+          if (got.ok) kept = { calendars: got.calendars, readAt: now() };
+          return got;
+        })
+        .finally(() => {
+          flying = null;
+        });
+      return flying;
+    },
+  };
+}
+
 // ── 일정 읽기 ───────────────────────────────────────────────────────────────
 
 interface GEventTime {

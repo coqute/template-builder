@@ -44,7 +44,8 @@ export interface PlannerApi {
   plannerLog(limit?: number): Promise<PlannerLogResult>;
   plannerReveal(): Promise<{ ok: boolean; error?: string }>;
   calendarStatus(): Promise<CalendarStatus>;
-  calendarList(): Promise<CalendarListResult>;
+  /** 달력 목록 — main이 5분 기억한다. `force`면 지금 것을 읽는다(설정 화면·[새로 고침]) */
+  calendarList(req?: { force?: boolean }): Promise<CalendarListResult>;
   calendarEvents(req: CalendarEventsRequest): Promise<CalendarEventsResult>;
   calendarAck(): Promise<{ ok: boolean }>;
   calendarInsert(input: EventInput): Promise<CalendarWriteResult>;
@@ -69,9 +70,26 @@ export interface PlannerApi {
 
 let preview: PlannerApi | null = null;
 
-export function plannerApi(): PlannerApi {
+/** 앱의 통로(preload) — 없으면(웹 미리보기) undefined */
+function realApi(): PlannerApi | undefined {
   const real = typeof window !== 'undefined' ? (window.reportApi as unknown as Partial<PlannerApi> | undefined) : undefined;
-  if (real?.plannerGet && real.calendarStatus) return { ...(real as PlannerApi), preview: false };
+  return real?.plannerGet && real.calendarStatus ? (real as PlannerApi) : undefined;
+}
+
+export function plannerApi(): PlannerApi {
+  const real = realApi();
+  if (real) return { ...real, preview: false };
+  preview ??= createPreviewApi();
+  return preview;
+}
+
+/**
+ * 통로의 정체 — `plannerApi()`는 부를 때마다 새 객체를 주므로, 통로마다 하나씩 두는 것
+ * (홈이 마지막으로 읽어 기억해 둔 화면 상태)은 이것으로 가린다.
+ */
+export function plannerApiSource(): object {
+  const real = realApi();
+  if (real) return real;
   preview ??= createPreviewApi();
   return preview;
 }

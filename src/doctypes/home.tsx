@@ -55,6 +55,20 @@ function logLine(e: PlannerLogEntry): { when: string; what: string; title: strin
   return { when, what, title: after.title ?? before.title ?? '' };
 }
 
+/**
+ * 아래 목록의 그 할 일·일정 줄로 간다. 줄이 아직 없으면 그려질 때까지 잠깐(최대 1.5초) 기다린다 —
+ * 홈은 마지막으로 읽은 내용으로 먼저 그려지므로, 다른 화면에서 방금 만든 할 일·일정의 줄은 다시 읽은 뒤에야 생긴다.
+ */
+function goToRow(root: () => HTMLElement | null, key: string, tries = 25): void {
+  window.setTimeout(() => {
+    const box = root();
+    if (!box) return; // 화면을 떠났다
+    const hit = [...box.querySelectorAll('[data-task], [data-event]')].find((el) => el.getAttribute('data-task') === key || el.getAttribute('data-event') === key);
+    if (hit) hit.scrollIntoView({ block: 'center' });
+    else if (tries > 0) goToRow(root, key, tries - 1);
+  }, 60);
+}
+
 function HomeWorkspace(_props: DocTypeWorkspaceProps) {
   const { toolbarSlot, navigate, intent, clearIntent } = useDocTypeHost();
   const p = usePlanner();
@@ -80,24 +94,14 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     clearIntent();
     setFlash(key);
     if (!key) return;
-    window.setTimeout(() => {
-      const hit = [...(mainRef.current?.querySelectorAll('[data-task], [data-event]') ?? [])].find(
-        (el) => el.getAttribute('data-task') === key || el.getAttribute('data-event') === key,
-      );
-      hit?.scrollIntoView({ block: 'center' });
-    }, 60);
+    goToRow(() => mainRef.current, key);
     window.setTimeout(() => setFlash((cur) => (cur === key ? null : cur)), 2600);
   }, [intent, loaded, clearIntent]);
 
   /** 아래 목록에서 그 할 일·일정 줄로 가서 잠깐 테두리를 두른다 */
   const reveal = useCallback((key: string) => {
     setFlash(key);
-    window.setTimeout(() => {
-      const hit = [...(mainRef.current?.querySelectorAll('[data-task], [data-event]') ?? [])].find(
-        (el) => el.getAttribute('data-task') === key || el.getAttribute('data-event') === key,
-      );
-      hit?.scrollIntoView({ block: 'center' });
-    }, 60);
+    goToRow(() => mainRef.current, key);
     window.setTimeout(() => setFlash((cur) => (cur === key ? null : cur)), 2600);
   }, []);
 

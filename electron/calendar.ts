@@ -1,5 +1,5 @@
 /**
- * Google 달력 IPC (main 전용) — 연결 상태·달력 목록·일정 읽기(5분 기억 + 마지막으로 읽은 결과 보관)·쓰기.
+ * Google 달력 IPC (main 전용) — 연결 상태·달력 목록(5분 기억)·일정 읽기(5분 기억 + 마지막으로 읽은 결과 보관)·쓰기.
  * 호출과 권한 범위 판정은 calendar-core.ts. 설계: docs/home-schedule-design.md §5.4·§8
  *
  * - 토큰을 어디서 받는지는 `access()` 하나만 안다 — 지금은 Gmail 초안과 같은 자격증명이고, 그 파일은 읽기만 한다.
@@ -15,9 +15,9 @@ import { CredError, loadGmailCreds } from './gmail/credentials';
 import { getAccessToken, OAuthError } from './gmail/oauth';
 import {
   calendarScopes,
+  createCalendarListMemo,
   deleteEvent,
   insertEvent,
-  listCalendars,
   listEvents,
   patchEvent,
   type CalendarDeps,
@@ -39,6 +39,8 @@ import type {
 
 const MEMO_MS = 5 * 60 * 1000;
 const MEMO_MAX = 20;
+/** 지금 것을 달라는 읽기([새로 고침]·설정 화면)가 다시 써도 되는 목록의 나이 — 같은 새로 고침 안에서 목록을 두 번 부르지 않을 만큼만 */
+const FRESH_MS = 10 * 1000;
 const NO_READ = '토큰에 Google 달력 일정을 읽는 권한 범위가 없습니다.';
 const NO_LIST = '토큰에 Google 달력 목록을 읽는 권한 범위가 없습니다.';
 const NO_WRITE = '토큰에 Google 달력 일정을 만들고 고치는 권한 범위가 없습니다.';
@@ -55,7 +57,8 @@ interface CacheFile {
 
 /** 5분 기억 — 탭을 오갈 때마다 다시 부르지 않게 */
 const memo = new Map<string, { events: RawEvent[]; readAt: number }>();
-let listMemo: { calendars: CalendarInfo[]; readAt: number } | null = null;
+/** 달력 목록도 5분 기억한다 — 전에는 홈을 열 때마다 다시 불렀다(실측 약 0.4초, v0.24.2) */
+const calendarList = createCalendarListMemo();
 
 /** 토큰을 어디서 받는가 — 이 함수만 안다 */
 async function access(): Promise<{ scopes: CalendarScopes; deps: CalendarDeps }> {
@@ -110,13 +113,10 @@ async function withCached(fail: CalendarFailure): Promise<CalendarEventsResult> 
 }
 
 /** 달력 목록(쓸 수 있는지·공휴일 달력인지 판정용) — 목록 범위가 없거나 읽지 못하면 undefined */
-async function knownCalendars(scopes: CalendarScopes, deps: CalendarDeps): Promise<CalendarInfo[] | undefined> {
+async function knownCalendars(scopes: CalendarScopes, deps: CalendarDeps, maxAge = MEMO_MS): Promise<CalendarInfo[] | undefined> {
   if (!scopes.canList) return undefined;
-  if (listMemo && Date.now() - listMemo.readAt < MEMO_MS) return listMemo.calendars;
-  const got = await listCalendars(deps);
-  if (!got.ok) return undefined;
-  listMemo = { calendars: got.calendars, readAt: Date.now() };
-  return got.calendars;
+  const got = await calendarList.get(deps, maxAge);
+  return got.ok ? got.calendars : undefined;
 }
 
 /** 쓰기 공통 — 쓰기 범위 확인, 성공하면 5분 기억을 비운다(다음 읽기가 바뀐 일정을 받게) */
@@ -144,13 +144,13 @@ export function registerCalendarIpc(): void {
     }
   });
 
-  ipcMain.handle('calendar:list', async (): Promise<CalendarListResult> => {
+  /** 달력 목록 — 5분 안에 읽은 것이 있으면 그것을 준다. `force`(설정 화면·[새로 고침])면 지금 것을 읽는다 */
+  ipcMain.handle('calendar:list', async (_evt, req?: { force?: boolean }): Promise<CalendarListResult> => {
     try {
+      // 자격증명과 범위는 매번 본다(파일 읽기뿐이다) — 연결을 끊었는데 기억해 둔 목록이 나오지 않게
       const { scopes, deps } = await access();
       if (!scopes.canList) return { ok: false, code: 'scope-missing', message: NO_LIST };
-      const got = await listCalendars(deps);
-      if (got.ok) listMemo = { calendars: got.calendars, readAt: Date.now() };
-      return got;
+      return await calendarList.get(deps, req?.force === true ? FRESH_MS : MEMO_MS);
     } catch (err) {
       return classify(err);
     }
@@ -170,7 +170,7 @@ export function registerCalendarIpc(): void {
 
       const { scopes, deps } = await access();
       if (!scopes.canRead) return await withCached({ ok: false, code: 'scope-missing', message: NO_READ });
-      const got = await listEvents(deps, want, await knownCalendars(scopes, deps));
+      const got = await listEvents(deps, want, await knownCalendars(scopes, deps, req?.force ? FRESH_MS : MEMO_MS));
       if (!got.ok) return await withCached(got);
 
       const readAt = Date.now();

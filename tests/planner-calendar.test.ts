@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   calendarScopes,
+  createCalendarListMemo,
   deleteEvent,
   insertEvent,
   hexColor,
@@ -135,6 +136,60 @@ describe('listCalendars — 달력 목록', () => {
   it('범위가 모자라면 scope-missing', async () => {
     const { deps } = fake(() => jsonRes(403, { error: { status: 'PERMISSION_DENIED', details: [{ reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' }] } }));
     expect(await listCalendars(deps)).toMatchObject({ ok: false, code: 'scope-missing' });
+  });
+});
+
+describe('createCalendarListMemo — 달력 목록의 기억 (홈을 열 때마다 다시 부르지 않는다)', () => {
+  const MIN = 60 * 1000;
+  const list = () => jsonRes(200, { items: [{ id: 'me@example.com', summary: '홍길동', primary: true, accessRole: 'owner' }] });
+
+  it('기억해 둔 시간 안에는 부르지 않고, 지나면 다시 부른다', async () => {
+    let now = 1_000_000;
+    const { deps, calls } = fake(list);
+    const memo = createCalendarListMemo(() => now);
+    const first = await memo.get(deps, 5 * MIN);
+    expect(first).toMatchObject({ ok: true, calendars: [{ id: 'me@example.com' }] });
+    expect(first.ok && first.fromCache).toBeFalsy();
+    now += 4 * MIN + 59_000;
+    const again = await memo.get(deps, 5 * MIN);
+    expect(again).toMatchObject({ ok: true, fromCache: true, calendars: [{ id: 'me@example.com' }] });
+    expect(calls).toHaveLength(1);
+    now += 1000; // 읽은 지 꼭 5분
+    expect(await memo.get(deps, 5 * MIN)).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('지금 것을 달라는 읽기는 방금 읽은 것까지만 다시 쓴다', async () => {
+    let now = 1_000_000;
+    const { deps, calls } = fake(list);
+    const memo = createCalendarListMemo(() => now);
+    await memo.get(deps, 5 * MIN);
+    now += 3000; // 같은 새로 고침 안 — 목록을 두 번 부르지 않는다
+    expect(await memo.get(deps, 10_000)).toMatchObject({ ok: true, fromCache: true });
+    expect(calls).toHaveLength(1);
+    now += 30_000;
+    expect(await memo.get(deps, 10_000)).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(2);
+    // 방금 다시 읽었으니 보통 읽기는 그것을 쓴다
+    expect(await memo.get(deps, 5 * MIN)).toMatchObject({ ok: true, fromCache: true });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('읽지 못한 결과는 기억하지 않는다 — 다음에 다시 부른다', async () => {
+    const { deps, calls } = fake((_url, n) => (n === 1 ? jsonRes(500, { error: { message: 'boom' } }) : list()));
+    const memo = createCalendarListMemo(() => 1_000_000);
+    expect(await memo.get(deps, 5 * MIN)).toMatchObject({ ok: false });
+    expect(await memo.get(deps, 5 * MIN)).toMatchObject({ ok: true, calendars: [{ id: 'me@example.com' }] });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('겹쳐 들어온 요청은 한 번만 부른다', async () => {
+    const { deps, calls } = fake(list);
+    const memo = createCalendarListMemo(() => 1_000_000);
+    const [x, y] = await Promise.all([memo.get(deps, 5 * MIN), memo.get(deps, 10_000)]);
+    expect(x).toMatchObject({ ok: true });
+    expect(y).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(1);
   });
 });
 

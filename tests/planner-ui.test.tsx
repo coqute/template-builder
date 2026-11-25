@@ -502,6 +502,159 @@ describe('홈 화면 — 달력 일정의 동작 (2026-11-24 점검)', () => {
   }, 10000);
 });
 
+describe('홈 화면 — 떠났다 돌아올 때 (기억해 둔 것 · 읽는 주기)', () => {
+  beforeEach(() => store.clear());
+  afterEach(() => {
+    vi.useRealTimers();
+    cleanup();
+    (window as unknown as { reportApi: unknown }).reportApi = undefined;
+  });
+
+  const statusText = () => screen.getByTestId('home-status').textContent ?? '';
+  const row = (id: string) => document.querySelector(`[data-event="primary/${id}"]`);
+
+  it('처음 열 때는 비어 있다가 채워지고, 돌아왔을 때는 마지막으로 읽은 내용으로 바로 시작한다', async () => {
+    const { api } = fakeApi({ tasks: [{ title: '오늘 할 일', due: TODAY }], events: [event('e1', 'MX 주간 미팅', addDays(TODAY, 1), '14:00', '15:00')] });
+    renderHome(api);
+    expect(statusText()).toContain('달력 확인 중'); // 처음 — 아직 읽은 것이 없다
+    await waitFor(() => expect(row('e1')).not.toBeNull());
+    await waitFor(() => expect(statusText()).toContain('Google 달력 연결됨'));
+    cleanup(); // 다른 탭으로 — 홈 화면이 사라진다
+
+    // 돌아왔을 때 읽기가 끝나지 않아도(통로가 멈춰 있어도) 화면은 채워져 있다
+    const never = new Promise<never>(() => undefined);
+    api.plannerStat.mockImplementation(() => never);
+    renderHome(api);
+    expect(statusText()).not.toContain('달력 확인 중');
+    expect(statusText()).toContain('Google 달력 연결됨');
+    expect(row('e1')).not.toBeNull();
+    expect(within(tasksBox()).getByText('오늘 할 일')).toBeTruthy();
+  });
+
+  it('돌아오면 저장소는 다시 읽어 그 사이 바뀐 것을 받고, 달력은 통로에 다시 묻는다(force 없이 — main이 기억해 둔 것을 준다)', async () => {
+    const { api, outside } = fakeApi({ tasks: [{ title: '내가 적은 일' }], events: [event('e1', 'MX 주간 미팅', addDays(TODAY, 1), '14:00', '15:00')] });
+    renderHome(api);
+    await waitFor(() => expect(row('e1')).not.toBeNull());
+    cleanup();
+    outside({ type: 'task.add', draft: { title: '떠나 있는 동안 더한 일' } });
+    const before = api.calendarEvents.mock.calls.length;
+    renderHome(api);
+    expect(within(tasksBox()).getByText('내가 적은 일')).toBeTruthy(); // 기억해 둔 것
+    await within(tasksBox()).findByText('떠나 있는 동안 더한 일'); // 다시 읽은 것
+    await waitFor(() => expect(api.calendarEvents.mock.calls.length).toBeGreaterThan(before));
+    const req = (api.calendarEvents.mock.calls.at(-1) as unknown as [{ force?: boolean }])[0];
+    expect(req.force).toBeFalsy();
+    expect(api.calendarList).not.toHaveBeenCalledWith({ force: true });
+  });
+
+  it('다른 화면에서 방금 만든 할 일을 보여 달라고 넘어오면 — 기억해 둔 화면에 그 줄이 없어도, 다시 읽은 뒤 그 줄로 간다', async () => {
+    const { api, outside, state } = fakeApi({ tasks: [{ title: '내가 적은 일' }] });
+    renderHome(api);
+    await within(await screen.findByTestId('home-tasks')).findByText('내가 적은 일');
+    cleanup();
+    outside({ type: 'task.add', draft: { title: '일지에서 만든 일' } });
+    const id = state().tasks.find((x) => x.title === '일지에서 만든 일')?.id ?? '';
+    // 저장소를 늦게 읽는다 — 처음 찾아보는 때(60ms)에는 그 줄이 아직 없다
+    const read = api.plannerGet.getMockImplementation();
+    api.plannerGet.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 200));
+      return (read as NonNullable<typeof read>)();
+    });
+    const proto = Element.prototype as unknown as { scrollIntoView?: (o?: unknown) => void };
+    const orig = proto.scrollIntoView;
+    const went: string[] = [];
+    proto.scrollIntoView = function (this: Element) {
+      went.push(this.getAttribute('data-task') ?? '');
+    };
+    try {
+      renderHome(api, { kind: 'home-focus', taskId: id });
+      expect(document.querySelector(`[data-task="${id}"]`)).toBeNull(); // 기억해 둔 화면에는 없다
+      await waitFor(() => expect(went).toContain(id), { timeout: 3000 });
+    } finally {
+      proto.scrollIntoView = orig;
+    }
+  });
+
+  it('다른 통로(다른 실행)의 기억은 섞이지 않는다', async () => {
+    const one = fakeApi({ tasks: [{ title: '첫 통로의 일' }] });
+    renderHome(one.api);
+    await within(await screen.findByTestId('home-tasks')).findByText('첫 통로의 일');
+    cleanup();
+    const two = fakeApi({ tasks: [{ title: '둘째 통로의 일' }] });
+    renderHome(two.api);
+    expect(screen.queryByText('첫 통로의 일')).toBeNull();
+    await within(await screen.findByTestId('home-tasks')).findByText('둘째 통로의 일');
+  });
+
+  it('보이는 동안에는 1분마다 보고, 읽은 지 5분이 지났을 때만 달력·Notion을 다시 읽는다', async () => {
+    vi.useFakeTimers();
+    const MIN = 60 * 1000;
+    const pass = async (ms: number) => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    };
+    const source: NotionSource = { id: 'ds-meet', name: '회의', url: 'https://www.notion.so/ds-meet' };
+    const { api } = fakeApi({ events: [event('e1', 'MX 주간 미팅', addDays(TODAY, 1), '14:00', '15:00')], notion: { sources: [source], meetings: 'ds-meet', pages: [] } });
+    // main의 5분 기억을 흉내 낸다 — 기억해 둔 것을 줄 때는 readAt이 처음 읽은 시각이다
+    const memo = (kept: { at: number; reads: number }) => () => {
+      const hit = kept.at > 0 && Date.now() - kept.at < 5 * MIN;
+      if (!hit) {
+        kept.at = Date.now();
+        kept.reads++;
+      }
+      return { readAt: kept.at, fromCache: hit };
+    };
+    const cal = { at: 0, reads: 0 };
+    const calMemo = memo(cal);
+    api.calendarEvents.mockImplementation(async () => ({ ok: true as const, events: [event('e1', 'MX 주간 미팅', addDays(TODAY, 1), '14:00', '15:00')], baseline: null, ...calMemo() }));
+    const no = { at: 0, reads: 0 };
+    const noMemo = memo(no);
+    api.notionRecent.mockImplementation(async () => ({ ok: true as const, pages: [], failed: [] as string[], ...noMemo() }));
+
+    renderHome(api);
+    await pass(50);
+    expect([cal.reads, no.reads]).toEqual([1, 1]);
+    const asked = api.calendarEvents.mock.calls.length;
+
+    await pass(4 * MIN); // 1분마다 네 번 봤지만 아직 5분이 안 됐다 — 통로에 묻지도 않는다
+    expect(api.calendarEvents.mock.calls.length).toBe(asked);
+    expect([cal.reads, no.reads]).toEqual([1, 1]);
+
+    await pass(2 * MIN); // 6분째 — 5분이 된 확인에서 한 번 읽었다
+    expect([cal.reads, no.reads]).toEqual([2, 2]);
+    await pass(3 * MIN); // 9분째 — 두 번째로 읽은 지 4분, 그대로
+    expect([cal.reads, no.reads]).toEqual([2, 2]);
+    await pass(2 * MIN); // 11분째 — 10분에 또 한 번(한 번 걸러 읽지 않는다)
+    expect([cal.reads, no.reads]).toEqual([3, 3]);
+  });
+
+  it('창이 가려져 있으면 주기가 돼도 읽지 않고, 창이 다시 앞에 오면 그때 읽는다', async () => {
+    vi.useFakeTimers();
+    const MIN = 60 * 1000;
+    const pass = async (ms: number) => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    };
+    const { api } = fakeApi({ events: [event('e1', 'MX 주간 미팅', addDays(TODAY, 1), '14:00', '15:00')] });
+    renderHome(api);
+    await pass(50);
+    const asked = api.calendarEvents.mock.calls.length;
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    try {
+      await pass(7 * MIN);
+      expect(api.calendarEvents.mock.calls.length).toBe(asked);
+      visibility.mockReturnValue('visible');
+      act(() => void window.dispatchEvent(new Event('focus')));
+      await pass(50);
+      expect(api.calendarEvents.mock.calls.length).toBe(asked + 1);
+    } finally {
+      visibility.mockRestore();
+    }
+  });
+});
+
 describe('홈 화면 — 앱 밖에서 바뀐 것 (명령줄·MCP 도구)', () => {
   beforeEach(() => store.clear());
   afterEach(() => {

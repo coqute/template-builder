@@ -128,7 +128,7 @@ const api = {
   plannerReveal: () => ipcRenderer.invoke('planner:reveal') as Promise<{ ok: boolean; error?: string }>,
   // Google 달력 — 토큰의 권한 범위 안에서 읽기·쓰기 (일정의 설명은 받지 않는다)
   calendarStatus: () => ipcRenderer.invoke('calendar:status') as Promise<CalendarStatus>,
-  calendarList: () => ipcRenderer.invoke('calendar:list') as Promise<CalendarListResult>,
+  calendarList: (req?: { force?: boolean }) => ipcRenderer.invoke('calendar:list', req) as Promise<CalendarListResult>,
   calendarEvents: (req: CalendarEventsRequest) => ipcRenderer.invoke('calendar:events', req) as Promise<CalendarEventsResult>,
   // [확인] — 바뀐 일정을 견주는 기준을 마지막으로 읽은 일정으로 바꾼다
   calendarAck: () => ipcRenderer.invoke('calendar:ack') as Promise<{ ok: boolean }>,
