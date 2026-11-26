@@ -1,5 +1,6 @@
 /**
- * 작업일지 AI — ① 메신저·카톡 대화를 붙여 넣으면 작업일지 블록(■ ▶ - > ※)으로 정리, ② 지금 일지의 문장 정돈.
+ * 작업일지 AI — 메신저·카톡 대화를 붙여 넣으면 작업일지 블록(■ ▶ - > ※)으로 정리한다.
+ * (이미 쓴 일지의 문장 정돈은 쓰이지 않아 v0.26.0에서 없앴다. 주간보고의 문장 정돈은 weeklyTidy.ts에 그대로 있다.)
  * 형식 규칙은 작업일지 루틴과 같다. 보내기 전에 IP·URL·메일·전화·키와
  * 사람 이름(일지의 요청자 어휘·내 이름·대화 줄 머리의 화자·직함이나 님이 붙은 이름)을 자리표시로 가리고,
  * 돌아온 글에서 되살린다. 호칭 없이 본문에만 나오는 처음 보는 이름은 알아낼 방법이 없어 그대로 나간다 —
@@ -7,10 +8,7 @@
  */
 import type { AiCompleteRequest, AiCompleteResult, AiModelId } from '../../electron/ai-types';
 import { Masker, missingFacts, tokensOf } from './mask';
-import type { ReviewChange, ReviewData, ReviewNote } from './review';
 import { estimateUsd } from './settings';
-import { checkLine, stripLineIds } from './weeklyTidy';
-import { parseCaseHeader, parseWorklog, type WlLineKind } from '../worklog/format';
 import { site } from '../core/site-config';
 
 type OkResult = Extract<AiCompleteResult, { ok: true }>;
@@ -49,7 +47,7 @@ export function titledNames(text: string): string[] {
   return [...out];
 }
 
-// ── ① 대화 → 블록 ─────────────────────────────────────────────
+// ── 대화 → 블록 ───────────────────────────────────────────────
 
 /**
  * 형식 규칙의 출처는 작업일지 루틴의 STEP 4(사안별 묶기·핵심 추출)·STEP 5(파일 형식)다.
@@ -345,173 +343,4 @@ export function renderBlocks(plan: BlockPlan, res: OkResult): BlockResult {
     masked: masker.summary(),
     blocks: out.length,
   };
-}
-
-// ── ② 일지 문장 정돈 ──────────────────────────────────────────
-
-const TIDY_KINDS: Partial<Record<WlLineKind, string>> = {
-  case: '사안(■)',
-  note: '참고(※)',
-  act: '수행(▶)',
-  fact: '사실(-)',
-  detail: '부연(>)',
-};
-
-interface TidyLine {
-  id: string;
-  no: number;
-  kind: WlLineKind;
-  /** 마커·출처 괄호를 뺀 원문 */
-  text: string;
-  prefix: string;
-  suffix: string;
-  group: string;
-}
-
-export interface WorklogTidyPlan {
-  request: AiCompleteRequest;
-  masker: Masker;
-  lines: TidyLine[];
-  maskedById: Map<string, string>;
-}
-
-/** 줄 → 앞(마커·출처)/본문/뒤(끝 표시) — 적용할 때 앞뒤는 그대로 둔다 */
-export function splitLine(raw: string, kind: WlLineKind): { prefix: string; text: string; suffix: string } | null {
-  if (kind === 'case') {
-    const body = raw.replace(/^■\s*/, '');
-    const { title } = parseCaseHeader(body);
-    if (!title) return null;
-    const at = raw.indexOf(title, raw.length - body.length);
-    if (at < 0) return null;
-    return { prefix: raw.slice(0, at), text: title, suffix: raw.slice(at + title.length) };
-  }
-  const re = kind === 'act' ? /^▶\s*/ : kind === 'fact' ? /^-\s+/ : kind === 'detail' ? /^\s*>\s?/ : kind === 'note' ? /^※\s*/ : null;
-  const m = re?.exec(raw);
-  if (!m) return null;
-  const text = raw.slice(m[0].length).replace(/\s+$/, '');
-  if (!text.trim()) return null;
-  return { prefix: m[0], text, suffix: raw.slice(m[0].length + text.length) };
-}
-
-export const TIDY_SYSTEM = `당신은 ${site().company} 기술지원 엔지니어의 작업일지를 다듬는 편집자다. 작업일지는 사안(■) 아래 수행(▶)을 시간순으로, 그 결과 확정된 사실(-)과 부연(>), 참고(※)를 줄 단위로 적은 업무 기록이다.
-
-목표: 각 줄을 나중에 다시 읽는 사람이 한 번에 이해하도록 간결하고 정확한 개조식 문장으로 다듬는다.
-
-문체
-- 명사형으로 끝낸다("~ 확인", "~ 안내", "~ 적용", "~ 요청", "~ 예정"). "~했습니다", "~함" 같은 끝은 명사형으로 바꾼다.
-- 맞춤법·띄어쓰기·오탈자를 고치고 군더더기와 같은 말 반복을 줄인다. 시각·요일은 쓰지 않는다.
-
-지킬 것
-- 사실을 바꾸거나 더하지 않는다. 원문에 없는 원인·결과·수치를 만들지 않는다. 뜻이 모호하면 원문 표현을 살린다.
-- 숫자·버전·파일명·명령어·설정값·서버명·Job명·제품명·고객사명은 글자 그대로 둔다.
-- ⟦IP1⟧ ⟦URL1⟧ ⟦MAIL1⟧ ⟦TEL1⟧ ⟦KEY1⟧ ⟦P1⟧ 같은 자리표시는 가린 값(⟦P⟧는 사람 이름)이다. 글자 그대로, 같은 개수만큼 남긴다.
-- 줄을 합치거나 나누거나 지우지 않는다. 받은 모든 줄을 같은 id로 돌려주고, 고칠 것이 없으면 원문 그대로 돌려준다.
-
-notes
-- 같은 사안으로 보이는 ■가 둘로 나뉜 곳, ▶가 비어 수행 내용을 보강해야 할 사안, 줄 종류가 내용과 맞지 않는 곳처럼 사람이 판단할 점만 짧게. 최대 5개. 없으면 빈 배열.
-- 사람이 읽는 글이다. id는 쓰지 말고 가리킬 줄은 내용을 짧게 인용한다.`;
-
-export const TIDY_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['lines', 'notes'],
-  properties: {
-    lines: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['id', 'text'],
-        properties: { id: { type: 'string' }, text: { type: 'string' } },
-      },
-    },
-    notes: { type: 'array', items: { type: 'string' } },
-  },
-} as const;
-
-export function planWorklogTidy(text: string, knownNames: readonly string[], model: AiModelId): WorklogTidyPlan | null {
-  const doc = parseWorklog(text);
-  const masker = new Masker();
-  const lines: TidyLine[] = [];
-  const maskedById = new Map<string, string>();
-  const groupOf = new Map<number, string>();
-  for (const b of doc.blocks) groupOf.set(b.index, b.kind === 'case' ? `■ ${b.header}` : `${b.title}`);
-  // 요청자 어휘에 없는 사람도 직함·님이 붙어 있으면 가린다 (대화 → 블록과 같은 규칙)
-  const names = [...knownNames, ...titledNames(text)];
-  for (const l of doc.lines) {
-    if (!TIDY_KINDS[l.kind]) continue;
-    const parts = splitLine(l.text, l.kind);
-    if (!parts) continue;
-    const id = `L${l.no}`;
-    lines.push({ id, no: l.no, kind: l.kind, ...parts, group: groupOf.get(l.block) ?? '(사안 밖)' });
-    maskedById.set(id, maskAll(parts.text, names, masker));
-  }
-  if (lines.length === 0) return null;
-  const payload = lines.map((l) => ({ id: l.id, kind: TIDY_KINDS[l.kind], text: maskedById.get(l.id) }));
-  const user = `아래 작업일지 줄들을 규칙대로 다듬어 같은 id의 JSON으로 돌려줘.\n\n${JSON.stringify({ date: doc.titleLine?.date ?? '', lines: payload }, null, 1)}`;
-  const maxTokens = Math.min(32000, 3000 + Math.ceil(user.length * 1.4));
-  return {
-    request: { model, system: TIDY_SYSTEM, user, schema: TIDY_SCHEMA as unknown as Record<string, unknown>, effort: 'medium', maxTokens },
-    masker,
-    lines,
-    maskedById,
-  };
-}
-
-function isTidyResponse(v: unknown): v is { lines: Array<{ id: string; text: string }>; notes: string[] } {
-  const o = v as { lines: unknown; notes: unknown };
-  return !!o && Array.isArray(o.lines) && Array.isArray(o.notes);
-}
-
-const LEADING_MARK = /^\s*(?:■|▶|※|-|>)\s*/;
-
-export function reviewWorklogTidy(plan: WorklogTidyPlan, res: OkResult): ReviewData {
-  if (!isTidyResponse(res.json)) throw new Error('응답 형식이 예상과 다릅니다.');
-  const { masker, lines, maskedById } = plan;
-  const got = new Map(res.json.lines.map((l) => [l.id, l.text]));
-  const changes: ReviewChange[] = [];
-  for (const l of lines) {
-    const raw = got.get(l.id);
-    if (raw === undefined) continue;
-    const before = maskedById.get(l.id) ?? '';
-    const after = raw.replace(LEADING_MARK, '').trim();
-    if (after === before.trim()) continue;
-    const reason = checkLine(before, after);
-    changes.push({
-      id: l.id,
-      group: masker.unmask(l.group) || l.group,
-      label: `${l.no}행 ${TIDY_KINDS[l.kind] ?? ''}`,
-      before: masker.unmask(before),
-      after: masker.unmask(after),
-      ok: !reason,
-      reason,
-    });
-  }
-  const notes: ReviewNote[] = res.json.notes
-    .map((n) => masker.unmask(stripLineIds(n.replace(/\bL\d+\b/g, ''))))
-    .filter(Boolean)
-    .map((text) => ({ group: '', text }));
-  return {
-    changes,
-    notes,
-    model: res.model,
-    usage: res.usage,
-    usd: estimateUsd(res.model, res.usage),
-    ms: res.ms,
-    fallbackUsed: res.fallbackUsed,
-    masked: masker.summary(),
-  };
-}
-
-/** 고른 줄만 바꾼 새 본문 — 줄 번호가 그대로인 원문에만 적용한다 */
-export function applyWorklogTidy(text: string, plan: WorklogTidyPlan, review: ReviewData, picked: Set<string>): string {
-  const lines = text.split('\n');
-  const byId = new Map(plan.lines.map((l) => [l.id, l]));
-  for (const c of review.changes) {
-    if (!c.ok || !picked.has(c.id)) continue;
-    const l = byId.get(c.id);
-    if (!l) continue;
-    lines[l.no - 1] = `${l.prefix}${c.after}${l.suffix}`;
-  }
-  return lines.join('\n');
 }

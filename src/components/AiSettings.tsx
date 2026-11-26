@@ -99,7 +99,7 @@ export function AiSettings({ mono, open }: { mono: boolean; open: boolean }) {
         <span className="text-[11px] text-fg-muted">{keyState}</span>
       </div>
       <p className="mb-2 text-[11px] leading-relaxed text-fg-muted">
-        이메일의 [서술 → 문의](Ctrl+Shift+B)는 편하게 적은 글을 고른 서식의 칸에 맞는 글로 바꾸고, 작업일지의 [대화 → 블록](Ctrl+Shift+B)은 대화를 일지 블록으로 정리합니다 — 둘 다 결과를 고친 뒤 넣습니다. 주간보고·작업일지의 [AI 정돈](Ctrl+Shift+A)은 문장만 다듬고, 바뀔 곳을 확인한 뒤 고른 것만 적용합니다. 보내기 전에 IP·URL·메일 주소·전화번호·키 문자열을 가리고, 날짜·라이선스 키 칸·주간보고의 담당자 이름은 보내지 않습니다. 이메일의 서술과 작업일지는 대화 참여자·직함이 붙은 이름도 가립니다.
+        이메일의 [서술 → 문의](Ctrl+Shift+B)는 편하게 적은 글을 고른 서식의 칸에 맞는 글로 바꾸고, 작업일지의 [대화 → 블록](Ctrl+Shift+B)은 대화를 일지 블록으로 정리합니다 — 둘 다 결과를 고친 뒤 넣습니다. 주간보고의 [AI 정돈](Ctrl+Shift+A)은 문장만 다듬고, 바뀔 곳을 확인한 뒤 고른 것만 적용합니다. 보내기 전에 IP·URL·메일 주소·전화번호·키 문자열을 가리고, 날짜·라이선스 키 칸·주간보고의 담당자 이름은 보내지 않습니다. 이메일의 서술과 작업일지는 대화 참여자·직함이 붙은 이름도 가립니다.
       </p>
       <div className="space-y-1.5">
         <label className="flex items-center gap-2">

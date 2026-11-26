@@ -206,14 +206,12 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     menu: {
       // 빈 문서는 쓸모가 없어 '새로 만들기'는 곧 새 주간보고(지난 주 골격)
       'menu:new': () => void w.loadTemplate(),
-      'menu:draft': () => {
-        if (canSend) void w.createDraft();
-      },
+      'menu:draft': () => whenSendable(() => void w.createDraft()),
       'menu:load-sample': () => void w.loadSample(),
       'menu:open': () => void w.openFile(),
       'menu:save': () => void w.saveFile(),
       'menu:import-gmail': () => void w.importGmail(),
-      'menu:copy-html': () => void w.copyHtml(),
+      'menu:copy-html': () => whenSendable(() => void w.copyHtml()),
     },
     shortcut: (combo) => {
       switch (combo) {
@@ -230,7 +228,7 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
           void w.loadTemplate();
           return true;
         case 'shift+c':
-          void w.copyHtml();
+          whenSendable(() => void w.copyHtml());
           return true;
         case 'shift+i':
           void w.importGmail();
@@ -239,7 +237,7 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
           if (!ai.busy) void tidyWithAi();
           return true;
         case 'enter':
-          if (canSend) void w.createDraft();
+          whenSendable(() => void w.createDraft());
           return true;
         default:
           return false;
@@ -252,6 +250,20 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
   // 발송 버튼이 꺼진 이유를 버튼 툴팁으로 — 상태바를 열어 보지 않아도 알 수 있게
   const blockedHint =
     errorCount > 0 ? `오류 ${errorCount}건을 고쳐야 보낼 수 있습니다 — 상태바의 오류를 누르면 위치로 이동` : undefined;
+  /**
+   * 메뉴·단축키로 내보낼 때도 버튼과 같은 조건을 본다 — 전에는 오류가 있어 [HTML 복사] 버튼이 꺼져 있어도
+   * Ctrl+Shift+C와 메뉴는 그대로 복사했다(v0.26.0에서 고침). 막을 때는 이유를 알린다.
+   */
+  const whenSendable = (run: () => void) => {
+    if (canSend) return run();
+    toast.error(
+      errorCount > 0
+        ? `오류 ${errorCount}건을 고쳐야 내보낼 수 있습니다 — 상태바의 오류를 누르면 그 줄로 갑니다.`
+        : w.state.fatalError
+          ? '문서를 읽지 못해 내보낼 수 없습니다 — 상태바의 오류를 확인하세요.'
+          : '내보낼 내용이 없습니다.',
+    );
+  };
   const subject = w.output?.subject ?? w.state.subject;
   const subjectHint = subject ?? '제목은 @PREV(보고 대상 주)로 자동 생성됩니다.';
   const previewHtml = w.output?.html ?? '';

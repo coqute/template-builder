@@ -505,7 +505,7 @@ function WorklogGuide({ mono }: { mono: boolean }) {
           <li><span className="kbd">Ctrl+N</span> 오늘 일지 (있으면 열기 — 같은 날 파일을 둘 만들지 않음)</li>
           <li><span className="kbd">Ctrl+1~5</span> 줄 기호 ■ ▶ - &gt; ※ · <span className="kbd">Enter</span> 같은 기호로 이어 쓰기 · <span className="kbd">Tab</span> - ↔ &gt;</li>
           <li><span className="kbd">■ (</span> 뒤 요청자, <span className="kbd">/</span> 뒤 채널 자동완성 (지난 일지에서)</li>
-          <li><span className="kbd">Ctrl+F</span> 전체 일지 검색 · <span className="kbd">Ctrl+Shift+B</span> 대화 → 블록 · <span className="kbd">Ctrl+Shift+A</span> AI 정돈</li>
+          <li><span className="kbd">Ctrl+F</span> 전체 일지 검색 · <span className="kbd">Ctrl+Shift+B</span> 대화 → 블록 · <span className="kbd">Ctrl+Shift+D</span> 일정·할 일 달기 (커서가 있는 ■ 사안)</li>
         </ul>
       </section>
       <section className="mb-3 rounded-card border border-rule bg-bg p-3">

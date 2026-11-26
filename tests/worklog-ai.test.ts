@@ -1,21 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AiCompleteResult } from '../electron/ai-types';
 import { Masker } from '../src/ai/mask';
-import {
-  applyWorklogTidy,
-  BLOCK_SCHEMA,
-  BLOCK_SYSTEM,
-  cleanRequester,
-  followSuffix,
-  maskNames,
-  planBlockFromChat,
-  planWorklogTidy,
-  renderBlocks,
-  reviewWorklogTidy,
-  speakerNames,
-  splitLine,
-  titledNames,
-} from '../src/ai/worklogAi';
+import { BLOCK_SCHEMA, BLOCK_SYSTEM, cleanRequester, followSuffix, maskNames, planBlockFromChat, renderBlocks, speakerNames, titledNames } from '../src/ai/worklogAi';
 import { parseWorklog } from '../src/worklog/format';
 
 type Ok = Extract<AiCompleteResult, { ok: true }>;
@@ -238,69 +224,5 @@ describe('대화 → 블록: 요청 내용이 지금 일지 형식과 맞는다'
   it('수행 내용이 없으면 ■와 ※만 남는다', () => {
     const r = renderBlocks(plan2, ok({ blocks: [{ requester: P('홍길동'), title: '로그 수집 누락 문의', followup: '후속', notes: ['대응 예정'], acts: [], deliverables: [] }], questions: [] }));
     expect(r.text).toBe('■ (홍길동/메신저) 로그 수집 누락 문의 (후속)\n※ 대응 예정');
-  });
-});
-
-describe('일지 문장 정돈', () => {
-  const TEXT = `[2026-10-20] 제목
-
-■ (홍길동/메신저) 프로세스 감시 설정 문의 했음 (후속)
-※ 수신 그룹 미지정
-
-▶ 설정방법 안내 했습니다
-- 192.0.2.40 서버 대상
-  > 그룹은 프로젝트 단위
-
-※ 조회 쿼리
-SELECT 1;`;
-
-  it('마커·출처·끝 표시는 남기고 본문만 보낸다 (원문·1행은 보내지 않는다)', () => {
-    expect(splitLine('■ (홍길동/메신저) 문의 (후속)', 'case')).toEqual({ prefix: '■ (홍길동/메신저) ', text: '문의', suffix: ' (후속)' });
-    const plan = planWorklogTidy(TEXT, ['홍길동'], 'claude-sonnet-5-5')!;
-    expect(plan.lines.map((l) => [l.no, l.kind])).toEqual([
-      [3, 'case'],
-      [4, 'note'],
-      [6, 'act'],
-      [7, 'fact'],
-      [8, 'detail'],
-    ]);
-    expect(plan.request.user).not.toContain('SELECT');
-    expect(plan.request.user).not.toContain('192.0.2.40');
-    expect(plan.request.user).not.toContain('홍길동');
-  });
-
-  it('요청자 어휘에 없는 사람도 직함·님이 붙어 있으면 가린다', () => {
-    const plan = planWorklogTidy(`${TEXT}\n\n▶ 최하늘 책임님께 조회 요청\n- 윤서준님 회신 대기`, ['홍길동'], 'claude-sonnet-5-5')!;
-    expect(plan.request.user).not.toMatch(/최하늘|윤서준|홍길동/);
-    expect(plan.request.user).toMatch(/⟦P\d⟧ 책임님께 조회 요청/);
-  });
-
-  it('검증 통과한 줄만 바꾸고 접두·접미는 그대로', () => {
-    const plan = planWorklogTidy(TEXT, ['홍길동'], 'claude-sonnet-5-5')!;
-    const ip = plan.maskedById.get('L7')!;
-    const review = reviewWorklogTidy(
-      plan,
-      ok({
-        lines: [
-          { id: 'L3', text: '프로세스 감시 설정 문의' },
-          { id: 'L6', text: '▶ 설정 방법 안내' },
-          { id: 'L7', text: '서버 대상' }, // 자리표시 빠짐 → 적용 안 함
-          { id: 'L8', text: '그룹은 프로젝트 단위' },
-        ],
-        notes: ['L3 줄과 같은 사안이 있음'],
-      }),
-    );
-    expect(ip).toContain('⟦IP1⟧');
-    expect(review.changes.map((c) => [c.id, c.ok])).toEqual([
-      ['L3', true],
-      ['L6', true],
-      ['L7', false],
-    ]);
-    expect(review.notes[0].text).not.toMatch(/L3/);
-    const next = applyWorklogTidy(TEXT, plan, review, new Set(['L3', 'L6', 'L7']));
-    expect(next.split('\n')[2]).toBe('■ (홍길동/메신저) 프로세스 감시 설정 문의 (후속)');
-    expect(next.split('\n')[5]).toBe('▶ 설정 방법 안내');
-    expect(next.split('\n')[6]).toBe('- 192.0.2.40 서버 대상');
-    expect(next.endsWith('SELECT 1;')).toBe(true);
   });
 });

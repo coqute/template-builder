@@ -793,7 +793,9 @@ describe('홈 화면 — 날을 고르면 그날의 미리보기가 가운데에
     expect(pills).toHaveLength(7);
     expect(pills.map((x) => x.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false', 'false', 'false', 'false']);
     expect(pills[2].querySelector('i')?.textContent).toBe('2');
-    expect(pills[3].querySelector('i')?.textContent).toBe('1');
+    // 오늘의 수에는 기한이 지난 할 일도 든다(DayPreview의 tasks 설명) — 목요일에 돌리면 수요일 기한의 할 일이 오늘(목)에도 세어진다.
+    // 전에는 '1'로 고정해 목요일에만 실패했다(2026-11-26 실측, 앱 동작은 그대로).
+    expect(pills[3].querySelector('i')?.textContent).toBe(TODAY === addDays(mon, 3) ? '2' : '1');
     expect(pills[0].querySelector('i')).toBeNull(); // 아무것도 없는 날에는 수를 적지 않는다
     // › 로 다음 날
     fireEvent.click(within(preview()).getByRole('button', { name: '뒷 날' }));

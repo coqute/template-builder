@@ -2,13 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
-import { CalendarCheck, CalendarPlus, FileDown, FolderOpen, FolderSearch, MessagesSquare, NotebookPen, RefreshCw, Wand2 } from 'lucide-react';
+import { CalendarCheck, CalendarPlus, FileDown, FolderOpen, FolderSearch, MessagesSquare, NotebookPen, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Btn, MoreMenu } from '../components/ToolbarButton';
 import { WorklogEditor, type WorklogEditorHandle } from '../components/WorklogEditor';
-import { useAiTidy } from '../ai/useAiTidy';
-import { applyWorklogTidy, planWorklogTidy, reviewWorklogTidy } from '../ai/worklogAi';
-import { loadAiModel } from '../ai/settings';
 import { sameRef, useWorklog } from '../worklog/useWorklog';
 import { WorklogSidebar, type WorklogSidebarHandle } from '../worklog/components/WorklogSidebar';
 import { WorklogCreateDialog } from '../worklog/components/WorklogCreateDialog';
@@ -45,7 +42,6 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
   const sidebarRef = useRef<WorklogSidebarHandle | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState<string | null>(null);
-  const ai = useAiTidy();
 
   const fileCtx = useMemo(() => (wl.current ? { date: wl.current.date, title: wl.current.title } : null), [wl.current]);
   const doc = useMemo(() => parseWorklog(wl.text), [wl.text]);
@@ -54,7 +50,6 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
     () => ({ cases: doc.blocks.filter((b) => b.kind === 'case').length, acts: doc.blocks.reduce((n, b) => n + b.acts.length, 0) }),
     [doc],
   );
-  const names = useMemo(() => [...wl.vocab.requesters.map((r) => r.name), profile.name].filter(Boolean), [wl.vocab, profile.name]);
 
   // ── 홈(플래너)과 잇기 — 넘어온 사안으로 이동, 사안에 일정·할 일 달기, ■ 줄 표지 ──────────────
   const planner = useMemo(plannerApi, []);
@@ -197,34 +192,6 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
 
   const textRef = useRef(wl.text);
   textRef.current = wl.text;
-  const tidyWithAi = async () => {
-    if (!wl.current) {
-      toast.info('일지를 먼저 여세요.');
-      return;
-    }
-    const base = wl.text;
-    const file = wl.current;
-    await ai.run({
-      title: `AI 정돈 — ${wl.current.date} 작업일지`,
-      empty: '다듬을 줄(■ ▶ - > ※)이 없습니다.',
-      plan: () => planWorklogTidy(base, names, loadAiModel()),
-      request: (p) => p.request,
-      review: (p, res) => reviewWorklogTidy(p, res),
-      apply: (p, review, picked) => {
-        if (textRef.current !== base) {
-          toast.error('정돈하는 동안 내용이 바뀌어 적용하지 않았습니다(작업일지 루틴이 덧붙였을 수 있음). 다시 실행하세요.');
-          return;
-        }
-        // 정돈하는 동안 다른 일지를 열었으면 그 일지에 이 일지의 내용을 넣게 된다
-        if (!wl.setTextFor(file, applyWorklogTidy(base, p, review, picked), '정돈하는 동안 다른 일지를 열어 적용하지 않았습니다. 다시 실행하세요.')) return;
-        toast.success(`${picked.size}줄을 다듬었습니다.`, {
-          duration: 8000,
-          action: { label: '되돌리기', onClick: () => void wl.setTextFor(file, base, '그 사이 다른 일지를 열어 되돌리지 않았습니다.') },
-        });
-      },
-    });
-  };
-
   const openChat = () => {
     if (!wl.current) {
       toast.info('블록을 넣을 일지를 먼저 여세요 (오늘 일지: Ctrl+N).');
@@ -253,9 +220,6 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
         case 'shift+b':
           openChat();
           return true;
-        case 'shift+a':
-          if (!ai.busy) void tidyWithAi();
-          return true;
         case 'shift+d':
           openLink();
           return true;
@@ -283,15 +247,14 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
               onClick={openChat}
             />
             <Btn
-              label="AI 정돈"
-              shortcut="Ctrl+Shift+A · 일지 문장을 Claude로 다듬고 바뀔 곳을 확인한 뒤 적용"
-              icon={<Wand2 size={14} />}
-              disabled={ai.busy || !wl.current}
-              onClick={() => void tidyWithAi()}
+              label="일정·할 일 달기"
+              shortcut="Ctrl+Shift+D · 커서가 있는 ■ 사안에 기한(할 일)이나 달력 일정을 달아 홈에 올림"
+              icon={<CalendarPlus size={14} />}
+              disabled={!wl.current}
+              onClick={openLink}
             />
             <MoreMenu
               items={[
-                { label: '이 사안에 일정·할 일 달기', shortcut: 'Ctrl+Shift+D', icon: <CalendarPlus size={13} />, disabled: !wl.current, onClick: openLink },
                 { label: '새 일지 (날짜 고르기)', icon: <NotebookPen size={13} />, onClick: () => setCreateOpen(true) },
                 { label: '목록 새로 고침', icon: <RefreshCw size={13} />, onClick: () => void wl.refreshList().then(() => wl.refreshCorpus()) },
                 {
@@ -305,7 +268,6 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
           </>,
           toolbarSlot,
         )}
-      {ai.view}
       {linkTarget && (
         <LinkDialog anchor={linkTarget} today={isoToday()} canEvent={canEvent} busy={linking} onSubmit={(req) => void submitLink(req)} onClose={() => setLinkTarget(null)} />
       )}

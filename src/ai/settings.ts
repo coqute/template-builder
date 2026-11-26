@@ -83,7 +83,7 @@ export const MODEL_INFO: Record<KnownAiModelId, { label: string; hint: string; n
   'claude-sonnet-5-5': {
     label: 'Claude Sonnet 5.5',
     hint: '빠름 · 절반 가격',
-    note: '주간보고·작업일지처럼 짧은 정돈에 충분합니다. 거부되면 대체 모델이 이어 받습니다.',
+    note: '주간보고 문장 정돈이나 짧은 대화 → 블록에 충분합니다. 거부되면 대체 모델이 이어 받습니다.',
   },
   'claude-haiku-5-5': {
     label: 'Claude Haiku 5.5',
