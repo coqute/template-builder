@@ -1,8 +1,9 @@
 /**
  * 홈 — 남은 작업·앞으로 할 작업(할 일)과 이미 정해진 일정을 한 화면에 (설계 docs/home-schedule-design.md).
- * 켜면 먼저 보이는 화면이다. 원본(작업일지·주간보고·Google 달력)은 읽기만 하고, 사용자가 단추를 누를 때만 쓴다.
+ * 켜면 먼저 보이는 화면이다. 원본(작업일지·Google 달력)은 읽기만 하고, 사용자가 단추를 누를 때만 쓴다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { UNDO_MS } from '../lib/undo';
 import { createPortal } from 'react-dom';
 import { CalendarDays, CheckSquare, EyeOff, FolderOpen, History, Home, Plus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,7 +26,6 @@ import '../styles/planner.css';
 import { useDocTypeHost, useRegisterDocTypeHandlers } from './DocTypeHost';
 import type { DocTypeModule, DocTypeWorkspaceProps } from './registry';
 
-const UNDO_MS = 8000;
 const CALENDAR_URL = 'https://calendar.google.com/calendar/';
 
 const OP_LABEL: Record<PlannerLogEntry['op'], string> = {
@@ -146,10 +146,11 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     },
     openOrigin: (origin: TaskOrigin) => {
       if (origin.kind === 'worklog') navigate('worklog', { kind: 'worklog-open', anchor: origin.anchor });
-      else if (origin.kind === 'weekly') navigate('weekly', !origin.file && origin.line > 0 ? { kind: 'weekly-line', line: origin.line } : undefined);
+      // 주간보고에서 올린 옛 할 일(v0.26.0까지) — 주간보고 탭으로만 간다
+      else if (origin.kind === 'weekly') navigate('weekly');
     },
     promote: async (c: Candidate) => {
-      const origin: TaskOrigin = c.anchor ? { kind: 'worklog', anchor: c.anchor } : { kind: 'weekly', file: c.weekly?.file ?? '', line: c.weekly?.line ?? 0 };
+      const origin: TaskOrigin = c.anchor ? { kind: 'worklog', anchor: c.anchor } : { kind: 'manual' };
       const s = await apply({
         type: 'task.add',
         draft: { title: c.title, client: c.client, who: c.who, due: c.due, state: c.cls === 'wait' ? 'waiting' : 'todo', waitingOn: c.waitingOn, note: c.phrase, origin },
@@ -295,7 +296,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
         createPortal(
           <>
             <Btn label="할 일 추가" shortcut="Ctrl+N" icon={<Plus size={14} />} primary onClick={focusAdd} />
-            <Btn label="새로 고침" shortcut="작업일지·주간보고·달력을 다시 읽음" icon={<RefreshCw size={14} />} disabled={p.busy} onClick={() => void p.refresh(true)} />
+            <Btn label="새로 고침" shortcut="작업일지·달력을 다시 읽음" icon={<RefreshCw size={14} />} disabled={p.busy} onClick={() => void p.refresh(true)} />
             <MoreMenu
               items={[
                 { label: showDone ? '끝낸 일 접기' : '끝낸 일 보기', icon: <CheckSquare size={13} />, onClick: () => setShowDone((v) => !v) },
@@ -441,7 +442,7 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
                   : `Notion에서 읽지 못한 DB ${p.notion.failed.length}개 — 그 DB에 이 연결을 더했는지 확인하세요.`}{' '}
               {notionSettings.sources.length === 0 ? (
                 <button type="button" className="hm-mini" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1' }))}>
-                  DB 고르기 (설정 F1)
+                  DB 고르기 — 설정(F1)
                 </button>
               ) : (
                 <button type="button" className="hm-mini" onClick={() => void p.reloadNotion()}>

@@ -67,6 +67,10 @@ const api = {
   setDirty: (dirty: boolean) => {
     ipcRenderer.send('app:set-dirty', dirty);
   },
+  /** 지금 화면이 처리하는 메뉴 채널 — main이 나머지 메뉴 항목을 끈다 */
+  setMenuChannels: (channels: string[]) => {
+    ipcRenderer.send('app:menu-channels', channels);
+  },
   copyHtml: (html: string, plain: string) =>
     ipcRenderer.invoke('clipboard:write-html', { html, plain }) as Promise<
       { ok: true } | { ok: false; error: string }

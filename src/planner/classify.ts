@@ -14,7 +14,7 @@ export const KIND_LABEL: Record<EventKind, string> = { meeting: '회의', work: 
 
 export interface HomeEvent {
   key: string;
-  /** 달력 일정이면 그 ID (주간보고 `@PLAN`에서 온 것은 null) */
+  /** 달력 일정의 ID */
   ref: EventRef | null;
   title: string;
   kind: EventKind;
@@ -39,7 +39,7 @@ export interface HomeEvent {
   owner?: string;
   /** 그 달력의 색 `#rrggbb` (남의 달력일 때, 있으면) */
   color?: string;
-  source: 'gcal' | 'plan';
+  source: 'gcal';
 }
 
 const LEAVE_RE = /휴가|연차|반차|휴무/;

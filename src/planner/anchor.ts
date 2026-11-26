@@ -56,11 +56,6 @@ export function anchorGroupKey(a: Pick<WorklogAnchor, 'folder' | 'caseKey'>): st
   return caseGroupKey(a.folder, a.caseKey);
 }
 
-/** 파일 하나 안에서 사안을 가리키는 키 (■ 줄 표지용) */
-export function anchorFileKey(a: Pick<WorklogAnchor, 'folder' | 'name'>): string {
-  return `${a.folder}\u0000${a.name}`;
-}
-
 const FOLLOWUP_TAIL_RE = /\s*\((\d{1,2})\/(\d{1,2})\s*[^)]*후속\)\s*$/;
 
 /**

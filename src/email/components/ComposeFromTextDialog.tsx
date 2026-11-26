@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Loader2, Wand2 } from 'lucide-react';
-import { AiProgressLine } from '../../components/AiBusyCard';
+import { AiError, AiNotes, AiRunFooter, aiResultLine, ctrlEnter, DESKTOP_ONLY } from '../../components/AiDialogParts';
 import { BTN_GHOST, BTN_SOLID, INPUT, Modal, SOLID_STYLE } from '../../components/Modal';
-import { maskedSummary } from '../../ai/review';
 import { loadAiModel, modelLabel } from '../../ai/settings';
 import { useAiRun } from '../../ai/useAiRun';
 import { applyCompose, composeNames, fieldRole, hasBodyContent, hasPlaceholder, planCompose, renderCompose, type ComposeResult } from '../../ai/emailCompose';
@@ -64,7 +62,7 @@ export function ComposeFromTextDialog({ template, doc, myName, company, initialT
   const run = async () => {
     const api = window.reportApi;
     if (!api?.aiComplete) {
-      setError('데스크톱 앱에서만 쓸 수 있습니다.');
+      setError(DESKTOP_ONLY);
       return;
     }
     const plan = planCompose({ template, doc, text, myName, company }, model);
@@ -109,13 +107,12 @@ export function ComposeFromTextDialog({ template, doc, myName, company, initialT
   const setField = (key: string, patch: Partial<{ on: boolean; value: string }>) =>
     setDraft((d) => ({ ...d, fields: { ...d.fields, [key]: { ...d.fields[key], ...patch } } }));
 
-  const masked = result ? maskedSummary(result.masked) : '';
   return (
     <Modal
       title={`${names.label} — ${template.name}`}
       subtitle={
         result
-          ? `${modelLabel(result.model)}${result.fallbackUsed ? ' (대체 모델이 이어 받음)' : ''} · 약 $${result.usd.toFixed(3)} · ${Math.max(1, Math.round(result.ms / 1000))}초${masked ? ` · 보내기 전 가림: ${masked}` : ''}`
+          ? aiResultLine(result)
           : `편하게 적은 글이나 붙여 넣은 대화를 이 서식의 칸(${targets.join(' · ')})에 맞는 글로 바꿉니다 (${modelLabel(model)}). IP·URL·메일·전화·키와 이름은 가려서 보냅니다.`
       }
       onClose={() => {
@@ -149,59 +146,22 @@ export function ComposeFromTextDialog({ template, doc, myName, company, initialT
             )}
           </>
         ) : (
-          <>
-            <span className="min-w-0 flex-1 text-[11px] text-fg-muted">
-              {ai.busy ? <AiProgressLine startedAt={ai.busy.startedAt} progress={ai.busy.progress} /> : '서술에 없는 사실은 만들지 않습니다. 넣기 전에 결과를 고칠 수 있습니다.'}
-            </span>
-            {busy ? (
-              <button type="button" className={BTN_GHOST} onClick={ai.cancel}>
-                멈추기
-              </button>
-            ) : (
-              <button type="button" className={BTN_GHOST} onClick={onClose}>
-                취소
-              </button>
-            )}
-            <button type="button" className={BTN_SOLID} style={SOLID_STYLE} disabled={busy || !text.trim()} onClick={() => void run()}>
-              {busy ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 size={13} className="animate-spin" /> 바꾸는 중…
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <Wand2 size={13} /> {names.make}
-                </span>
-              )}
-            </button>
-          </>
+          <AiRunFooter
+            ai={ai}
+            idle="서술에 없는 사실은 만들지 않습니다. 넣기 전에 결과를 고칠 수 있습니다."
+            busyLabel="바꾸는 중…"
+            runLabel={names.make}
+            canRun={!!text.trim()}
+            onRun={() => void run()}
+            onClose={onClose}
+          />
         )
       }
     >
-      {error && (
-        <p className="mb-3 flex items-start gap-1.5 rounded-sharp border border-rule px-2.5 py-2 text-[12px]" style={{ color: 'var(--stamp-red)' }}>
-          <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {error}
-        </p>
-      )}
+      <AiError error={error} />
       {result ? (
         <div className="space-y-3 text-[12.5px]">
-          {(result.warnings.length > 0 || result.gaps.length > 0 || result.questions.length > 0) && (
-            <section className="rounded-card border border-rule bg-bg p-3" aria-label="확인할 점">
-              <h3 className="mb-1 text-xs font-semibold text-fg">확인할 점</h3>
-              <ul className="space-y-0.5 text-fg-soft">
-                {result.warnings.map((w, i) => (
-                  <li key={`w${i}`} className="flex gap-1">
-                    <AlertTriangle size={12} className="mt-1 shrink-0" style={{ color: 'var(--stamp-red)' }} /> {w}
-                  </li>
-                ))}
-                {result.gaps.map((g, i) => (
-                  <li key={`g${i}`}>· {g}</li>
-                ))}
-                {result.questions.map((q, i) => (
-                  <li key={`q${i}`}>· {q}</li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <AiNotes warnings={result.warnings} notes={[...result.gaps, ...result.questions]} />
           <h3 className="text-xs font-semibold text-fg">넣을 내용 — 여기서 고친 뒤 넣으세요</h3>
           {result.fields.map((f) => {
             const d = draft.fields[f.key];
@@ -277,12 +237,7 @@ export function ComposeFromTextDialog({ template, doc, myName, company, initialT
               className={`${INPUT} leading-relaxed`}
               placeholder={names.placeholder}
               spellCheck={false}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && text.trim() && !busy) {
-                  e.preventDefault();
-                  void run();
-                }
-              }}
+              onKeyDown={ctrlEnter(!!text.trim() && !busy, () => void run())}
             />
             <span className="mt-1 block text-[11px] text-fg-muted">Ctrl+Enter로 실행 · {text.length.toLocaleString()}자 · 표에 이미 채워 둔 칸은 그대로 둡니다.</span>
             {lockedLabels.length > 0 && <span className="mt-0.5 block text-[11px] text-fg-muted">읽지도 보내지도 않는 칸: {lockedLabels.join(' · ')} — 직접 넣으세요.</span>}

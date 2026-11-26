@@ -9,10 +9,10 @@
  */
 import type { ClientItem, ContentBlock, DialogTurn, WeekReport } from '@core/index';
 import { NOTE_PREFIX, buildingOf, formatItemHeader, isBlankItem, turnMarker } from '@core/index';
-import type { AiCompleteRequest, AiCompleteResult, AiModelId } from '../../electron/ai-types';
+import type { AiCompleteRequest, AiModelId } from '../../electron/ai-types';
 import { Masker, missingFacts, sameTokens } from './mask';
 import type { ReviewChange, ReviewData, ReviewNote } from './review';
-import { estimateUsd } from './settings';
+import { aiMeta, type OkResult } from './result';
 import { site } from '../core/site-config';
 
 /** 한 줄의 위치 — 항목 키(di-bi-ii) 기준 */
@@ -268,7 +268,7 @@ function markerOf(item: ClientItem, ref: LineRef): string {
 }
 
 /** 응답 → 확인 창 목록. 원문과 같은 줄은 빼고, 검증 못 한 줄은 이유와 함께 보여 준다 */
-export function reviewWeekly(report: WeekReport, plan: WeeklyTidyPlan, res: Extract<AiCompleteResult, { ok: true }>): ReviewData {
+export function reviewWeekly(report: WeekReport, plan: WeeklyTidyPlan, res: OkResult): ReviewData {
   const { units, masker } = plan;
   const changes: ReviewChange[] = [];
   const notes: ReviewNote[] = [];
@@ -326,12 +326,7 @@ export function reviewWeekly(report: WeekReport, plan: WeeklyTidyPlan, res: Extr
   return {
     changes,
     notes,
-    model: res.model,
-    usage: res.usage,
-    usd: estimateUsd(res.model, res.usage),
-    ms: res.ms,
-    fallbackUsed: res.fallbackUsed,
-    masked: masker.summary(),
+    ...aiMeta(res, masker),
   };
 }
 

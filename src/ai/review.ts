@@ -3,14 +3,12 @@ import type { AiUsage } from '../../electron/ai-types';
 
 export interface ReviewChange {
   id: string;
-  /** 묶음 머리 — 주간보고는 항목 머리, 이메일은 '칸' / '본문' */
+  /** 묶음 머리 — 항목 머리 */
   group: string;
-  /** 줄 이름 — '제목', '-> 상대', '도입 문장' … */
+  /** 줄 이름 — '제목', '-> 상대' … */
   label: string;
   before: string;
   after: string;
-  /** before/after가 HTML(이메일 본문) */
-  html?: boolean;
   /** 검증 통과 — false면 적용할 수 없고 reason을 보여 준다 */
   ok: boolean;
   reason?: string;

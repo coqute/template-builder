@@ -8,7 +8,6 @@ import { classifyEvents, detectClient, diffEvents, eventsOn, kindOf } from '../s
 import { addDays } from '../src/planner/dates';
 import { agendaDays, bucketOf, buildStrip, closedInWorklog, groupTasks, recentPastEvents, summarize, visibleCandidates, waitingDays } from '../src/planner/model';
 import { applyOp, emptyState, newTaskId } from '../src/planner/ops';
-import { insertPlanLines, plansFromEvents, scanWeekly } from '../src/planner/sources/weekly';
 import type { Candidate } from '../src/planner/sources/worklog';
 import type { PlannerState, RawEvent, Task, TaskDraft, WorklogAnchor } from '../src/planner/types';
 import { appendToWorklog, doneBlock, eventBlock, hasEventBlock } from '../src/planner/worklogWrite';
@@ -181,58 +180,6 @@ describe('2주 띠·요약·확정 일정', () => {
       '2026-12-04:휴가',
     ]);
     expect(recentPastEvents(TODAY, events).map((e) => e.title)).toEqual(['지난 회의']);
-  });
-});
-
-describe('주간보고 표지 (sources/weekly.ts)', () => {
-  const MD = [
-    '@PREV 2026-11-16 ~ 2026-11-22',
-    '@CURRENT 2026-11-23 ~ 2026-11-29',
-    '@AUTHOR 홍길동',
-    '@PLAN 2026-11-24 10:00 MX(주간미팅)',
-    '@PLAN 2026-11-20 지난 일정',
-    '',
-    '# 2026-11-17(화)',
-    '@LOC 회사',
-    '@CUS MX',
-    '@SUM [MX] (담당C/메일) 에이전트 이름 변경 반영 안 됨',
-    '  -> 서버 이름을 바꿔도 목록에 반영 안 됨',
-    '  *<- 에이전트 로그 공유 요청',
-    '@SUM [MX] (담당D/유선) 알림 설정',
-    '  <- 설정 방법 안내',
-    '  *-> 적용 결과 회신 예정',
-    '  - 확인 필요',
-  ].join('\n');
-
-  it('미결 표지와 @PLAN만 읽는다 — 문장 속 상태 낱말은 읽지 않는다', () => {
-    const r = scanWeekly([{ name: '', text: MD }], TODAY);
-    expect(r.candidates.map((c) => [c.cls, c.title, c.phrase, c.client, c.who])).toEqual([
-      ['todo', '에이전트 이름 변경 반영 안 됨', '에이전트 로그 공유 요청', 'MX', '담당C'],
-      ['wait', '알림 설정', '적용 결과 회신 예정', 'MX', '담당D'],
-    ]);
-    // 제목에 '미팅'이 있으면 회의로 본다. 지난 날짜의 줄은 버린다
-    expect(r.plans.map((p) => [p.date, p.startTime, p.title, p.kind])).toEqual([['2026-11-24', '10:00', 'MX(주간미팅)', 'meeting']]);
-    expect(r.from?.week).toBe('2026-11-16');
-  });
-
-  it('보고 주가 가장 늦은 보고서 하나만 읽는다', () => {
-    const older = MD.replace('2026-11-16 ~ 2026-11-22', '2026-11-09 ~ 2026-11-15').replace('에이전트 로그 공유 요청', '옛 요청');
-    expect(scanWeekly([{ name: 'old.md', text: older }, { name: 'new.md', text: MD }], TODAY).candidates[0].phrase).toBe('에이전트 로그 공유 요청');
-    expect(scanWeekly([{ name: '', text: '' }], TODAY)).toEqual({ candidates: [], plans: [], from: null });
-  });
-
-  it('달력 일정을 @PLAN 줄로 만들어 머리에 끼워 넣는다 — 다른 줄은 그대로', () => {
-    const events = classifyEvents([raw('a', '가나스토어 정기점검', '2026-12-01'), allDay('b', '휴가', '2026-12-04', '2026-12-05'), raw('c', '사무실', '2026-12-02'), raw('d', '범위 밖', '2026-12-09')]);
-    const plans = plansFromEvents(events, { start: '2026-11-30', end: '2026-12-06' });
-    expect(plans).toEqual([
-      { date: '2026-12-01', text: '10:00 가나스토어 정기점검' },
-      { date: '2026-12-04', text: '휴가' },
-    ]);
-    const next = insertPlanLines(MD, plans).split('\n');
-    expect(next.slice(3, 7)).toEqual(['@PLAN 2026-11-24 10:00 MX(주간미팅)', '@PLAN 2026-11-20 지난 일정', '@PLAN 2026-12-01 10:00 가나스토어 정기점검', '@PLAN 2026-12-04 휴가']);
-    expect(next.filter((l) => !l.startsWith('@PLAN 2026-12'))).toEqual(MD.split('\n'));
-    // @PLAN이 없으면 마지막 머리 지시어 뒤
-    expect(insertPlanLines('@PREV 2026-11-16 ~ 2026-11-22\n@AUTHOR 홍길동\n\n# 2026-11-16(월)', plans.slice(0, 1)).split('\n')[2]).toBe('@PLAN 2026-12-01 10:00 가나스토어 정기점검');
   });
 });
 

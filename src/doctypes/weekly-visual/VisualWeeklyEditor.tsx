@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { UNDO_MS } from '../../lib/undo';
 import {
   CalendarPlus,
   ChevronDown,
@@ -9,7 +10,6 @@ import {
   Redo2,
   Trash2,
   Undo2,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -18,7 +18,6 @@ import {
   WORK_CATEGORIES,
   WORK_PLACES,
   buildingOf,
-  formatItemHeader,
   isBlankItem,
   parseTolerant,
   serialize,
@@ -30,9 +29,7 @@ import {
   addDay,
   addItem,
   addLocationBlock,
-  addPlan,
   addTurn,
-  continuationOf,
   continueItem,
   convertListLineToTurn,
   convertTurnToList,
@@ -45,12 +42,10 @@ import {
   moveContentBlock,
   moveItem,
   moveTurn,
-  placeItem,
   removeContentBlock,
   removeDay,
   removeItem,
   removeLocationBlock,
-  removePlan,
   removeTurn,
   replaceTurn,
   setContentIndent,
@@ -63,11 +58,9 @@ import {
   updateHalfdayLabel,
   updateHolidayReason,
   updateItemFields,
-  updatePlan,
   updateTurn,
   type ItemBody,
 } from '@core/edit';
-import { dropCarry, loadCarry, saveCarry, type CarryList } from '../../lib/carryStore';
 import { Chip, Field, ItemEditor, itemStats, useDismiss } from './ItemEditor';
 
 interface Props {
@@ -76,7 +69,7 @@ interface Props {
   onMd: (next: string) => void;
 }
 
-/** 워크스페이스가 비주얼 편집기 안의 위치를 열 때 쓰는 핸들 (미결 바로가기·진단 이동·모드 전환) */
+/** 워크스페이스가 비주얼 편집기 안의 위치를 열 때 쓰는 핸들 (진단 이동·모드 전환) */
 export interface VisualEditorHandle {
   /** 항목(`di-bi-ii`)을 펼치고 스크롤·포커스. selector가 있으면 항목 안 그 요소에 포커스 */
   reveal(key: string, selector?: string): void;
@@ -116,7 +109,7 @@ interface FocusRequest {
 
 /**
  * 주간보고서 비주얼 에디터 — "원고지 조판".
- * 에디터 전체가 하나의 연속 문서: 마스트헤드(주간 정보·일정 예정·지난주 미결) → 러닝 헤드(날짜) →
+ * 에디터 전체가 하나의 연속 문서: 마스트헤드(주간 정보) → 러닝 헤드(날짜) →
  * 고스트 넘버럴(항목) → 입력 필드·대화 이력.
  * AST를 로컬 상태로 소유하고 매 편집을 serialize→onMd로 동기화한다. 되돌리기 기록도 여기서 관리한다.
  */
@@ -132,7 +125,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(() => new Set());
   const [collapsedItems, setCollapsedItems] = useState<Set<string>>(() => new Set());
-  const [carry, setCarry] = useState<CarryList | null>(() => loadCarry(report.prevWeekRange.start));
   // 요일 띠 — 지금 화면 위쪽에 걸린 일자
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const scrollRaf = useRef(0);
@@ -193,15 +185,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
     lastStructural: true,
   });
   const [, setHistoryTick] = useState(0);
-  // 이월 목록은 .md 밖 상태 — 이어쓰기를 되돌리면 목록 항목도 돌아오고, 다시 실행하면 다시 빠지게
-  const carryOnUndo = useRef(new WeakMap<WeekReport, CarryList | null>());
-  const carryOnRedo = useRef(new WeakMap<WeekReport, CarryList | null>());
-  const restoreCarry = (list: CarryList | null, week: string) => {
-    if (list) saveCarry(list);
-    else saveCarry({ week, from: '', items: [] });
-    setCarry(list && list.items.length > 0 ? list : null);
-  };
-
   useEffect(() => {
     if (md !== lastSyncedMd.current) {
       // 외부에서 md가 바뀜(열기/샘플/새 주간보고 등) — AST·되돌리기·접힘 재초기화
@@ -216,14 +199,8 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
         lastStructural: true,
       };
       setCollapsedItems(new Set());
-      setCarry(loadCarry(next.prevWeekRange.start));
     }
   }, [md]);
-
-  // 보고 주를 바꾸면 그 주의 이월 목록으로
-  useEffect(() => {
-    setCarry(loadCarry(report.prevWeekRange.start));
-  }, [report.prevWeekRange.start]);
 
   // 추가·이어쓰기·바로가기 뒤 — 대상으로 스크롤하고 입력칸에 포커스
   useEffect(() => {
@@ -271,7 +248,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
     h.future.push(reportRef.current);
     h.lastStructural = true;
     sync(prev);
-    if (carryOnUndo.current.has(prev)) restoreCarry(carryOnUndo.current.get(prev) ?? null, prev.prevWeekRange.start);
     setHistoryTick((t) => t + 1);
   };
   const redo = () => {
@@ -281,7 +257,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
     h.past.push(reportRef.current);
     h.lastStructural = true;
     sync(next);
-    if (carryOnRedo.current.has(next)) restoreCarry(carryOnRedo.current.get(next) ?? null, next.prevWeekRange.start);
     setHistoryTick((t) => t + 1);
   };
 
@@ -291,7 +266,7 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
     const epoch = docEpoch.current;
     act(next);
     toast.success(`${what} 삭제했습니다.`, {
-      duration: 6000,
+      duration: UNDO_MS,
       action: {
         label: '되돌리기',
         onClick: () => {
@@ -355,20 +330,14 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
           if (it.contact?.trim()) contacts.add(it.contact);
         });
       }
-    for (const c of carry?.items ?? []) {
-      if (c.header.client.trim()) customers.add(c.header.client);
-      if (c.header.contact?.trim()) contacts.add(c.header.contact);
-    }
     return {
       places: [...places],
       customers: [...customers],
       contacts: [...contacts],
     };
-  }, [report, carry]);
+  }, [report]);
 
   const missing = missingDates(report);
-  const plans = report.plans ?? [];
-  const workdays = report.days.filter((d) => !d.holiday);
   const h = history.current;
 
   const toggleDay = (date: string) =>
@@ -390,34 +359,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
   const expandAll = () => {
     setCollapsedDays(new Set());
     setCollapsedItems(new Set());
-  };
-
-  /** 이월 목록의 건을 고른 날로 이어 쓰기 */
-  const takeCarry = (idx: number, date: string) => {
-    const c = carry?.items[idx];
-    if (!c || !carry) return;
-    const { report: next, at } = placeItem(report, date, c, continuationOf(c.header));
-    if (next === report) return;
-    const before = report;
-    act(next);
-    const after = dropCarry(carry.week, idx);
-    carryOnUndo.current.set(before, carry);
-    carryOnRedo.current.set(next, after);
-    setCarry(after);
-    if (at)
-      setFocusRequest({
-        id: `vitem-${at.di}-${at.bi}-${at.ii}`,
-        selector: 'textarea[data-turn]',
-      });
-  };
-  const dismissCarry = (idx: number) => {
-    if (!carry) return;
-    setCarry(dropCarry(carry.week, idx));
-  };
-  const dismissAllCarry = () => {
-    if (!carry) return;
-    saveCarry({ ...carry, items: [] });
-    setCarry(null);
   };
 
   // 요일 띠 — 일자별 쓴 항목 수·미결 수
@@ -528,116 +469,6 @@ export const VisualWeeklyEditor = forwardRef<VisualEditorHandle, Props>(function
           </span>
         </div>
 
-        {/* 일정 예정 (@PLAN) — 다음 주 일정, 표 아래 □ 일정 예정으로 출력 */}
-        <div className="mt-4">
-          <div className="flex items-center gap-3">
-            <span className="ms-caption">일정 예정 — 다음 주 (선택)</span>
-            <button
-              type="button"
-              className="ms-add"
-              onClick={() => {
-                act(addPlan(report));
-                setFocusRequest({
-                  id: `vplan-${plans.length}`,
-                  selector: 'input[type="text"]',
-                });
-              }}
-              title="표 아래 □ 일정 예정에 한 줄 추가"
-            >
-              <CalendarPlus size={11} /> 일정 추가
-            </button>
-          </div>
-          {plans.length > 0 && (
-            <div className="mt-2 space-y-1.5">
-              {plans.map((p, pi) => (
-                <div key={pi} id={`vplan-${pi}`} className="group/plan flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={p.date}
-                    min={report.currentWeekRange.start}
-                    max={report.currentWeekRange.end}
-                    onChange={(e) => e.target.value && apply(updatePlan(report, pi, { date: e.target.value }))}
-                    className="ms-input w-36"
-                  />
-                  <input
-                    type="text"
-                    value={p.text}
-                    placeholder="10:00 MX(주간미팅) · (종일) 가나스토어 패치 · 휴가"
-                    onChange={(e) => apply(updatePlan(report, pi, { text: e.target.value }))}
-                    className="ms-input min-w-0 flex-1"
-                  />
-                  <button
-                    type="button"
-                    title="일정 삭제"
-                    aria-label="일정 삭제"
-                    tabIndex={-1}
-                    onClick={() => act(removePlan(report, pi))}
-                    className="rounded-sharp p-1 text-fg-muted opacity-50 transition hover:bg-bg-sunken hover:text-fg group-focus-within/plan:opacity-100 group-hover/plan:opacity-100"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 지난주 미결 — 새 주간보고가 지난주 보고서에서 찾은 끝나지 않은 건. .md에는 쓰지 않는다 */}
-        {carry && carry.items.length > 0 && (
-          <section className="mt-5 border-t border-rule pt-3" aria-label="지난주 미결">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="ms-caption" style={{ color: 'var(--tok-pending)' }}>
-                지난주 미결 {carry.items.length}건
-              </span>
-              <span className="text-[11px] text-fg-muted">
-                {carry.from ? `${carry.from}에서 · ` : ''}날짜를 고르면 그날 항목으로 이어 씁니다. 진행이 없던 건은
-                닫으세요.
-              </span>
-              <button type="button" className="ms-add ml-auto" onClick={dismissAllCarry}>
-                모두 닫기
-              </button>
-            </div>
-            <ul className="mt-2 space-y-2">
-              {carry.items.map((c, idx) => (
-                <li key={`${formatItemHeader(c.header)}-${idx}`} className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-semibold text-fg" title={formatItemHeader(c.header)}>
-                      {formatItemHeader(c.header)}
-                    </div>
-                    {c.pending.map((p, k) => (
-                      <div key={k} className="truncate text-[12px]" style={{ color: 'var(--tok-pending)' }}>
-                        {p.kind === 'out' ? '*<-' : '*->'} {p.text}
-                      </div>
-                    ))}
-                    <div className="text-[11px] text-fg-muted">마지막 기록 {shortDate(c.lastDate)}</div>
-                  </div>
-                  <select
-                    value=""
-                    aria-label="이어 쓸 날짜"
-                    onChange={(e) => e.target.value && takeCarry(idx, e.target.value)}
-                    className="ms-input max-w-[120px] py-1 text-[12px]"
-                  >
-                    <option value="">이어쓰기 →</option>
-                    {workdays.map((d) => (
-                      <option key={d.date} value={d.date}>
-                        {shortDate(d.date, d.weekday)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    title="닫기 — 이번 주에 진행이 없던 건"
-                    aria-label="닫기"
-                    onClick={() => dismissCarry(idx)}
-                    className="rounded-sharp p-1 text-fg-muted transition hover:bg-bg-sunken hover:text-fg"
-                  >
-                    <X size={12} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </header>
 
       {/* 일자 — 보고서와 같은 계층: 일자 → 행(지원장소·고객사) → 항목 머리 → 대화 턴 */}

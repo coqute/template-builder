@@ -23,9 +23,7 @@ export type DocIntent =
   /** 작업일지 탭: 그 파일의 그 사안 */
   | { kind: 'worklog-open'; anchor: WorklogAnchor }
   /** 홈: 그 할 일·일정을 눈에 띄게 */
-  | { kind: 'home-focus'; taskId?: string; eventKey?: string }
-  /** 주간보고 탭: 지금 문서의 그 줄 */
-  | { kind: 'weekly-line'; line: number };
+  | { kind: 'home-focus'; taskId?: string; eventKey?: string };
 
 export interface DocTypeHostValue {
   /** 활성 모듈이 툴바 버튼을 렌더할 슬롯 (Toolbar 셸의 우측 영역) */

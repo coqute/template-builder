@@ -6,6 +6,7 @@
  * 기억은 앱 설정 폴더의 dialog-dirs.json에 둔다(지워져도 동작에는 지장이 없다 — 문서 폴더에서 열릴 뿐).
  */
 import { app } from 'electron';
+import { isDir } from './util';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { writeFileAtomic } from './atomic';
@@ -33,14 +34,6 @@ async function load(): Promise<Saved> {
   }
   cache = out;
   return out;
-}
-
-async function isDir(p: string): Promise<boolean> {
-  try {
-    return (await fs.stat(p)).isDirectory();
-  } catch {
-    return false;
-  }
 }
 
 /** 창을 열 폴더 — 이 종류에서 마지막에 쓴 폴더 → 다른 종류에서 마지막에 쓴 폴더 → 문서 폴더 (지금 있는 폴더만) */

@@ -23,16 +23,13 @@ import {
   type WeekReport,
 } from '../src/core/index';
 import {
-  addPlan,
   addTurn,
   continueItem,
   fillMissingDays,
   missingDates,
-  removePlan,
   removeTurn,
   setContentIndent,
   toggleLeave,
-  updatePlan,
   updateTurn,
 } from '../src/core/edit';
 import { DIRECTIVES } from '../src/codemirror/completion';
@@ -381,7 +378,7 @@ describe('비주얼 편집 리듀서 — 히스토리', () => {
     expect(setContentIndent(r, 0, 0, 0, 0, 2).days[0].blocks[0].items[0].content[0].indent).toBe(2);
   });
 
-  it('toggleLeave on/off, fillMissingDays, 일정 추가·수정·삭제', () => {
+  it('toggleLeave on/off, fillMissingDays', () => {
     let r = toggleLeave(base(), 1);
     expect(r.days[1].blocks[0].locations).toEqual(['휴가']);
     r = toggleLeave(r, 1);
@@ -389,12 +386,6 @@ describe('비주얼 편집 리듀서 — 히스토리', () => {
 
     expect(missingDates(r)).toHaveLength(5);
     expect(fillMissingDays(r).days.map((d) => d.weekday)).toEqual(['월', '화', '수', '목', '금', '토', '일']);
-
-    r = addPlan(r);
-    expect(r.plans).toEqual([{ date: '2026-09-28', text: '' }]);
-    r = updatePlan(r, 0, { text: '10:00 MX(주간미팅)' });
-    expect(serialize(r)).toContain('@PLAN 2026-09-28 10:00 MX(주간미팅)');
-    expect(removePlan(r, 0).plans).toBeUndefined();
   });
 });
 

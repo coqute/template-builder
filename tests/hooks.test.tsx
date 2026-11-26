@@ -217,14 +217,4 @@ describe('useWeeklyState', () => {
     expect(result.current.dirty).toBe(false);
     expect(result.current.filePath).toBeNull();
   });
-
-  it('newDoc은 내용 비우고 파일 연결 해제', () => {
-    store.set('tb:md-file-path:v1', 'C:\\r\\w.md');
-    const { result } = renderHook(() => useWeeklyState('김테스트'));
-    expect(result.current.filePath).toBe('C:\\r\\w.md');
-    act(() => result.current.newDoc());
-    expect(result.current.md).toBe('');
-    expect(result.current.filePath).toBeNull();
-    expect(store.get('tb:md-file-path:v1')).toBeUndefined();
-  });
 });

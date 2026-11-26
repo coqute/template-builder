@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Diagnostic, ValidationResult } from '@core/index';
-import { AlertCircle, AlertTriangle, CheckCircle2, Clock, Copy, Info } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Copy, Info } from 'lucide-react';
 import type { Theme } from '../hooks/useTheme';
 
 interface Props {
@@ -14,23 +14,7 @@ interface Props {
   subject?: string;
   /** 제목 클릭 시 복사 */
   onCopySubject?: () => void;
-  /** `*<-` 미결 대응 개수 — 발송 전 점검 */
-  pending?: number;
-  /** 미결 대응 목록 — 누르면 해당 항목으로 이동 */
-  pendingItems?: PendingItem[];
-  onJumpPending?: (item: PendingItem) => void;
   theme: Theme;
-}
-
-export interface PendingItem {
-  /** 비주얼 편집기 항목 앵커 (`${di}-${bi}-${ii}`) */
-  key: string;
-  /** 텍스트 모드 점프용 @SUM 줄 */
-  line: number;
-  /** `09-21 [MX] 제목` */
-  label: string;
-  /** 미결 턴 내용 */
-  text: string;
 }
 
 export function StatusBar({
@@ -40,13 +24,9 @@ export function StatusBar({
   fatalError,
   subject,
   onCopySubject,
-  pending = 0,
-  pendingItems = [],
-  onJumpPending,
   theme,
 }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
-  const [pendingOpen, setPendingOpen] = useState(false);
   const errors = diagnostics.filter((d) => d.severity === 'error');
   const warnings = diagnostics.filter((d) => d.severity === 'warning');
   const infos = diagnostics.filter((d) => d.severity === 'info');
@@ -104,24 +84,6 @@ export function StatusBar({
                 />
               </>
             )}
-            {pending > 0 && (
-              <>
-                <Sep mono={isMono} />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPendingOpen((v) => !v);
-                    setPanelOpen(false);
-                  }}
-                  className="flex items-center gap-1 rounded-sharp px-1 py-0.5 transition hover:bg-bg-sunken"
-                  style={{ color: 'var(--tok-pending)' }}
-                  title="미결 — *<- 내 후속 조치 · *-> 상대 회신 대기. 눌러서 목록 보기"
-                  aria-expanded={pendingOpen}
-                >
-                  <Clock size={13} /> 미결 {pending}
-                </button>
-              </>
-            )}
             {errors.length === 0 && warnings.length === 0 && (
               <>
                 <Sep mono={isMono} />
@@ -146,40 +108,6 @@ export function StatusBar({
           제목: <span className="truncate text-fg-soft">{subject}</span>
           {onCopySubject && <Copy size={11} className="shrink-0" />}
         </button>
-      )}
-
-      {pendingOpen && pendingItems.length > 0 && (
-        <div
-          className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-[min(560px,90vw)] overflow-auto rounded-card border border-rule bg-bg-elevated shadow-themed scrollbar-thin"
-          role="dialog"
-          aria-label="미결 대응 목록"
-        >
-          <div className="flex items-center justify-between border-b border-rule px-3 py-1.5 text-[11px] text-fg-muted">
-            <span>미결 {pendingItems.length}건 — 행을 누르면 해당 항목으로 이동</span>
-            <button type="button" onClick={() => setPendingOpen(false)} className="text-fg-muted hover:text-fg" aria-label="닫기">
-              ✕
-            </button>
-          </div>
-          <ul>
-            {pendingItems.map((p, idx) => (
-              <li key={`${p.key}-${idx}`}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onJumpPending?.(p);
-                    setPendingOpen(false);
-                  }}
-                  className="flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left text-[12px] transition hover:bg-bg-sunken"
-                >
-                  <span className="w-full truncate text-fg">{p.label}</span>
-                  <span className="w-full truncate text-[11px]" style={{ color: 'var(--tok-pending)' }}>
-                    {p.text}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
 
       {panelOpen && diagnostics.length > 0 && (

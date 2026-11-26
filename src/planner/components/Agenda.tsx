@@ -49,7 +49,7 @@ export function Agenda({ today, days, past, cal, changes, linked, notes, focus, 
 
   if (cal.status && !cal.status.canRead) {
     return (
-      <EmptyBox title="Google 달력이 연결되지 않았습니다" action={{ label: '연결 방법 보기 (F1 설정)', onClick: onHelp }}>
+      <EmptyBox title="Google 달력이 연결되지 않았습니다" action={{ label: '연결 방법 보기 — 설정(F1)', onClick: onHelp }}>
         {cal.status.reason === 'credentials-missing'
           ? '자격증명 파일을 찾지 못했습니다. 연결하면 회의·작업 일정이 여기와 위 띠에 나옵니다. 연결 전에도 할 일과 기한은 그대로 쓸 수 있습니다.'
           : '토큰에 달력 읽기 권한이 없습니다. 권한을 더해 다시 동의하면 회의·작업 일정이 여기와 위 띠에 나옵니다. 그 전에도 할 일과 기한은 그대로 쓸 수 있습니다.'}
@@ -91,7 +91,6 @@ export function Agenda({ today, days, past, cal, changes, linked, notes, focus, 
                 {e.client && <span className="hm-chip">{e.client}</span>}
                 <span>{KIND_LABEL[e.kind]}</span>
                 {e.location && <span>· {e.location}</span>}
-                {e.source === 'plan' && <span>· 주간보고 일정 예정</span>}
                 {e.recurring && <span>· 반복</span>}
               </span>
             )}
@@ -120,7 +119,6 @@ export function Agenda({ today, days, past, cal, changes, linked, notes, focus, 
         </div>
         {open === e.key && (
           <div className="hm-ag-acts">
-            {e.source === 'plan' && <span className="hm-note">주간보고의 일정 예정(@PLAN)에 적어 둔 일정입니다 — 달력에는 없습니다. 주간보고 탭에서 고칩니다.</span>}
             {pastRow && canLog && !off && (
               <button type="button" className="hm-mini" onClick={() => actions.toWorklog(e)} title="그날 작업일지 끝에 ■ 회의 블록 초안을 덧붙입니다 (이미 있으면 쓰지 않음)">
                 일지에 회의 블록으로

@@ -11,6 +11,7 @@ import type {
   WeekReport,
 } from './types';
 import { getWeekday, isRealIsoDate, splitLocations, WEEKDAYS } from './types';
+import { isoOf } from '../lib/dates';
 import { GRAMMAR } from './grammar';
 import { appendContentLine, appendPlainText, indentLevel, matchContentLine, type ContentCursor } from './content';
 import { parseItemHeader } from './item-header';
@@ -393,13 +394,6 @@ function normalizeRange(
   return { start, end };
 }
 
-function fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 /** @PREV 누락 시 추정 — 첫 일자 행이 속한 주의 월~일, 일자도 없으면 오늘 기준 지난주 */
 function estimatePrevRange(days: DayEntry[]): DateRange {
   let base: Date | null = null;
@@ -416,7 +410,7 @@ function estimatePrevRange(days: DayEntry[]): DateRange {
   monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: isoOf(monday), end: isoOf(sunday) };
 }
 
 /** @CURRENT 누락 시 — 보고 주 + 7일 (월~일 길이 보존) */
@@ -425,5 +419,5 @@ function inferNextWeek(prevWeekRange: DateRange): DateRange {
   nextStart.setDate(nextStart.getDate() + 7);
   const nextEnd = new Date(`${prevWeekRange.end}T00:00:00`);
   nextEnd.setDate(nextEnd.getDate() + 7);
-  return { start: fmt(nextStart), end: fmt(nextEnd) };
+  return { start: isoOf(nextStart), end: isoOf(nextEnd) };
 }

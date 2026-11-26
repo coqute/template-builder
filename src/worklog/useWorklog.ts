@@ -12,6 +12,7 @@
  *   (다른 파일을 연 뒤 누르면 옛 파일 내용이 지금 파일에 들어가 그대로 자동 저장된다).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { UNDO_MS } from '../lib/undo';
 import { toast } from 'sonner';
 import type { WorklogConfig, WorklogEntry, WorklogFileRef, WorklogFileText } from '../../electron/worklog-types';
 import { isoToday } from './format';
@@ -470,7 +471,7 @@ export function useWorklog(opts: UseWorklogOptions = {}) {
       if (!cur || next === prev) return;
       setText(next);
       toast.success(fix.kind === 'merge-case' ? '같은 사안 ■을 하나로 합쳤습니다.' : '1행 제목을 바꿨습니다.', {
-        duration: 8000,
+        duration: UNDO_MS,
         action: { label: '되돌리기', onClick: () => void setTextFor(cur, prev, '그 사이 다른 일지를 열어 되돌리지 않았습니다.') },
       });
     },

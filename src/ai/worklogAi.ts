@@ -6,12 +6,10 @@
  * 돌아온 글에서 되살린다. 호칭 없이 본문에만 나오는 처음 보는 이름은 알아낼 방법이 없어 그대로 나간다 —
  * 대화상자가 그렇게 안내한다.
  */
-import type { AiCompleteRequest, AiCompleteResult, AiModelId } from '../../electron/ai-types';
-import { Masker, missingFacts, tokensOf } from './mask';
-import { estimateUsd } from './settings';
+import type { AiCompleteRequest, AiModelId } from '../../electron/ai-types';
+import { Masker, tokensOf } from './mask';
+import { aiMeta, inventedIn, type AiMeta, type OkResult } from './result';
 import { site } from '../core/site-config';
-
-type OkResult = Extract<AiCompleteResult, { ok: true }>;
 
 /** 알고 있는 이름을 자리표시로 — 긴 이름부터(‘홍길’이 ‘홍길동’을 먼저 먹지 않게) */
 export function maskNames(text: string, names: readonly string[], masker: Masker): string {
@@ -261,14 +259,10 @@ export function followSuffix(raw: string | undefined, chat: string): string {
   return seen ? ` (${mo}/${d} 문의 후속)` : ' (후속)';
 }
 
-export interface BlockResult {
+export interface BlockResult extends AiMeta {
   text: string;
   warnings: string[];
   questions: string[];
-  model: string;
-  usd: number;
-  ms: number;
-  masked: Record<string, number>;
   blocks: number;
 }
 
@@ -283,10 +277,9 @@ export function renderBlocks(plan: BlockPlan, res: OkResult): BlockResult {
   const um = (s: string) => masker.unmask(s.trim());
   let urlWarned = false;
   const checkInvented = (s: string, where: string) => {
-    const invented = missingFacts(s, srcFacts);
-    if (invented.length) warnings.push(`${where}: 대화에 없는 숫자·버전 ${invented.slice(0, 3).join(', ')} — 확인하세요.`);
-    const unknown = tokensOf(s).filter((t) => !known.has(t));
-    if (unknown.length) warnings.push(`${where}: 알 수 없는 자리표시 ${unknown.join(', ')}`);
+    const { numbers, tokens } = inventedIn(s, srcFacts, known);
+    if (numbers.length) warnings.push(`${where}: 대화에 없는 숫자·버전 ${numbers.slice(0, 3).join(', ')} — 확인하세요.`);
+    if (tokens.length) warnings.push(`${where}: 알 수 없는 자리표시 ${tokens.join(', ')}`);
     // 일지 본문에는 URL을 쓰지 않는다(전달물 원문만 예외) — 넣기 전에 사람이 지우거나 옮기게 알린다
     if (/⟦URL\d+⟧/.test(s) && !urlWarned) {
       urlWarned = true;
@@ -337,10 +330,7 @@ export function renderBlocks(plan: BlockPlan, res: OkResult): BlockResult {
     text: out.join('\n\n'),
     warnings,
     questions: res.json.questions.map((q) => um(q)).filter(Boolean),
-    model: res.model,
-    usd: estimateUsd(res.model, res.usage),
-    ms: res.ms,
-    masked: masker.summary(),
+    ...aiMeta(res, masker),
     blocks: out.length,
   };
 }

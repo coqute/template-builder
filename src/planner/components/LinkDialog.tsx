@@ -81,7 +81,7 @@ export function LinkDialog({ anchor, today, canEvent, busy, onSubmit, onClose }:
             <button type="button" aria-pressed={as === 'task'} onClick={() => setAs('task')}>
               할 일 — 기한
             </button>
-            <button type="button" aria-pressed={as === 'event'} disabled={!canEvent} title={canEvent ? 'Google 달력에 일정을 만듭니다' : '달력 쓰기 권한이 있을 때만 됩니다 (F1 설정)'} onClick={() => setAs('event')}>
+            <button type="button" aria-pressed={as === 'event'} disabled={!canEvent} title={canEvent ? 'Google 달력에 일정을 만듭니다' : '달력 쓰기 권한이 있을 때만 됩니다 — 설정(F1)'} onClick={() => setAs('event')}>
               달력 일정 — 시각
             </button>
           </span>

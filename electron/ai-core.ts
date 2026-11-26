@@ -3,6 +3,7 @@
  * electron을 import하지 않는다(테스트에서 가짜 스트림으로 돌린다). 키 저장·IPC는 ai.ts.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { errMsg } from './util';
 import {
   AI_MODEL_RE,
   isKnownModel,
@@ -153,10 +154,6 @@ export function refusalFail(msg: BetaMessage, requested: string): Fail {
       ? 'Haiku는 대체 모델로 이어 받지 않습니다. 설정(F1) > AI에서 Opus 5.5나 Sonnet 5.5로 바꿔 다시 실행하세요.'
       : '걸릴 만한 줄을 빼거나 다른 모델로 다시 실행하세요.';
   return { ok: false, code: 'refusal', message: `Claude가 이 요청을 처리하지 않았습니다${why}. ${next}` };
-}
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 /** SDK 오류 → 사용자에게 보일 코드·문구 (좁은 것부터) */

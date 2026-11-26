@@ -4,7 +4,7 @@
  * 비주얼·텍스트 편집의 발판으로 쓰고, 출력(HTML·plain)과 검증에서는 없는 것으로 본다.
  * 그래야 골격을 지우지 않아도 메일에 "[고객사] 제목" 같은 자리 문구가 나가지 않고, 작성 전부터 경고가 쌓이지 않는다.
  */
-import type { ClientItem, ContentBlock, DayEntry, LocationBlock, WeekReport } from './types';
+import type { ClientItem, ContentBlock, LocationBlock, WeekReport } from './types';
 
 const blank = (s: string | undefined): boolean => !s || !s.trim();
 
@@ -34,11 +34,6 @@ export function isBlankItem(it: ClientItem): boolean {
 /** 지원장소·고객사|작업구분이 비어 있고 항목도 모두 빈 행 */
 export function isBlankBlock(b: LocationBlock): boolean {
   return b.locations.every(blank) && blank(b.customer) && b.items.every(isBlankItem);
-}
-
-/** 쓰지 않은 골격만 남은 날 (휴일·반차 표기는 별개) */
-export function isBlankDay(d: DayEntry): boolean {
-  return !d.holiday && d.blocks.every(isBlankBlock);
 }
 
 function pruneContent(c: ContentBlock): ContentBlock | null {

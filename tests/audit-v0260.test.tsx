@@ -138,3 +138,26 @@ describe('작업일지 툴바', () => {
     expect(vi.mocked(toast.info)).toHaveBeenCalledWith('일지를 먼저 여세요.');
   });
 });
+
+// ── 탭에 맞는 메뉴 (v0.27.0) ─────────────────────────────────────────────────
+describe('앱 메뉴 — 지금 화면이 처리하는 항목만 켠다', () => {
+  it('화면이 등록한 메뉴 핸들러의 채널대로 항목을 켜고 끈다 — 모르는 값은 버리고, 설정 · 도움말은 건드리지 않는다', async () => {
+    const { applyMenuChannels, TAB_MENU_IDS } = await import('../electron/menu-state');
+    const items = new Map<string, { enabled: boolean }>([...TAB_MENU_IDS, 'menu:help'].map((id) => [id, { enabled: true }]));
+    const menu = { getMenuItemById: (id: string) => items.get(id) ?? null };
+    // 작업일지 화면이 등록하는 채널
+    const { handlers } = renderModule(worklogModule.Workspace);
+    const channels = Object.keys(handlers().menu);
+    expect(channels.sort()).toEqual(['menu:new', 'menu:open', 'menu:save']);
+    expect(applyMenuChannels(menu, [...channels, 7, 'menu:nope'])).toEqual(['menu:new', 'menu:open', 'menu:save']);
+    expect([...items].filter(([, v]) => !v.enabled).map(([k]) => k)).toEqual(['menu:load-sample', 'menu:copy-html', 'menu:draft', 'menu:import-gmail']);
+    expect(items.get('menu:help')!.enabled).toBe(true);
+    // 주간보고는 일곱 항목을 모두 처리한다
+    cleanup();
+    const weekly = renderModule(weeklyModule.Workspace);
+    expect(applyMenuChannels(menu, Object.keys(weekly.handlers().menu))).toHaveLength(TAB_MENU_IDS.length);
+    // 값이 배열이 아니면 모두 끈다(잘못된 통지로 엉뚱한 항목이 켜지지 않게)
+    expect(applyMenuChannels(menu, 'menu:save')).toEqual([]);
+    expect(applyMenuChannels(null, channels)).toEqual([]);
+  });
+});

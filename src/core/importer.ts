@@ -1,4 +1,5 @@
 import type { ClientItem, DateRange, DayEntry, LocationBlock, PlanEntry, WeekReport } from './types';
+import { isoOf } from '../lib/dates';
 import { appendContentLine, appendPlainText, indentLevel, matchContentLine, type ContentCursor } from './content';
 import { parseItemHeader } from './item-header';
 
@@ -461,20 +462,13 @@ function extractRange(text: string, re: RegExp): DateRange | null {
   return { start: `${m[1]}-${p(m[2])}-${p(m[3])}`, end: `${m[4]}-${p(m[5])}-${p(m[6])}` };
 }
 
-function fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 /** PREV(보고 주) + 7일 = 다음 주. 길이 보존 (월~일이면 월~일) */
 function nextWeekFrom(prev: DateRange): DateRange {
   const start = new Date(`${prev.start}T00:00:00`);
   const end = new Date(`${prev.end}T00:00:00`);
   start.setDate(start.getDate() + 7);
   end.setDate(end.getDate() + 7);
-  return { start: fmt(start), end: fmt(end) };
+  return { start: isoOf(start), end: isoOf(end) };
 }
 
 /** 표 일자 행에서 보고 주(@PREV) 추정 — 첫 일자가 속한 주의 월~일 */
@@ -487,7 +481,7 @@ function inferWeekRangeFromDays(days: DayEntry[]): DateRange | null {
   monday.setDate(first.getDate() - ((first.getDay() + 6) % 7));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: isoOf(monday), end: isoOf(sunday) };
 }
 
 /** 추정 실패 시 fallback — 지난 주(보고 대상) 월~일 */
@@ -498,5 +492,5 @@ function defaultPrevWeekRange(): DateRange {
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: isoOf(monday), end: isoOf(sunday) };
 }

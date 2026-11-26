@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { UNDO_MS } from '../lib/undo';
 import { createPortal } from 'react-dom';
 import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
@@ -23,7 +24,7 @@ import { loadAiModel } from '../ai/settings';
 import { lineOfKey, locateLine } from '../lib/locate';
 import { MarkdownEditor, type MarkdownEditorHandle } from '../components/MarkdownEditor';
 import { HtmlPreview, ZoomToggle } from '../components/HtmlPreview';
-import { StatusBar, type PendingItem } from '../components/StatusBar';
+import { StatusBar } from '../components/StatusBar';
 import { Btn, MoreMenu, OpenSplitButton } from '../components/ToolbarButton';
 import { VisualWeeklyEditor, type VisualEditorHandle } from './weekly-visual/VisualWeeklyEditor';
 import { WeeklyImportDialog } from '../worklog/components/WeeklyImportDialog';
@@ -31,9 +32,6 @@ import { useWeeklyState, type CombineEntry } from '../hooks/useWeeklyState';
 import { copyHtmlToClipboard } from '../hooks/useClipboard';
 import { fileBaseName as baseName } from '../lib/recentFiles';
 import { readWithFallback, safeSetItem } from '../lib/storage';
-import { plannerApi } from '../planner/api';
-import { classifyEvents } from '../planner/classify';
-import { insertPlanLines, plansFromEvents } from '../planner/sources/weekly';
 import { useDocTypeHost, useRegisterDocTypeHandlers } from './DocTypeHost';
 import type { DocTypeModule, DocTypeWorkspaceProps } from './registry';
 import type { Theme } from '../hooks/useTheme';
@@ -97,7 +95,7 @@ function loadSplit(): [number, number] {
 }
 
 function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspaceProps) {
-  const { toolbarSlot, intent, clearIntent } = useDocTypeHost();
+  const { toolbarSlot } = useDocTypeHost();
   const w = useWeeklyState(profile.name);
   const ai = useAiTidy();
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
@@ -194,14 +192,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
     safeSetItem(STORAGE_KEY_SPLIT, JSON.stringify(sizes));
   }, []);
 
-  // 홈에서 "주간보고의 이 줄"로 넘어온 경우 — 지금 문서의 그 줄로 간다
-  useEffect(() => {
-    if (intent?.kind !== 'weekly-line') return;
-    const line = intent.line;
-    clearIntent();
-    setTimeout(() => jumpToLine(line), 80);
-  }, [intent, clearIntent, jumpToLine]);
-
   useRegisterDocTypeHandlers({
     menu: {
       // 빈 문서는 쓸모가 없어 '새로 만들기'는 곧 새 주간보고(지난 주 골격)
@@ -223,9 +213,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
           return true;
         case 'l':
           void w.loadSample();
-          return true;
-        case 't':
-          void w.loadTemplate();
           return true;
         case 'shift+c':
           whenSendable(() => void w.copyHtml());
@@ -268,42 +255,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
   const subjectHint = subject ?? '제목은 @PREV(보고 대상 주)로 자동 생성됩니다.';
   const previewHtml = w.output?.html ?? '';
 
-  // 미결 대응 목록 — 발송 전 점검 (상태바 '미결 N' → 항목 바로가기)
-  const pendingItems = useMemo<PendingItem[]>(() => {
-    const out: PendingItem[] = [];
-    w.state.report?.days.forEach((d, di) =>
-      d.blocks.forEach((b, bi) =>
-        b.items.forEach((it, ii) => {
-          for (const c of it.content) {
-            if (c.kind !== 'dialog') continue;
-            for (const t of c.turns) {
-              if (!t.pending || !t.text.trim()) continue;
-              out.push({
-                key: `${di}-${bi}-${ii}`,
-                line: it.srcLine ?? 0,
-                label: `${d.date.slice(5)} [${it.client}] ${it.workType}`,
-                text: `${t.kind === 'in' ? '*->' : '*<-'} ${t.text.split('\n')[0]}`,
-              });
-            }
-          }
-        }),
-      ),
-    );
-    return out;
-  }, [w.state.report]);
-
-  const jumpToPending = useCallback(
-    (p: PendingItem) => {
-      if (editorMode === 'visual') {
-        // 접힌 일자·항목도 펼쳐서 미결 턴에 포커스
-        visualRef.current?.reveal(p.key, 'textarea[data-pending="true"]');
-        return;
-      }
-      if (p.line > 0) editorRef.current?.jumpToLine(p.line);
-    },
-    [editorMode],
-  );
-
   const copySubject = useCallback(async () => {
     if (!subject) return;
     try {
@@ -317,40 +268,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
   // AI 정돈 — 지금 .md를 기준으로 계획하고, 적용 직전에 내용이 그대로인지 확인한다
   const mdRef = useRef(w.md);
   mdRef.current = w.md;
-  /** 다음 주(일정 예정 범위)의 달력 일정을 `@PLAN` 줄로 넣는다 — 이미 있는 줄은 두고 없는 것만 */
-  const importPlans = async () => {
-    const baseMd = w.md;
-    const report = parseTolerant(baseMd).report;
-    const range = report.currentWeekRange;
-    if (!range.start || !range.end) return void toast.info('일정 예정 범위(@CURRENT)가 없어 가져올 수 없습니다.');
-    const api = plannerApi();
-    const status = await api.calendarStatus();
-    if (!status.canRead) return void toast.info('Google 달력이 연결되지 않았습니다 — 홈 화면의 설정(F1)에서 연결 방법을 확인하세요.');
-    const store = await api.plannerGet();
-    const s = store.ok ? store.state : null;
-    // 홈과 다른 기간을 읽는다 — 홈이 견줄 기준(마지막으로 읽은 일정)을 덮지 않게 한 번 쓰고 버리는 읽기로
-    const r = await api.calendarEvents({ from: range.start, to: range.end, calendars: s?.settings.calendars ?? ['primary'], transient: true });
-    if (!r.ok) return void toast.error(`달력을 읽지 못했습니다: ${r.message}`);
-    // 남의 달력(동료 등)의 일정은 내 일정 예정이 아니다
-    const events = classifyEvents(r.events, { hiddenEvents: s?.hiddenEvents, hiddenTitles: s?.hiddenTitles }).filter((e) => !e.other);
-    const have = report.plans ?? [];
-    const add = plansFromEvents(events, range).filter((p) => !have.some((h) => h.date === p.date && h.text.trim() === p.text));
-    if (add.length === 0) return void toast.info(`${range.start} ~ ${range.end}에 새로 넣을 달력 일정이 없습니다.`);
-    if (mdRef.current !== baseMd) return void toast.error('가져오는 동안 내용이 바뀌어 넣지 않았습니다. 다시 실행하세요.');
-    w.setMd(insertPlanLines(baseMd, add));
-    const gen = w.docGen();
-    toast.success(`달력 일정 ${add.length}건을 일정 예정(@PLAN)에 넣었습니다.`, {
-      duration: 8000,
-      action: {
-        label: '되돌리기',
-        onClick: () => {
-          if (w.docGen() !== gen) return void toast.info('그 사이 다른 문서를 열어 되돌리지 않았습니다.');
-          w.setMd(baseMd);
-        },
-      },
-    });
-  };
-
   const tidyWithAi = async () => {
     const baseMd = w.md;
     const report = parseTolerant(baseMd).report;
@@ -368,7 +285,7 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
         w.setMd(serialize(applyWeekly(report, p, review, picked)));
         const gen = w.docGen();
         toast.success(`${picked.size}곳을 다듬었습니다.`, {
-          duration: 8000,
+          duration: UNDO_MS,
           action: {
             label: '되돌리기',
             onClick: () => {
@@ -447,12 +364,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
                   icon: <NotebookPen size={13} />,
                   hint: '한 주의 작업일지(■ ▶ -)로 주간보고를 만듭니다 — 요청자별 고객사|작업구분은 지난 보고에서 (되돌리기 가능)',
                   onClick: () => setWorklogImport(true),
-                },
-                {
-                  label: '다음 주 일정 가져오기 (달력)',
-                  icon: <CalendarPlus size={13} />,
-                  hint: '일정 예정 범위의 Google 달력 일정을 @PLAN 줄로 넣습니다 — 이미 있는 줄은 그대로 (되돌리기 가능)',
-                  onClick: () => void importPlans(),
                 },
                 {
                   label: '샘플 보기',
@@ -540,9 +451,6 @@ function WeeklyWorkspace({ theme, profile, zoom, onZoomChange }: DocTypeWorkspac
           fatalError={w.state.fatalError}
           subject={subject}
           onCopySubject={() => void copySubject()}
-          pending={w.state.validation?.stats.pending ?? 0}
-          pendingItems={pendingItems}
-          onJumpPending={jumpToPending}
           theme={theme}
         />
       </div>

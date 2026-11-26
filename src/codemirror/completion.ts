@@ -5,6 +5,7 @@ import {
   type CompletionResult,
 } from '@codemirror/autocomplete';
 import { getWeekday, WORK_CATEGORIES, WORK_PLACES } from '@core/index';
+import { isoOf } from '../lib/dates';
 
 export const DIRECTIVES: Completion[] = [
   {
@@ -166,7 +167,7 @@ function suggestDates(docText: string): Completion[] {
   for (let i = 0; i < 5; i++) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
-    const iso = fmtDate(d);
+    const iso = isoOf(d);
     const wd = getWeekday(iso);
     const isWeekend = wd === '토' || wd === '일';
     out.push({
@@ -181,11 +182,4 @@ function suggestDates(docText: string): Completion[] {
 
 function pad(s: string): string {
   return s.padStart(2, '0');
-}
-
-function fmtDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }

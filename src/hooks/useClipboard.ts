@@ -4,7 +4,7 @@ export interface CopyHtmlInput {
 }
 
 export async function copyHtmlToClipboard({ html, plain }: CopyHtmlInput): Promise<void> {
-  // 데스크탑: Electron 네이티브 클립보드 우선 — 문서 포커스/권한 조건 무관하게 항상 성공
+  // 데스크톱 앱: Electron 네이티브 클립보드 우선 — 문서 포커스/권한 조건 무관하게 항상 성공
   const native = typeof window !== 'undefined' ? window.reportApi?.copyHtml : undefined;
   if (native) {
     const r = await native(html, plain);

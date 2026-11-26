@@ -10,10 +10,10 @@ import type {
   DialogTurn,
   LocationBlock,
   ClientItem,
-  PlanEntry,
   WeekReport,
 } from './types';
 import { buildingOf, datesInRange, getWeekday, isLeaveBlock, isNoteLine, LEAVE_LOCATION, NOTE_PREFIX, noteText } from './types';
+import { isoOf } from '../lib/dates';
 import { MAX_INDENT } from './content';
 import { clientForRow } from './customer';
 import { isBlankBlock } from './blank';
@@ -96,23 +96,11 @@ function moveInArray<T>(arr: T[], from: number, dir: -1 | 1): T[] | null {
 
 // ── 헤더 ─────────────────────────────────────────────────────────────────────
 
-export function updateHeader(
-  r: WeekReport,
-  patch: Partial<Pick<WeekReport, 'prevWeekRange' | 'currentWeekRange' | 'authorName'>>,
-): WeekReport {
-  return { ...r, ...patch };
-}
-
 /** 보고 대상 주(지난 주)의 월요일 ISO로 @PREV(월~일)·@CURRENT(다음주 월~금) 동시 계산 */
 export function setWeekByPrevMonday(r: WeekReport, prevMondayIso: string): WeekReport {
   const monday = new Date(`${prevMondayIso}T00:00:00`);
   if (Number.isNaN(monday.getTime())) return r;
-  const iso = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  const iso = isoOf;
   const add = (base: Date, n: number) => {
     const d = new Date(base);
     d.setDate(base.getDate() + n);
@@ -662,7 +650,7 @@ export function placeItem(
   return { report: next, at: { di: tdi, bi: next.days[tdi].blocks.length - 1, ii: 0 } };
 }
 
-/** 항목 머리만 복사한 새 항목 (본문은 빈 대화 이력) — 이어쓰기·지난주 미결 이월 공용 */
+/** 항목 머리만 복사한 새 항목 (본문은 빈 대화 이력) — 이어쓰기에 쓴다 */
 export function continuationOf(src: Pick<ClientItem, 'client' | 'site' | 'contact' | 'channel' | 'workType'>): ClientItem {
   return {
     client: src.client,
@@ -725,25 +713,3 @@ export function fillMissingDays(r: WeekReport): WeekReport {
   return missingDates(r).reduce((acc, date) => addDay(acc, date, { weekendHoliday: true, skeleton: true }), r);
 }
 
-// ── 일정 예정 (@PLAN) ─────────────────────────────────────────────────────────
-
-/** 일정 추가 — 날짜 미지정이면 다음 주 월요일 */
-export function addPlan(r: WeekReport, date?: string): WeekReport {
-  const plan: PlanEntry = { date: date ?? r.currentWeekRange.start, text: '' };
-  return { ...r, plans: [...(r.plans ?? []), plan] };
-}
-
-export function updatePlan(r: WeekReport, pi: number, patch: Partial<Pick<PlanEntry, 'date' | 'text'>>): WeekReport {
-  const plans = r.plans ?? [];
-  if (pi < 0 || pi >= plans.length) return r;
-  return { ...r, plans: plans.map((p, i) => (i === pi ? { ...p, ...patch } : p)) };
-}
-
-export function removePlan(r: WeekReport, pi: number): WeekReport {
-  const plans = r.plans ?? [];
-  if (pi < 0 || pi >= plans.length) return r;
-  const next = plans.filter((_, i) => i !== pi);
-  if (next.length > 0) return { ...r, plans: next };
-  const { plans: _drop, ...rest } = r;
-  return rest;
-}

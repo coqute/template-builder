@@ -189,7 +189,6 @@ export function DayPreview({ today, day, days, countOf, tasks, notion, notes, li
                               {KIND_LABEL[e.kind]}
                               {e.client ? ` · ${e.client}` : ''}
                               {e.location ? ` · ${e.location}` : ''}
-                              {e.source === 'plan' ? ' · 주간보고 일정 예정' : ''}
                             </small>
                             {(e.htmlLink || linked.has(e.key) || notes.has(e.key)) && (
                               <span className="hm-pk-l">

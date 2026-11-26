@@ -1,14 +1,13 @@
 /**
- * 작성 흐름 개선 회귀 (v0.4.0) — 골격·저장 정합성·마커 입력·자동 채움·이어쓰기·지난주 미결
+ * 작성 흐름 개선 회귀 (v0.4.0) — 골격·저장 정합성·마커 입력·자동 채움·이어쓰기
+ * (지난주 미결 이월은 쓰이지 않아 v0.27.0에서 없앴다)
  */
 import { describe, expect, it } from 'vitest';
 import {
-  collectOpenItems,
   escapeContinuation,
   isBlankItem,
   parse,
   parseTolerant,
-  pickPreviousReport,
   pruneBlank,
   render,
   serialize,
@@ -258,43 +257,6 @@ describe('추가·자동 채움 — 같은 값을 두 번 쓰지 않게', () => 
     expect(at).toEqual({ di: 1, bi: 0, ii: 0 });
     expect(report.days[1].blocks).toHaveLength(1);
     expect(report.days[1].blocks[0].items[0]).toMatchObject({ client: 'MX', contact: '담당A', workType: '에이전트 IP' });
-  });
-});
-
-describe('지난주 미결 이월', () => {
-  const lastWeek = `@PREV 2026-09-14 ~ 2026-09-20
-
-# 2026-09-14(월)
-@LOC 원격
-@CUS MX
-@SUM [MX] (담당A/메일) 에이전트 이름 변경
-  -> 대시보드 미반영
-  *<- 로그 확인 후 제조사 문의 예정
-@SUM [MX] (담당B/메일) 라이선스 문의
-  -> 만료일 문의
-  *<- 확인 후 회신 예정
-
-# 2026-09-16(수)
-@LOC 원격
-@CUS MX
-@SUM [MX] (담당B/메일) 라이선스 문의
-  <- 만료일 안내 완료
-@SUM [ABZ+] (담당C/유선) 수집 지연
-  *-> 고객 재현 결과 대기
-`;
-
-  it('같은 건은 마지막 기록만 본다 — 이어 쓴 뒤 미결을 풀었으면 제외', () => {
-    const items = collectOpenItems(parse(lastWeek));
-    expect(items.map((i) => i.header.workType)).toEqual(['에이전트 이름 변경', '수집 지연']);
-    expect(items[0].pending).toEqual([{ kind: 'out', text: '로그 확인 후 제조사 문의 예정' }]);
-    expect(items[1]).toMatchObject({ lastDate: '2026-09-16', pending: [{ kind: 'in', text: '고객 재현 결과 대기' }] });
-  });
-
-  it('후보 중 새 보고 주 바로 앞 주를 고른다', () => {
-    const mk = (start: string) => ({ report: { ...parse(lastWeek), prevWeekRange: { start, end: start } }, label: start });
-    const picked = pickPreviousReport([mk('2026-09-07'), mk('2026-09-14'), mk('2026-09-21')], '2026-09-21');
-    expect(picked?.label).toBe('2026-09-14');
-    expect(pickPreviousReport([mk('2026-09-21')], '2026-09-21')).toBeUndefined();
   });
 });
 

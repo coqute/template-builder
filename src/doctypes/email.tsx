@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { UNDO_MS } from '../lib/undo';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { ClipboardCopy, FileDown, FileText, Mail, Mails, RotateCcw, ScrollText } from 'lucide-react';
@@ -32,7 +33,6 @@ function EmailModuleWorkspace({
   // 자유 본문(hasBody) 템플릿 = 이미지 삽입 가능 → HTML 복사는 붙여넣기 시 이미지가 누락될 수 있어
   // 감춘다. 이미지가 인라인으로 확실히 포함되는 임시보관함(draft) 경로로 통일. 본문 없는 템플릿만 HTML 복사 허용.
   const allowHtmlCopy = !emailState.template?.hasBody;
-  const weeklyOnly = () => toast.info('주간보고서 모드 전용 기능입니다.');
 
   // 서술 → 문의(메일) — 편하게 적은 글을 이 서식의 칸에 맞는 글로 바꿔 넣는다 (작업일지의 대화 → 블록과 같은 흐름)
   const compose = composeNames(emailState.template);
@@ -55,7 +55,7 @@ function EmailModuleWorkspace({
     emailDoc.loadDoc(next);
     const gen = emailDoc.gen();
     toast.success(`서식에 ${count}곳을 넣었습니다 — 미리보기에서 확인하세요.`, {
-      duration: 8000,
+      duration: UNDO_MS,
       action: {
         label: '되돌리기',
         onClick: () => {
@@ -76,8 +76,6 @@ function EmailModuleWorkspace({
       'menu:draft': () => void emailExport.createDraft(),
       'menu:open': () => void emailExport.openEmail(),
       'menu:save': () => void emailExport.saveEmail(),
-      'menu:load-sample': weeklyOnly,
-      'menu:import-gmail': weeklyOnly,
       'menu:copy-html': () =>
         allowHtmlCopy
           ? void emailExport.copyEmailHtml()
@@ -116,7 +114,7 @@ function EmailModuleWorkspace({
     emailDoc.resetDoc();
     const gen = emailDoc.gen();
     toast.success('새 이메일 — 현재 템플릿의 기본값으로 초기화했습니다.', {
-      duration: 8000,
+      duration: UNDO_MS,
       action: {
         label: '되돌리기',
         onClick: () => {

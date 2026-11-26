@@ -16,7 +16,7 @@ import type { WorklogAnchor } from '../types';
 export interface Candidate {
   /** 무시·중복 판정용 키 */
   key: string;
-  source: 'worklog' | 'weekly';
+  source: 'worklog';
   cls: 'todo' | 'wait';
   title: string;
   client: string;
@@ -29,7 +29,6 @@ export interface Candidate {
   /** 같은 줄에 `M/D … 예정`이 있으면 그 날짜 */
   due: string | null;
   anchor?: WorklogAnchor;
-  weekly?: { file: string; line: number };
 }
 
 export interface WorklogScan {

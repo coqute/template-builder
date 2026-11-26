@@ -1,46 +1,10 @@
-/** 플래너 날짜 계산 — 모두 이 컴퓨터의 날짜(YYYY-MM-DD) 기준 */
+/** 플래너 날짜 계산 — 모두 이 컴퓨터의 날짜(YYYY-MM-DD) 기준. 공용 계산은 lib/dates.ts에 있고 여기서는 다시 내보낸다 */
 
-export const DOW = '일월화수목금토';
+import { diffDays, dowOf, isoOf, toDate } from '../lib/dates';
+
+export { addDays, diffDays, DOW, dowOf, isoOf, mondayOf, toDate, todayIso } from '../lib/dates';
 
 const p2 = (n: number) => String(n).padStart(2, '0');
-
-export function toDate(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-export function isoOf(d: Date): string {
-  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-}
-
-export function todayIso(now = new Date()): string {
-  return isoOf(now);
-}
-
-export function addDays(iso: string, n: number): string {
-  const d = toDate(iso);
-  d.setDate(d.getDate() + n);
-  return isoOf(d);
-}
-
-/** b − a (일) */
-export function diffDays(a: string, b: string): number {
-  return Math.round((toDate(b).getTime() - toDate(a).getTime()) / 86_400_000);
-}
-
-/** 그 주 월요일 */
-export function mondayOf(iso: string): string {
-  return addDays(iso, -((toDate(iso).getDay() + 6) % 7));
-}
-
-export function dowOf(iso: string): string {
-  return DOW[toDate(iso).getDay()];
-}
-
-export function isWeekend(iso: string): boolean {
-  const d = toDate(iso).getDay();
-  return d === 0 || d === 6;
-}
 
 /** `11/25` */
 export function md(iso: string): string {

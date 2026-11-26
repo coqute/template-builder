@@ -8,6 +8,7 @@
  * - 달력 ID는 코드에 적지 않는다. 공휴일 달력은 ID에 든 표식(#holiday)으로만 가린다.
  * - 시각은 이 컴퓨터의 시간대로 해석한다.
  */
+import { isoOf } from '../src/lib/dates';
 import type {
   CalendarDeleteResult,
   CalendarErrorCode,
@@ -168,16 +169,12 @@ function localMinute(s: unknown): Date | null {
   return new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, mi);
 }
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-}
-
 /** 시간대 오프셋이 붙은 RFC3339 — `2026-11-23T00:00:00+09:00` */
 export function localRfc3339(d: Date): string {
   const off = -d.getTimezoneOffset();
   const abs = Math.abs(off);
   const zone = `${off >= 0 ? '+' : '-'}${p2(Math.floor(abs / 60))}:${p2(abs % 60)}`;
-  return `${isoDate(d)}T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}${zone}`;
+  return `${isoOf(d)}T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}${zone}`;
 }
 
 // ── 달력 목록 ───────────────────────────────────────────────────────────────
@@ -295,7 +292,7 @@ function toRawEvent(calendarId: string, e: GEvent | null, cal: CalendarFlags): R
   const end = allDay ? e.end?.date : e.end?.dateTime;
   // 끝이 빠진 일정 — 시각 일정은 시작과 같게, 종일 일정은 하루짜리(끝 = 다음 날)로 본다
   const nextDay = allDay ? localDay(start, 1) : null;
-  const noEnd = nextDay ? isoDate(nextDay) : start;
+  const noEnd = nextDay ? isoOf(nextDay) : start;
   // 남이 만들어 나를 부른 일정은 내 달력에 있어도 시각·제목을 고칠 수 없다(손님이 고칠 수 있게 해 둔 일정만 예외).
   // 지우면 내 달력에서만 빠지고 만든 사람에게는 불참으로 보이므로, 그런 일정은 고치기·지우기를 내놓지 않는다.
   const mine = !e.organizer || e.organizer.self === true || e.guestsCanModify === true;
@@ -448,7 +445,7 @@ function buildBody(input: Partial<EventInput>, patch: boolean): { ok: true; body
   const side = (w: When, isEnd: boolean): Record<string, unknown> => {
     if (w.allDay) {
       const day = isEnd ? new Date(w.day.getFullYear(), w.day.getMonth(), w.day.getDate() + 1) : w.day;
-      return { date: isoDate(day), ...(patch ? { dateTime: null, timeZone: null } : {}) };
+      return { date: isoOf(day), ...(patch ? { dateTime: null, timeZone: null } : {}) };
     }
     return { dateTime: localRfc3339(w.at), ...(timeZone ? { timeZone } : {}), ...(patch ? { date: null } : {}) };
   };

@@ -1,15 +1,9 @@
 import { getWeekday } from '@core/index';
+import { isoOf } from '../lib/dates';
 
 export interface BuildTemplateOptions {
   authorName?: string;
   baseDate?: Date;
-}
-
-function isoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 function mondayOf(date: Date): Date {
@@ -44,10 +38,10 @@ export function buildWeeklyTemplate(options: BuildTemplateOptions = {}): Templat
   const currentMonday = mondayOf(base);
   const prevMonday = addDays(currentMonday, -7);
 
-  const prevStart = isoDate(prevMonday);
-  const prevEnd = isoDate(addDays(prevMonday, 6));
-  const currentStart = isoDate(currentMonday);
-  const currentEnd = isoDate(addDays(currentMonday, 6));
+  const prevStart = isoOf(prevMonday);
+  const prevEnd = isoOf(addDays(prevMonday, 6));
+  const currentStart = isoOf(currentMonday);
+  const currentEnd = isoOf(addDays(currentMonday, 6));
 
   const author = (options.authorName ?? '').trim() || '작성자';
 
@@ -59,7 +53,7 @@ export function buildWeeklyTemplate(options: BuildTemplateOptions = {}): Templat
   ];
 
   for (let idx = 0; idx < 7; idx++) {
-    const iso = isoDate(addDays(prevMonday, idx));
+    const iso = isoOf(addDays(prevMonday, idx));
     const wd = getWeekday(iso);
     lines.push(`# ${iso}(${wd})`);
     if (idx < 5) {

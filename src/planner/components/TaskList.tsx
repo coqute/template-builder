@@ -233,7 +233,7 @@ export function TaskList({ today, groups, candidates, olderCandidates, lookbackD
       {(candidates.length > 0 || olderCandidates > 0) && (
         <section data-bucket="candidates">
           <div className="hm-cap">
-            작업일지·주간보고에서 찾은 후보{' '}
+            작업일지에서 찾은 후보{' '}
             <i className="hm-num">
               {candidates.length} · 최근 {lookbackDays}일
             </i>
@@ -250,7 +250,7 @@ export function TaskList({ today, groups, candidates, olderCandidates, lookbackD
                 — {c.phrase}
               </span>
               <OriginTag
-                origin={c.anchor ? { kind: 'worklog', anchor: c.anchor } : { kind: 'weekly', file: c.weekly?.file ?? '', line: c.weekly?.line ?? 0 }}
+                origin={c.anchor ? { kind: 'worklog', anchor: c.anchor } : { kind: 'manual' }}
                 onOpen={actions.openOrigin}
               />
               <span className="hm-chip hm-num" title="기록된 뒤 지난 날">
@@ -266,7 +266,7 @@ export function TaskList({ today, groups, candidates, olderCandidates, lookbackD
           ))}
           {olderCandidates > 0 && (
             <p className="hm-note">
-              더 오래된 열린 사안이 {olderCandidates}건 있습니다 — 끝났는데 기록이 없는 것일 수 있어 세지 않습니다. 찾는 기간은 도움말·설정(F1)에서 바꿉니다.
+              더 오래된 열린 사안이 {olderCandidates}건 있습니다 — 끝났는데 기록이 없는 것일 수 있어 세지 않습니다. 찾는 기간은 설정(F1)에서 바꿉니다.
             </p>
           )}
         </section>

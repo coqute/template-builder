@@ -24,10 +24,8 @@ export {
   escapeContinuation,
   unescapeContinuation,
 } from './content';
-export { isBlankBlock, isBlankContent, isBlankDay, isBlankItem, pruneBlank } from './blank';
-export { collectOpenItems, pickPreviousReport } from './carryover';
+export { isBlankBlock, isBlankContent, isBlankItem, pruneBlank } from './blank';
 export { canonicalClient, customerKey, sameCustomer } from './customer';
-export type { CarryItem } from './carryover';
 export { parseItemHeader, formatItemHeader } from './item-header';
 export type { ItemHeader } from './item-header';
 export {

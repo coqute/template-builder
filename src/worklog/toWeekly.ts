@@ -13,6 +13,7 @@
  * 고객 토큰은 표준 표기로 쓴다 — 지난 보고에 `ABZ+`가 많아도 `[AB Z+]` (customer.ts canonicalClient, 2026-11-10).
  */
 import type { WorklogFileText } from '../../electron/worklog-types';
+import { addDays, isoOf, mondayOf } from '../lib/dates';
 import type { WeekReport } from '@core/index';
 import { canonicalClient, getWeekday } from '@core/index';
 import { caseKey, parseWorklog, type WlBlock } from './format';
@@ -137,13 +138,6 @@ function cusOf(b: WlBlock, map: FolderMap, learn: WeeklyLearn): string {
   return map.cus;
 }
 
-function addDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  const p = (x: number) => String(x).padStart(2, '0');
-  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
-}
-
 export interface BuildWeeklyOptions {
   prevStart: string;
   author: string;
@@ -236,16 +230,8 @@ export function buildWeeklyMd(o: BuildWeeklyOptions): BuildWeeklyResult {
 
 /** 오늘 기준 지난 주 월요일 */
 export function lastMonday(today = new Date()): string {
-  const d = new Date(today);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 7);
-  const p = (x: number) => String(x).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return addDays(mondayOf(isoOf(today)), -7);
 }
 
 /** 아무 날짜 → 그 주 월요일 */
-export function mondayOf(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return addDays(iso, -((dt.getDay() + 6) % 7));
-}
+export { mondayOf };

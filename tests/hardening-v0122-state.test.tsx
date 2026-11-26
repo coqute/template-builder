@@ -334,7 +334,7 @@ describe('주간보고 — 늦게 눌리는 토스트 액션', () => {
     expect(result.current.docGen()).toBe(g);
     await act(async () => result.current.openRecentFile(PATH_B));
     expect(result.current.docGen()).toBe(g + 1);
-    act(() => result.current.newDoc());
+    await act(async () => result.current.loadTemplate());
     expect(result.current.docGen()).toBe(g + 2);
   });
 });

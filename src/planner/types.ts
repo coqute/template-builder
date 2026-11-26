@@ -230,11 +230,6 @@ export interface CalendarEventsRequest {
   calendars: string[];
   /** 5분 기억을 건너뛰고 다시 읽는다 */
   force?: boolean;
-  /**
-   * 한 번 쓰고 버릴 읽기 — 마지막으로 읽은 일정(calendar-cache.json)과 견줄 기준을 건드리지 않는다.
-   * 홈이 아닌 곳에서 다른 기간을 읽을 때 쓴다(주간보고의 다음 주 일정 가져오기).
-   */
-  transient?: boolean;
 }
 
 export type CalendarEventsResult =

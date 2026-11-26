@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { errText } from '../lib/err';
+import { UNDO_MS } from '../lib/undo';
 import { toast } from 'sonner';
 import {
-  collectOpenItems,
   importFromInput,
   parseTolerant,
-  pickPreviousReport,
   renderCombined,
   serialize,
   type WeekReport,
 } from '@core/index';
-import { saveCarry } from '../lib/carryStore';
 import { useGmailDraft } from './useGmailDraft';
 import { loadWeeklyRecipients } from '../lib/weeklyRecipients';
 import { josa } from '../lib/josa';
@@ -90,9 +89,8 @@ export interface WeeklyState {
   filePath: string | null;
   dirty: boolean;
   recentFiles: string[];
-  newDoc: () => void;
   loadSample: () => Promise<void>;
-  /** 새 주간보고 — 지난주 보고서(현재 초안·최근 파일)의 미결 건을 이월 목록으로 넘긴다 */
+  /** 새 주간보고 — 지난 주 월~일의 빈 골격 */
   loadTemplate: () => Promise<void>;
   importGmail: () => Promise<void>;
   /** 바깥에서 만든 .md로 문서 교체 (작업일지 가져오기) — 되돌리기 토스트 */
@@ -110,10 +108,6 @@ export interface WeeklyState {
   /** Gmail 임시보관함 초안 (받는사람·참조는 도움말에서 설정) */
   createDraft: () => Promise<void>;
   draftBusy: boolean;
-}
-
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 /** 주간보고서 문서 상태 컨테이너 — 파일 연결(Ctrl+S 덮어쓰기)·최근 파일·dirty 추적 포함 */
@@ -250,7 +244,7 @@ export function useWeeklyState(author: string): WeeklyState {
       const undoable = prev.md.trim() !== '' && prev.md !== next;
       const opts = undoable
         ? {
-            duration: 8000,
+            duration: UNDO_MS,
             action: {
               label: '되돌리기',
               onClick: () => {
@@ -273,10 +267,6 @@ export function useWeeklyState(author: string): WeeklyState {
     [detachFile, filePath, savedSnapshot, extras],
   );
 
-  const newDoc = useCallback(() => {
-    replaceDoc('', '빈 문서로 시작합니다.');
-  }, [replaceDoc]);
-
   const loadSample = useCallback(async () => {
     const sample = window.reportApi?.loadSample ? await window.reportApi.loadSample() : null;
     replaceDoc(sample || buildFallbackMd(author), '샘플을 불러왔습니다.');
@@ -284,29 +274,8 @@ export function useWeeklyState(author: string): WeeklyState {
 
   const loadTemplate = useCallback(async () => {
     const { md: tpl, prevStart, prevEnd } = buildWeeklyTemplate({ authorName: author });
-    // 지난주 보고서 찾기 — 지금 열린 초안이 먼저, 없으면 최근 파일 중 새 보고 주 바로 앞 주
-    const candidates: Array<{ report: WeekReport; label: string }> = [];
-    const cur = mdRef.current;
-    if (cur.trim()) {
-      candidates.push({ report: parseTolerant(cur).report, label: filePath ? baseName(filePath) : '현재 초안' });
-    }
-    const api = window.reportApi;
-    if (api?.readPath) {
-      for (const path of recentFiles) {
-        try {
-          const r = await api.readPath(path);
-          if (r.ok) candidates.push({ report: parseTolerant(r.content).report, label: baseName(path) });
-        } catch {
-          // 읽지 못한 최근 파일은 건너뛴다 (열기 시 목록에서 정리됨)
-        }
-      }
-    }
-    const prev = pickPreviousReport(candidates, prevStart);
-    const items = prev ? collectOpenItems(prev.report) : [];
-    saveCarry({ week: prevStart, from: prev?.label ?? '', items });
-    const carryNote = items.length > 0 ? ` · 지난주 미결 ${items.length}건은 위쪽 목록에서 날짜를 골라 이어 쓰세요` : '';
-    replaceDoc(tpl, `새 주간보고 — 지난 주 ${prevStart} ~ ${prevEnd} (토·일 휴일)${carryNote}`);
-  }, [author, replaceDoc, filePath, recentFiles]);
+    replaceDoc(tpl, `새 주간보고 — 지난 주 ${prevStart} ~ ${prevEnd} (토·일 휴일)`);
+  }, [author, replaceDoc]);
 
   const importGmail = useCallback(async () => {
     try {
@@ -329,7 +298,7 @@ export function useWeeklyState(author: string): WeeklyState {
 
   const openFile = useCallback(async () => {
     if (!window.reportApi?.openMd) {
-      toast.error('데스크탑 모드에서만 파일 열기를 지원합니다.');
+      toast.error('파일 열기는 데스크톱 앱에서만 됩니다.');
       return;
     }
     try {
@@ -354,7 +323,7 @@ export function useWeeklyState(author: string): WeeklyState {
   const openRecentFile = useCallback(async (path: string) => {
     const api = window.reportApi;
     if (!api?.readPath) {
-      toast.error('데스크탑 모드에서만 파일 열기를 지원합니다.');
+      toast.error('파일 열기는 데스크톱 앱에서만 됩니다.');
       return;
     }
     try {
@@ -400,7 +369,7 @@ export function useWeeklyState(author: string): WeeklyState {
   const saveFile = useCallback(async () => {
     const api = window.reportApi;
     if (!api?.save) {
-      toast.error('데스크탑 모드에서만 파일 저장을 지원합니다.');
+      toast.error('파일 저장은 데스크톱 앱에서만 됩니다.');
       return;
     }
     try {
@@ -471,7 +440,7 @@ export function useWeeklyState(author: string): WeeklyState {
   const addCombineFiles = useCallback(async () => {
     const api = window.reportApi;
     if (!api?.openMdMulti) {
-      toast.error('데스크탑 모드에서만 합본 파일 선택을 지원합니다.');
+      toast.error('합본 파일 선택은 데스크톱 앱에서만 됩니다.');
       return;
     }
     try {
@@ -510,14 +479,20 @@ export function useWeeklyState(author: string): WeeklyState {
   }, []);
   const clearExtras = useCallback(() => setExtras([]), []);
 
+  const createDraftRef = useRef<(() => Promise<void>) | null>(null);
   const createDraft = useCallback(async () => {
     if (!output) {
       toast.error('렌더링할 내용이 없습니다.');
       return;
     }
     const { to, cc } = loadWeeklyRecipients();
-    await draft.createDraft({ key: output.subject, to, cc, subject: output.subject, html: output.html, plain: output.plain });
+    await draft.createDraft(
+      { key: output.subject, to, cc, subject: output.subject, html: output.html, plain: output.plain },
+      // [다시 시도]는 실패한 그때의 글이 아니라 지금 글로 다시 만든다(이메일과 같게 — v0.27.0)
+      { note: to ? '' : ' (받는사람 미설정 — 설정(F1)에서 지정)', retry: () => void createDraftRef.current?.() },
+    );
   }, [output, draft]);
+  createDraftRef.current = createDraft;
 
   return {
     md,
@@ -528,7 +503,6 @@ export function useWeeklyState(author: string): WeeklyState {
     filePath,
     dirty,
     recentFiles,
-    newDoc,
     loadSample,
     loadTemplate,
     importGmail,

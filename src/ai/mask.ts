@@ -4,14 +4,16 @@
  * 자리표시 모양: ⟦IP1⟧ ⟦URL2⟧ ⟦MAIL1⟧ ⟦TEL1⟧ ⟦KEY1⟧ — 이미지·표·코드 블록용 ⟦IMG1⟧ 등은 호출부가 쓴다.
  */
 
+import { IPV4_AFTER, IPV4_BEFORE, IPV4_BODY, URL_REST } from '../lib/patterns';
+
 export type MaskKind = 'URL' | 'MAIL' | 'IP' | 'TEL' | 'KEY';
 
 // 순서가 중요하다 — URL 안의 IP·메일, 메일 안의 도메인을 먼저 통째로 잡는다
 const PATTERNS: Array<{ kind: MaskKind; re: RegExp }> = [
-  { kind: 'URL', re: /\b(?:https?|ftp):\/\/[^\s<>"'`)\]]+/gi },
+  { kind: 'URL', re: new RegExp(`\\b(?:https?|ftp):\\/\\/${URL_REST}`, 'gi') },
   { kind: 'MAIL', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g },
   // IPv4 (+포트·CIDR). 뒤가 숫자로 이어지면(1.2.3.4.5) IP가 아니다 — 문장 끝의 마침표("…는 192.0.2.40.")는 IP 뒤로 본다
-  { kind: 'IP', re: /(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?::\d{1,5})?(?:\/\d{1,2})?(?!\d|\.\d)/g },
+  { kind: 'IP', re: new RegExp(`${IPV4_BEFORE}${IPV4_BODY}(?::\\d{1,5})?(?:\\/\\d{1,2})?${IPV4_AFTER}`, 'g') },
   { kind: 'TEL', re: /(?<!\d)0\d{1,2}-\d{3,4}-\d{4}(?!\d)/g },
   // UUID
   { kind: 'KEY', re: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi },

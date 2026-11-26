@@ -8,6 +8,7 @@
  * - 원본의 BOM·CRLF는 그대로 되살린다. 임시 파일에 쓴 뒤 바꿔치기한다(쓰다 끊겨 반쪽 파일이 남지 않게).
  */
 import { app, dialog, ipcMain, shell, type BrowserWindow } from 'electron';
+import { errMsg, isDir } from './util';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -54,20 +55,8 @@ async function mapLimit<T, R>(list: readonly T[], n: number, fn: (x: T) => Promi
   return out;
 }
 
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 function configFile(): string {
   return path.join(app.getPath('userData'), 'worklog.json');
-}
-
-async function isDir(p: string): Promise<boolean> {
-  try {
-    return (await fs.stat(p)).isDirectory();
-  } catch {
-    return false;
-  }
 }
 
 /** 저장된 작업일지 폴더 — 처음이면 기본 폴더가 있을 때 그것을 쓴다 */

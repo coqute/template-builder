@@ -1,3 +1,5 @@
+import { isoOf } from '../lib/dates';
+
 export type Weekday = '월' | '화' | '수' | '목' | '금' | '토' | '일';
 
 /**
@@ -253,10 +255,7 @@ export function datesInRange(range: DateRange): string[] {
   const out: string[] = [];
   const d = new Date(s);
   while (d <= e && out.length <= 31) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    out.push(`${y}-${m}-${day}`);
+    out.push(isoOf(d));
     d.setDate(d.getDate() + 1);
   }
   return out.length > 31 ? [] : out;

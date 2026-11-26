@@ -6,13 +6,10 @@
  * - 바깥에서 파일이 바뀌었는지는 renderer가 `planner:stat`으로 파일 시각을 보고 안다.
  */
 import { ipcMain, shell } from 'electron';
+import { errMsg } from './util';
 import { promises as fs } from 'node:fs';
 import { applyToStore, plannerDir, readLog, readStore, statStore } from './planner-store';
 import type { PlannerLogResult, PlannerOp, PlannerResult, PlannerStatResult } from '../src/planner/types';
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 export function registerPlannerIpc(): void {
   ipcMain.handle('planner:get', (): Promise<PlannerResult> => readStore(plannerDir()));

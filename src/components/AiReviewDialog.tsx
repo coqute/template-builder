@@ -4,7 +4,7 @@ import type { ReviewChange, ReviewData } from '../ai/review';
 import { maskedSummary } from '../ai/review';
 import { diffWords } from '../ai/diff';
 import { modelLabel } from '../ai/settings';
-import { sanitizeBodyHtml } from '../email/sanitize';
+import { rememberFocus, trapTab } from '../lib/dialog';
 
 interface Props {
   title: string;
@@ -18,11 +18,16 @@ export function AiReviewDialog({ title, review, onApply, onClose }: Props) {
   const applicable = review.changes.filter((c) => c.ok);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(applicable.map((c) => c.id)));
   const applyRef = useRef<HTMLButtonElement | null>(null);
+  const panel = useRef<HTMLDivElement | null>(null);
+  /** 창을 열기 전에 초점이 있던 곳 — 닫히면 돌려준다 */
+  const [restoreFocus] = useState(rememberFocus);
+  useEffect(() => restoreFocus, [restoreFocus]);
 
   useEffect(() => {
     applyRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      else trapTab(e, panel.current);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -46,14 +51,21 @@ export function AiReviewDialog({ title, review, onApply, onClose }: Props) {
   const seconds = Math.max(1, Math.round(review.ms / 1000));
 
   return (
-    <div className="tb-scrim fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'var(--scrim)' }} onClick={onClose}>
+    <div
+      className="tb-scrim fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={{ background: 'var(--scrim)' }}
+      // 바탕을 "누를 때"만 닫는다 — 창 안에서 글을 끌어 고르다가 바깥에서 놓아도 닫히지 않게(다른 창과 같다)
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-review-title"
         className="tb-pop flex max-h-[86vh] w-[min(820px,100%)] flex-col rounded-card border border-rule-strong bg-bg-elevated"
         style={{ boxShadow: 'var(--shadow-pop)' }}
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start justify-between gap-3 border-b border-rule px-5 py-3">
           <div className="min-w-0">
@@ -107,11 +119,7 @@ export function AiReviewDialog({ title, review, onApply, onClose }: Props) {
                       />
                       <div className="min-w-0 flex-1">
                         <div className="mb-0.5 text-[11px] font-semibold text-fg-muted">{c.label}</div>
-                        {c.html ? (
-                          <HtmlCompare before={c.before} after={c.after} />
-                        ) : (
-                          <TextCompare before={c.before} after={c.after} />
-                        )}
+                        <TextCompare before={c.before} after={c.after} />
                         {!c.ok && (
                           <div className="mt-1 flex items-center gap-1 text-[11.5px]" style={{ color: 'var(--stamp-red)' }}>
                             <AlertTriangle size={12} aria-hidden="true" /> 적용하지 않음 — {c.reason}
@@ -193,23 +201,3 @@ function TextCompare({ before, after }: { before: string; after: string }) {
   );
 }
 
-/** 본문 비교 — 지금 / 다듬은 본문을 나란히 (메일에 나갈 모양 그대로) */
-function HtmlCompare({ before, after }: { before: string; after: string }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {[
-        { label: '지금', html: before },
-        { label: '다듬은 본문', html: after },
-      ].map((col) => (
-        <div key={col.label} className="min-w-0">
-          <div className="mb-0.5 text-[11px] text-fg-muted">{col.label}</div>
-          <div
-            className="email-body-editor scrollbar-thin max-h-[42vh] overflow-y-auto rounded-sharp border border-rule bg-bg p-2 text-[12.5px] leading-relaxed text-fg"
-            // 두 쪽 모두 새니타이즈를 거친 본문 — 확인 창에서도 한 번 더 거른다
-            dangerouslySetInnerHTML={{ __html: sanitizeBodyHtml(col.html) }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}

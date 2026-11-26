@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { todayIso } from '../lib/dates';
 import { toast } from 'sonner';
 import { DEFAULT_TEMPLATE_ID, getTemplate } from './templates';
 import { safeSetItem } from '../lib/storage';
@@ -26,14 +27,6 @@ function initialValues(templateId: string): Record<string, string> {
 // 제목 의미론: doc.subject === undefined → "자동 모드" (렌더 시 subjectPattern에 필드값 실시간 반영).
 // 사용자가 제목을 직접 입력하면 수동 고정, 비우면 다시 자동 복귀. (기존 시드 방식은
 // 템플릿 선택 시점의 빈 필드로 제목이 고정되어 topic 입력이 반영되지 않던 문제가 있었다)
-
-function todayIso(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 /**
  * 외부 유입(localStorage·.json 파일) fieldValues 정규화 — 문자열 값만 통과(숫자/불리언은 문자열화).

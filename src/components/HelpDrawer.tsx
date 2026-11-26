@@ -84,7 +84,7 @@ const ROWS: Array<{ token: string; tone: string; description: string; example: s
   {
     token: '*<- · *==>',
     tone: 'tok-pending',
-    description: '*<- 미결 대응(진행 중·후속 남음, 상태바 "미결" 집계) · *==> 결론·후속 과제',
+    description: '*<- 미결 대응(진행 중·후속 남음) · *==> 결론·후속 과제',
     example: '  *<- 제조사 문의 예정\n  *==> 디스크 장애 대응 절차 문서화 필요',
   },
   {
@@ -391,9 +391,8 @@ export function HelpDrawer({
                   {isMono ? '$ usage' : '작성 흐름'}
                 </h3>
                 <ol className="space-y-1 text-[11px] leading-relaxed text-fg-soft">
-                  <li>1. <b>새 주간보고</b>(Ctrl+N) — 지난 주 월~일 빈 골격 (토·일은 휴일). 지난주 보고서의 미결 건은 위쪽 <b>지난주 미결</b> 목록으로</li>
+                  <li>1. <b>새 주간보고</b>(Ctrl+N) — 지난 주 월~일 빈 골격 (토·일은 휴일)</li>
                   <li>2. 날짜마다 행(지원장소·고객사)과 항목을 채우고 경과는 <b>대화 이력</b>으로 — 쓰지 않은 골격은 메일에 나가지 않습니다</li>
-                  <li>3. 상태바 <b>미결 N</b>을 눌러 끝나지 않은 대응 점검</li>
                   <li>4. <b>임시보관함</b>(Ctrl+Enter) 또는 <b>HTML 복사</b>(Ctrl+Shift+C) — 건너뛴 주는 미리보기 <b>합본</b></li>
                 </ol>
                 <button
@@ -417,7 +416,7 @@ export function HelpDrawer({
                   <li>• 행의 고객사를 쓰면 항목의 빈 고객사 칸이, 지원장소 <code className="font-mono">MX(누리사옥)</code>를 쓰면 빈 건물 칸이 채워집니다.</li>
                   <li>• <kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">Z</kbd> 되돌리기는 추가·삭제·이동까지. 길어지면 일자 머리의 ▾ 또는 <b>모두 접기</b>로 요약만 봅니다.</li>
                   <li>• 며칠에 걸친 건은 항목의 <b>이어쓰기 →</b>로 다른 날에 머리를 복사해 그날의 경과만 이어 씁니다. 텍스트 모드는 <code className="font-mono">@SUM </code> 뒤 자동완성.</li>
-                  <li>• 끝나지 않은 대응은 <code className="font-mono">*&lt;-</code>(미결) — 상태바 "미결 N"에서 해당 항목으로 이동합니다.</li>
+                  <li>• 끝나지 않은 대응은 <code className="font-mono">*&lt;-</code>(미결) — 요일 띠와 일자 머리에 건수가 보입니다.</li>
                 </ul>
               </section>
 

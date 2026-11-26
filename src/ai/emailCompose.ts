@@ -15,12 +15,12 @@
  */
 import type { EmailDocState, EmailField, EmailTemplate } from '../email/types';
 import { htmlToPlain } from '../email/sanitize';
-import type { AiCompleteRequest, AiCompleteResult, AiModelId, AiUsage } from '../../electron/ai-types';
+import type { AiCompleteRequest, AiModelId } from '../../electron/ai-types';
 import { escapeHtml } from '../lib/html';
 import { canonicalClient } from '../core/customer';
 import { site } from '../core/site-config';
-import { Masker, missingFacts, tokensOf } from './mask';
-import { estimateUsd } from './settings';
+import { Masker, tokensOf } from './mask';
+import { aiMeta, inventedIn, type AiMeta, type OkResult } from './result';
 import { maskNames, speakerNames, titledNames } from './worklogAi';
 
 export type FieldRole = 'prose' | 'fill' | 'locked';
@@ -435,7 +435,7 @@ export interface DraftFill {
   value: string;
 }
 
-export interface ComposeResult {
+export interface ComposeResult extends AiMeta {
   fields: DraftField[];
   fills: DraftFill[];
   /** 본문 초안 — 서식의 줄 모양([이름]·■·번호·※) 그대로인 글. 고친 뒤 bodyTextToHtml로 본문에 넣는다 */
@@ -446,10 +446,6 @@ export interface ComposeResult {
   gaps: string[];
   /** 받는 쪽이 더 필요로 할 정보 */
   questions: string[];
-  model: string;
-  usage: AiUsage;
-  usd: number;
-  ms: number;
   fallbackUsed: boolean;
   masked: Record<string, number>;
 }
@@ -503,17 +499,16 @@ function sectionRaw(s: BodySection): string {
 const GREETING = /(?:^|\n)\s*안녕하세요|감사합니다\.?\s*$/;
 
 /** 응답 → 고칠 수 있는 초안. 서술에 없는 숫자·알 수 없는 자리표시·근거 없는 채움은 경고로 남기거나 뺀다 */
-export function renderCompose(plan: ComposePlan, res: Extract<AiCompleteResult, { ok: true }>): ComposeResult {
+export function renderCompose(plan: ComposePlan, res: OkResult): ComposeResult {
   if (!isComposeResponse(res.json)) throw new Error('응답 형식이 예상과 다릅니다.');
   const { masker, template } = plan;
   const warnings: string[] = [];
   const known = new Set(tokensOf(plan.sentText));
   const um = (s: string) => masker.unmask(s);
   const check = (masked: string, where: string) => {
-    const invented = missingFacts(masked, plan.sentText);
-    if (invented.length) warnings.push(`${where}: 서술에 없는 숫자·버전 ${invented.slice(0, 3).join(', ')} — 확인하세요.`);
-    const unknown = [...new Set(tokensOf(masked).filter((t) => !known.has(t)))];
-    if (unknown.length) warnings.push(`${where}: 알 수 없는 자리표시 ${unknown.join(', ')} — 지우거나 고치세요.`);
+    const { numbers, tokens } = inventedIn(masked, plan.sentText, known);
+    if (numbers.length) warnings.push(`${where}: 서술에 없는 숫자·버전 ${numbers.slice(0, 3).join(', ')} — 확인하세요.`);
+    if (tokens.length) warnings.push(`${where}: 알 수 없는 자리표시 ${tokens.join(', ')} — 지우거나 고치세요.`);
   };
 
   const byKey = new Map(plan.fields.map((f) => [f.field.key, f]));
@@ -571,12 +566,7 @@ export function renderCompose(plan: ComposePlan, res: Extract<AiCompleteResult, 
     warnings: [...new Set(warnings)],
     gaps,
     questions: res.json.questions.map((q) => um(q.trim())).filter(Boolean),
-    model: res.model,
-    usage: res.usage,
-    usd: estimateUsd(res.model, res.usage),
-    ms: res.ms,
-    fallbackUsed: res.fallbackUsed,
-    masked: masker.summary(),
+    ...aiMeta(res, masker),
   };
 }
 

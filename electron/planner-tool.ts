@@ -8,6 +8,7 @@
  * - Electron에 기대지 않는다. `scripts/planner-tool.mjs`가 한 파일로 묶어 돌린다.
  */
 import path from 'node:path';
+import { isDir } from './util';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -24,7 +25,7 @@ import { bucketOf, BUCKETS, closedInWorklog, groupTasks, visibleCandidates } fro
 import { undoOps } from '../src/planner/ops';
 import { blockStatus, scanWorklogs, type Candidate } from '../src/planner/sources/worklog';
 import type { EventRef, PlannerLogEntry, PlannerOp, PlannerState, Task, TaskPatch, WorklogAnchor } from '../src/planner/types';
-import { caseKey, parseWorklog, toFileTitle } from '../src/worklog/format';
+import { appendBlockText, caseKey, newWorklogText, parseWorklog, toFileTitle } from '../src/worklog/format';
 
 export const SERVER_NAME = 'tb-planner';
 /** 알고 있는 MCP 규격 날짜 — 최신 것부터. 모르는 날짜를 요청받으면 맨 앞 것으로 답한다 */
@@ -200,14 +201,6 @@ function candidateView(c: Candidate) {
 }
 
 // ── 작업일지 읽기 ────────────────────────────────────────────────────────────
-
-async function isDir(p: string): Promise<boolean> {
-  try {
-    return (await fs.stat(p)).isDirectory();
-  } catch {
-    return false;
-  }
-}
 
 async function worklogRoot(env: ToolEnv): Promise<string> {
   const root = env.worklogRoot ?? (process.env.TB_WORKLOG_ROOT?.trim() || (await readAppInfo(env.dir)).worklogRoot || '');
@@ -592,7 +585,7 @@ async function appendFollowup(env: ToolEnv, args: Args): Promise<unknown> {
     const name = `[${today}] ${title}.txt`;
     if (dry) return { dry_run: true, folder: anchor.folder, file: name, created: true, block };
     try {
-      await fs.writeFile(worklogFile(root, anchor.folder, name), encodeWorklog(`[${today}] ${title}\n\n${block}\n`, false, false), { flag: 'wx' });
+      await fs.writeFile(worklogFile(root, anchor.folder, name), encodeWorklog(newWorklogText(today, title, block), false, false), { flag: 'wx' });
     } catch (err) {
       throw new ToolError(`오늘 일지를 만들지 못했습니다: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -608,7 +601,7 @@ async function appendFollowup(env: ToolEnv, args: Args): Promise<unknown> {
     if (d.legacyEncoding) throw new ToolError('오늘 일지가 UTF-8이 아닙니다 — 앱에서 열어 저장한 뒤 다시 하세요.');
     if (d.text.includes(block)) throw new ToolError('오늘 일지에 같은 블록이 이미 있습니다 — 쓰지 않았습니다.');
     const head = d.text.replace(/\s+$/, '');
-    const text = head ? `${head}\n\n${block}\n` : `${block}\n`;
+    const text = appendBlockText(d.text, block);
     if (dry) return { dry_run: true, folder: anchor.folder, file: name, created: false, block };
     const backup = await backupWorklog(env, anchor.folder, name, today, buf);
     // 읽은 뒤 바뀌었으면(루틴이 덧붙였거나 앱·메모장에서 고침) 바뀐 내용 뒤에 다시 붙인다

@@ -140,6 +140,7 @@ describe('buildMimeMessage', () => {
     expect(mime).not.toMatch(/\r\nBcc:/);
     // 허용 목록 밖 형식은 일반 바이너리로 — 주입 문자열이 헤더에 남지 않는다
     expect(mime).toContain('Content-Type: application/octet-stream; name="image1.png"');
-    expect(mime).not.toMatch(/bcc/i);
+    // 경계 문자열(b_ + 무작위 16진수 32자)은 빼고 본다 — 그 안에 우연히 'bcc'가 들어가면 이 검사가 실패했다(100번에 한 번꼴, 2026-11-26 실측)
+    expect(mime.replace(/b_[0-9a-f]{32}/g, '')).not.toMatch(/bcc/i);
   });
 });

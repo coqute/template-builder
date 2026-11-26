@@ -7,10 +7,12 @@
  * - 깨진 파일은 지우지 않고 옆으로 옮긴 뒤, 읽히는 가장 최근 백업으로 연다. 백업도 없으면 빈 상태로 연다.
  */
 import os from 'node:os';
+import { errMsg } from './util';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { writeFileAtomic } from './atomic';
+import { isoOf } from '../src/lib/dates';
 import { applyOp, emptyState, newTaskId, normalizeState, PlannerError } from '../src/planner/ops';
 import type { PlannerLogEntry, PlannerOp, PlannerResult, PlannerState, PlannerStatResult } from '../src/planner/types';
 
@@ -26,10 +28,6 @@ const LOCK_STALE_MS = 5000;
 const TMP_PREFIX = '.tb-planner-';
 const BACKUP_NAME_RE = /^planner-\d{8}-\d{9}-r\d+\.json$/;
 
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 function code(err: unknown): string {
   return (err as NodeJS.ErrnoException | null)?.code ?? '';
 }
@@ -42,12 +40,6 @@ function sleep(ms: number): Promise<void> {
 export function plannerDir(): string {
   const env = process.env.TB_PLANNER_DIR;
   return env && env.trim() ? env : path.join(os.homedir(), '.template-builder');
-}
-
-/** 이 컴퓨터의 날짜 YYYY-MM-DD — "오늘"은 사용자가 보는 달력 날짜다 */
-function localDate(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 /** 파일 이름에 넣는 시각 `YYYYMMDD-HHMMSSmmm` — 이름순이 곧 시간순 */
@@ -291,7 +283,8 @@ export async function applyToStore(dir: string, op: PlannerOp, by: 'app' | 'clau
       const now = new Date();
       const { state, log } = applyOp(loaded.state, op, {
         now: now.toISOString(),
-        today: localDate(now),
+        // "오늘"은 사용자가 보는 달력 날짜다(이 컴퓨터의 날짜)
+        today: isoOf(now),
         by: by === 'claude' ? 'claude' : 'app',
         newId: newTaskId,
       });

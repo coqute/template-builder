@@ -51,6 +51,8 @@ export function App() {
 
   const registerHandlers = useCallback((ref: MutableRefObject<DocTypeHandlers>) => {
     handlersStore.current = ref;
+    // 메뉴는 탭마다 쓰는 항목이 다르다 — 이 화면이 처리하는 채널만 켜 둔다(나머지는 눌러도 아무 일이 없던 항목)
+    window.reportApi?.setMenuChannels?.(Object.keys(ref.current.menu).filter((k) => !!ref.current.menu[k]));
     return () => {
       if (handlersStore.current === ref) handlersStore.current = null;
     };

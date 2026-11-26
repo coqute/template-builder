@@ -3,8 +3,7 @@
  * 기존 줄은 건드리지 않고 **파일 끝에만** 붙인다(일일 루틴과 같은 규칙). 저장은 작업일지 탭과 같은 통로라
  * "마지막으로 읽은 내용이 디스크와 같을 때만" 쓰이고, 그 사이 바뀌었으면 바뀐 내용 뒤에 다시 붙인다.
  */
-import { toFileTitle } from '../worklog/format';
-import { caseKey, parseWorklog } from '../worklog/format';
+import { appendBlockText, caseKey, newWorklogText, parseWorklog, toFileTitle } from '../worklog/format';
 import { followupHead } from './anchor';
 import type { PlannerApi } from './api';
 import type { HomeEvent } from './classify';
@@ -55,7 +54,7 @@ export async function appendToWorklog(api: PlannerApi, req: AppendRequest): Prom
   const block = req.block.replace(/\s+$/, '');
   if (!hit) {
     const title = toFileTitle(req.title).slice(0, 80) || '작업';
-    const made = await api.worklogCreate({ folder: req.folder, date: req.date, title, text: `[${req.date}] ${title}\n\n${block}\n` });
+    const made = await api.worklogCreate({ folder: req.folder, date: req.date, title, text: newWorklogText(req.date, title, block) });
     if (made.ok) return { ok: true, name: made.name, created: true };
     return { ok: false, error: made.code === 'exists' ? '그날 일지가 방금 생겼습니다 — 다시 눌러 주세요.' : made.error };
   }
@@ -64,9 +63,7 @@ export async function appendToWorklog(api: PlannerApi, req: AppendRequest): Prom
   let base = read.text;
   for (let attempt = 0; attempt < 2; attempt++) {
     if (req.skipIfEventExists && hasEventBlock(base, block)) return { ok: false, error: '그 일지에 같은 회의 블록이 이미 있습니다.', duplicate: true };
-    const head = base.replace(/\s+$/, '');
-    const text = head ? `${head}\n\n${block}\n` : `${block}\n`;
-    const saved = await api.worklogSave({ folder: hit.folder, name: hit.name, text, base, bom: read.bom, crlf: read.crlf });
+    const saved = await api.worklogSave({ folder: hit.folder, name: hit.name, text: appendBlockText(base, block), base, bom: read.bom, crlf: read.crlf });
     if (saved.ok) return { ok: true, name: hit.name, created: false };
     if (saved.code !== 'changed') return { ok: false, error: saved.error };
     // 읽은 뒤 바뀌었다(루틴이 덧붙였거나 메모장에서 고침) — 바뀐 내용 뒤에 다시 붙인다

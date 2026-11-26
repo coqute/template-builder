@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { addDays } from '../../lib/dates';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { canonicalClient, parseTolerant, validate, type WeekReport } from '@core/index';
 import type { WorklogConfig, WorklogFileText } from '../../../electron/worklog-types';
@@ -24,11 +25,6 @@ function dirOf(p: string): string {
   return p.replace(/[\\/][^\\/]*$/, '');
 }
 
-function addDaysIso(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-}
 
 function readMaps(): Record<string, Omit<FolderMap, 'folder'>> {
   try {
@@ -72,7 +68,7 @@ export function WeeklyImportDialog({ currentMd, author, company, recentFiles, on
         return;
       }
       setFiles(all.files);
-      setMonday((m) => m ?? (docMonday && all.files.some((f) => f.date >= docMonday && f.date <= addDaysIso(docMonday, 6)) ? docMonday : lastMonday()));
+      setMonday((m) => m ?? (docMonday && all.files.some((f) => f.date >= docMonday && f.date <= addDays(docMonday, 6)) ? docMonday : lastMonday()));
       const reports: WeekReport[] = history.map((h) => parseTolerant(h.text).report).filter((r) => r.days.length > 0);
       const l = learnFromReports(reports);
       setLearn(l);
@@ -110,9 +106,7 @@ export function WeeklyImportDialog({ currentMd, author, company, recentFiles, on
   const perDay = useMemo(() => {
     const out: Array<{ date: string; n: number }> = [];
     for (let i = 0; i < 7; i++) {
-      const [y, m, d] = monday.split('-').map(Number);
-      const dt = new Date(y, m - 1, d + i);
-      const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      const iso = addDays(monday, i);
       out.push({ date: iso, n: files?.filter((f) => f.date === iso).length ?? 0 });
     }
     return out;

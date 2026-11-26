@@ -162,10 +162,9 @@ export function registerCalendarIpc(): void {
       const want: CalendarEventsRequest = { from: String(req?.from ?? ''), to: String(req?.to ?? ''), calendars: calendars.length ? calendars : ['primary'] };
       const key = `${want.from}|${want.to}|${[...new Set(want.calendars)].sort().join(',')}`;
 
-      const transient = req?.transient === true;
       const hit = memo.get(key);
       if (!req?.force && hit && Date.now() - hit.readAt < MEMO_MS) {
-        return { ok: true, events: hit.events, readAt: hit.readAt, fromCache: true, baseline: transient ? null : ((await readCache())?.baseline ?? null) };
+        return { ok: true, events: hit.events, readAt: hit.readAt, fromCache: true, baseline: (await readCache())?.baseline ?? null };
       }
 
       const { scopes, deps } = await access();
@@ -176,8 +175,6 @@ export function registerCalendarIpc(): void {
       const readAt = Date.now();
       if (memo.size >= MEMO_MAX) memo.clear();
       memo.set(key, { events: got.events, readAt });
-      // 한 번 쓰고 버릴 읽기(다른 화면이 다른 기간을 읽음)는 홈의 "마지막으로 읽은 일정"과 견줄 기준을 덮지 않는다
-      if (transient) return { ok: true, events: got.events, readAt, fromCache: false, baseline: null };
       // 처음 읽었으면 지금 일정이 견줄 기준이 된다(응답의 baseline은 null) — 그 뒤로는 [확인]할 때만 기준이 바뀐다
       const baseline = await serial(async () => {
         const prev = await readCache();

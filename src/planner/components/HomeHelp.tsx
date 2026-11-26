@@ -156,7 +156,7 @@ export function HomeSettings({ mono, open }: { mono: boolean; open: boolean }) {
             </button>
           ))}
         </div>
-        <p className={`${P} mt-2`}>할 일은 이 파일에 저장됩니다 — 작업일지·주간보고·달력에는 단추를 누를 때만 씁니다.</p>
+        <p className={`${P} mt-2`}>할 일은 이 파일에 저장됩니다 — 작업일지·달력에는 단추를 누를 때만 씁니다.</p>
         <div className="mt-1 flex items-center gap-2">
           <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg-soft" title={path}>
             {path || '…'}

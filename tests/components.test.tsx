@@ -78,23 +78,3 @@ describe('MoreMenu (⋯ 더보기)', () => {
   });
 });
 
-describe('StatusBar 미결 목록', () => {
-  it('미결 N을 누르면 목록, 행을 누르면 onJumpPending(항목)', async () => {
-    const { StatusBar } = await import('../src/components/StatusBar');
-    const onJump = vi.fn();
-    const item = { key: '0-1-0', line: 12, label: '09-21 [MX] 에이전트 IP', text: '제조사 문의 예정' };
-    render(
-      <StatusBar
-        validation={{ ok: true, issues: [], stats: { days: 7, locations: 3, clientItems: 4, contentBlocks: 6, pending: 1 } }}
-        diagnostics={[]}
-        pending={1}
-        pendingItems={[item]}
-        onJumpPending={onJump}
-        theme="paper"
-      />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: /미결 1/ }));
-    fireEvent.click(screen.getByRole('button', { name: /09-21 \[MX\]/ }));
-    expect(onJump).toHaveBeenCalledWith(item);
-  });
-});

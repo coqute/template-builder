@@ -184,30 +184,17 @@ describe('비주얼 편집기 — 되돌리기·추가 후 포커스·접기', (
     expect(screen.getByText('아직 작성 전')).toBeTruthy();
   });
 
-  it('지난주 미결 목록 — 날짜를 고르면 그날 항목으로 들어가고 목록에서 빠진다', () => {
-    localStorage.setItem(
-      'tb:carry:v1',
-      JSON.stringify({
-        week: '2026-09-21',
-        from: '지난주.md',
-        items: [
-          {
-            locations: ['원격'],
-            customer: 'MX',
-            header: { client: 'MX', contact: '담당A', channel: '메일', workType: '에이전트 이름 변경' },
-            pending: [{ kind: 'out', text: '로그 확인 후 문의 예정' }],
-            lastDate: '2026-09-16',
-          },
-        ],
-      }),
-    );
+  it('일정 예정(@PLAN) 줄 — 편집 화면은 없앴지만(v0.27.0) 비주얼에서 고쳐도 줄은 그대로 남는다', () => {
+    const src = readFileSync(resolvePath(__dirname, 'fixtures/heavy-week.md'), 'utf8');
+    expect(src.match(/^@PLAN /gm)).toHaveLength(2);
     const onMd = vi.fn();
-    render(<VisualWeeklyEditor md={md} onMd={onMd} />);
-    expect(screen.getByText('지난주 미결 1건')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('이어 쓸 날짜'), { target: { value: '2026-09-22' } });
+    render(<VisualWeeklyEditor md={src} onMd={onMd} />);
+    expect(screen.queryByText(/일정 예정 — 다음 주/)).toBeNull();
+    expect(screen.queryByRole('region', { name: '지난주 미결' })).toBeNull();
+    act(() => screen.getAllByRole('button', { name: /항목 추가/ })[0].click());
+    act(() => screen.getByRole('menuitem', { name: /목록/ }).click());
     const out = onMd.mock.calls.at(-1)![0] as string;
-    expect(out).toMatch(/# 2026-09-22\(화\)\n@LOC 원격\n@CUS MX\n@SUM \[MX\] \(담당A\/메일\) 에이전트 이름 변경/);
-    expect(screen.queryByText('지난주 미결 1건')).toBeNull();
+    expect(out.match(/^@PLAN .+$/gm)).toEqual(['@PLAN 2026-10-20 10:00 MX(주간미팅)', '@PLAN 2026-10-22 (종일) ABZ+ 수집서버 패치']);
   });
 });
 

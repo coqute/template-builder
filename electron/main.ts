@@ -1,4 +1,5 @@
 import { app, BrowserWindow, clipboard, ClipboardItem, ipcMain, dialog, Menu, shell } from 'electron';
+import { errMsg } from './util';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +16,7 @@ import { registerNotionIpc } from './notion';
 import { writeFileAtomic } from './atomic';
 import { kindOf, rememberDir, startDir } from './dialog-dir';
 import { isAllowedExternalUrl } from './external-url';
+import { applyMenuChannels } from './menu-state';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,14 +26,15 @@ const VITE_DEV_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
 
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 // renderer가 통지하는 "파일 미저장 변경" 상태 — 창 닫기 전 확인용
 let rendererDirty = false;
 ipcMain.on('app:set-dirty', (_evt, v: unknown) => {
   rendererDirty = Boolean(v);
+});
+
+// renderer가 알려 주는 "지금 화면이 처리하는 메뉴 채널" — 나머지 항목은 끈다 (electron/menu-state.ts)
+ipcMain.on('app:menu-channels', (_evt, v: unknown) => {
+  applyMenuChannels(Menu.getApplicationMenu(), v);
 });
 
 function resolveIconPath(): string {
@@ -103,6 +106,7 @@ function createWindow(): void {
   });
 }
 
+/** 항목의 id는 보내는 채널 이름과 같다 — 탭에 따라 켜고 끄는 데 쓴다(menu-state.ts) */
 function buildMenu(): void {
   const send = (channel: string) => () => mainWindow?.webContents.send(channel);
   // 새로고침·개발자 도구는 개발 중에만 — 배포본 사용자에게는 혼란·오조작 요인
@@ -113,11 +117,11 @@ function buildMenu(): void {
     {
       label: '파일',
       submenu: [
-        { label: '새로 만들기', accelerator: 'CmdOrCtrl+N', click: send('menu:new') },
-        { label: '열기...', accelerator: 'CmdOrCtrl+O', click: send('menu:open') },
-        { label: '저장', accelerator: 'CmdOrCtrl+S', click: send('menu:save') },
+        { id: 'menu:new', label: '새로 만들기', accelerator: 'CmdOrCtrl+N', click: send('menu:new') },
+        { id: 'menu:open', label: '열기...', accelerator: 'CmdOrCtrl+O', click: send('menu:open') },
+        { id: 'menu:save', label: '저장', accelerator: 'CmdOrCtrl+S', click: send('menu:save') },
         { type: 'separator' },
-        { label: '샘플 보기', accelerator: 'CmdOrCtrl+L', click: send('menu:load-sample') },
+        { id: 'menu:load-sample', label: '샘플 보기', accelerator: 'CmdOrCtrl+L', click: send('menu:load-sample') },
         { type: 'separator' },
         { role: 'quit', label: '종료' },
       ],
@@ -137,11 +141,11 @@ function buildMenu(): void {
     {
       label: '보내기',
       submenu: [
-        { label: 'HTML 복사', accelerator: 'CmdOrCtrl+Shift+C', click: send('menu:copy-html') },
+        { id: 'menu:copy-html', label: 'HTML 복사', accelerator: 'CmdOrCtrl+Shift+C', click: send('menu:copy-html') },
         // Ctrl+Enter는 렌더러가 처리 — 메뉴에는 표시만 (중복 실행 방지)
-        { label: '임시보관함 (Gmail 초안)', accelerator: 'CmdOrCtrl+Enter', registerAccelerator: false, click: send('menu:draft') },
+        { id: 'menu:draft', label: '임시보관함 (Gmail 초안)', accelerator: 'CmdOrCtrl+Enter', registerAccelerator: false, click: send('menu:draft') },
         { type: 'separator' },
-        { label: 'Gmail 본문 가져오기', accelerator: 'CmdOrCtrl+Shift+I', click: send('menu:import-gmail') },
+        { id: 'menu:import-gmail', label: 'Gmail 본문 가져오기', accelerator: 'CmdOrCtrl+Shift+I', click: send('menu:import-gmail') },
       ],
     },
     {

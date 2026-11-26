@@ -4,11 +4,10 @@
  * 입력은 renderer가 마스킹을 마친 문자열이다 — 여기서는 보내고 받기만 한다. 요청·응답 해석은 ai-core.ts.
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { app, ipcMain } from 'electron';
-import path from 'node:path';
-import { promises as fs } from 'node:fs';
+import { errMsg } from './util';
+import { ipcMain } from 'electron';
 import { mapApiError, runCompletion, toModelMeta, type ProgressSink } from './ai-core';
-import { decryptText, encryptText, encryptionAvailable } from './secure-store';
+import { encryptionAvailable, makeKeyStore } from './secure-store';
 import {
   AI_MODEL_RE,
   isKnownModel,
@@ -22,27 +21,7 @@ import {
 
 const KEY_RE = /^sk-ant-[A-Za-z0-9_-]{20,}$/;
 
-function keyFile(): string {
-  return path.join(app.getPath('userData'), 'ai-key.bin');
-}
-
-async function readStoredKey(): Promise<string | null> {
-  if (!(await encryptionAvailable())) return null;
-  try {
-    const buf = await fs.readFile(keyFile());
-    const { text, stale } = await decryptText(buf);
-    const key = text.trim();
-    // OS 키가 바뀌었으면 새 키로 다시 써 둔다 (못 써도 이번 호출에는 지장 없음)
-    if (key && stale) void encryptText(key).then((b) => fs.writeFile(keyFile(), b, { mode: 0o600 })).catch(() => undefined);
-    return key || null;
-  } catch {
-    return null;
-  }
-}
-
-async function resolveKey(): Promise<string | null> {
-  return (await readStoredKey()) ?? (process.env.ANTHROPIC_API_KEY?.trim() || null);
-}
+const keys = makeKeyStore('ai-key.bin', 'ANTHROPIC_API_KEY');
 
 function client(apiKey: string): Anthropic {
   // baseURL 고정 — 개발 셸의 ANTHROPIC_BASE_URL(다른 프록시)을 따라가지 않게.
@@ -50,16 +29,12 @@ function client(apiKey: string): Anthropic {
   return new Anthropic({ apiKey, baseURL: 'https://api.anthropic.com', maxRetries: 2, timeout: 180_000 });
 }
 
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 /** Models API로 확인한 모델 정보 — 앱이 떠 있는 동안 기억한다 */
 const metaCache = new Map<string, AiModelMeta>();
 
 /** 이 키에서 열린 모델 — Models API(토큰 비용 없음). 연결 확인을 겸한다 */
 export async function availableModels(apiKey?: string | null): Promise<AiModelsResult> {
-  const key = apiKey ?? (await resolveKey());
+  const key = apiKey ?? (await keys.resolve());
   if (!key) return { ok: false, code: 'no-key', message: 'API 키가 없습니다.' };
   try {
     const models: AiModelMeta[] = [];
@@ -78,7 +53,7 @@ export interface CompleteJsonOptions {
 }
 
 export async function completeJson(req: AiCompleteRequest, opts: CompleteJsonOptions = {}): Promise<AiCompleteResult> {
-  const key = opts.apiKey ?? (await resolveKey());
+  const key = opts.apiKey ?? (await keys.resolve());
   if (!key) {
     return { ok: false, code: 'no-key', message: 'API 키가 없습니다. 설정(F1) > AI에서 키를 저장하세요.' };
   }
@@ -109,8 +84,8 @@ const running = new Map<string, AbortController>();
 
 export function registerAiIpc(): void {
   ipcMain.handle('ai:key-status', async (): Promise<AiKeyStatus> => ({
-    stored: (await readStoredKey()) !== null,
-    env: !!process.env.ANTHROPIC_API_KEY?.trim(),
+    stored: (await keys.read()) !== null,
+    env: keys.env() !== null,
     encryption: await encryptionAvailable(),
   }));
 
@@ -119,7 +94,7 @@ export function registerAiIpc(): void {
     if (!KEY_RE.test(key)) return { ok: false, error: 'sk-ant- 로 시작하는 API 키가 아닙니다.' };
     if (!(await encryptionAvailable())) return { ok: false, error: '이 PC에서는 키를 암호화해 저장할 수 없습니다.' };
     try {
-      await fs.writeFile(keyFile(), await encryptText(key), { mode: 0o600 });
+      await keys.write(key);
       return { ok: true };
     } catch (err) {
       return { ok: false, error: errMsg(err) };
@@ -127,7 +102,7 @@ export function registerAiIpc(): void {
   });
 
   ipcMain.handle('ai:key-clear', async (): Promise<{ ok: boolean }> => {
-    await fs.rm(keyFile(), { force: true });
+    await keys.clear();
     return { ok: true };
   });
 

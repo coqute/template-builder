@@ -12,6 +12,8 @@
  * 4~6월의 옛 번호식(`1. 작업` / `- 세부`)도 읽는다. 원문 블록 안의 `- `·빈 줄은 원문으로 둔다.
  */
 
+import { dowOf, isoOf } from '../lib/dates';
+
 export type WlLineKind =
   | 'title'
   | 'case'
@@ -277,13 +279,20 @@ export function sameTitle(a: string, b: string): boolean {
 
 /** 로컬 날짜 YYYY-MM-DD */
 export function isoToday(d = new Date()): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return isoOf(d);
 }
 
-const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
-
 export function weekdayOf(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return WEEKDAY[new Date(y, m - 1, d).getDay()];
+  return dowOf(iso);
+}
+
+/** 일지 끝에 블록을 덧붙인 본문 — 끝의 빈 줄을 정리하고 블록 앞에 빈 줄 하나를 둔다 (앱과 플래너 도구가 같은 모양으로 쓴다) */
+export function appendBlockText(text: string, block: string): string {
+  const head = text.replace(/\s+$/, '');
+  return head ? `${head}\n\n${block}\n` : `${block}\n`;
+}
+
+/** 새 일지의 본문 — 1행 `[YYYY-MM-DD] 제목`, 빈 줄, 블록 */
+export function newWorklogText(date: string, title: string, block: string): string {
+  return `[${date}] ${title}\n\n${block}\n`;
 }
