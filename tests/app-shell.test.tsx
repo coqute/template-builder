@@ -66,7 +66,28 @@ describe('머리 줄 — 로고가 홈 단추다', () => {
     const group = within(header()).getByRole('radiogroup');
     expect(group.className).toMatch(/\bborder\b/);
     expect(group.className).toContain('border-rule');
-    expect(group.getAttribute('style') ?? '').toContain('background');
+  });
+
+  it('탭 상자는 툴바 단추와 같은 높이이고, 켜진 탭은 채우지 않는다 — 채움은 실행 단추에만 (v0.28.0)', () => {
+    render(<App />);
+    const group = within(header()).getByRole('radiogroup');
+    expect(group.className).toContain('h-[30px]'); // 툴바 단추의 높이
+    expect(group.className).toContain('bg-bg-sunken'); // 가라앉은 바탕
+    fireEvent.click(within(header()).getByRole('radio', { name: '이메일' }));
+    const on = within(header()).getByRole('radio', { name: '이메일' });
+    const off = within(header()).getByRole('radio', { name: '주간보고서' });
+    // 켜진 탭 = 흰 칸(바탕색) + 테 + 굵은 글자. 잉크색 채움(주 동작 단추의 모양)이 아니다
+    expect(on.className).toContain('bg-bg ');
+    expect(on.className).toContain('border-rule-strong');
+    expect(on.className).toContain('font-bold');
+    expect(on.getAttribute('style') ?? '').not.toContain('--accent');
+    expect(off.className).toContain('border-transparent');
+    expect(off.className).not.toContain('bg-bg ');
+    // 누르는 자리 24px · 글자 12px
+    for (const tab of [on, off]) {
+      expect(tab.className).toContain('h-6');
+      expect(tab.className).toContain('text-xs');
+    }
   });
 
   it('다른 화면에서 로고를 누르면 홈으로 돌아온다', () => {

@@ -41,7 +41,7 @@ export function Toolbar({
       className="flex flex-nowrap items-center justify-between gap-2 overflow-hidden border-b border-rule bg-bg px-4"
       style={{ height: 'var(--gap-toolbar, 56px)' }}
     >
-      <div className="flex min-w-0 shrink items-center gap-3">
+      <div className="flex min-w-0 shrink items-center gap-4">
         {onHome ? (
           <button
             type="button"

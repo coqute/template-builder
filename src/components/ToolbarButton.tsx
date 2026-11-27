@@ -129,7 +129,8 @@ export function MoreMenu({ items }: { items: MoreItem[] }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`${BTN_BASE} ${BTN_SECONDARY} px-1.5`}
+        // 글자가 없어 28px이던 것을 옆 단추와 같은 30px로 맞춘다(v0.28.0)
+        className={`${BTN_BASE} ${BTN_SECONDARY} min-h-[30px] min-w-[30px] justify-center px-1.5`}
         title="더보기"
         aria-label="더보기"
         aria-haspopup="menu"
