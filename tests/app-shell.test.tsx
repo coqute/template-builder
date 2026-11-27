@@ -62,10 +62,11 @@ describe('머리 줄 — 로고가 홈 단추다', () => {
     expect(rules).toContain('border: 0;');
     expect(rules).not.toMatch(/border-color|bg-elevated/);
     expect(css).not.toContain(".tb-logo[aria-current='page']");
-    // 탭 묶음에도 테두리 상자가 없다(v0.27.3) — 상자의 왼쪽 변이 로고 옆의 세로선으로 보였다
+    // 탭 묶음의 테두리 상자는 그대로다 — 없애는 것은 로고와 탭 사이의 구분선뿐(v0.27.3에서 상자까지 없앴다가 v0.27.4에서 되돌림)
     const group = within(header()).getByRole('radiogroup');
-    expect(group.className).not.toMatch(/\bborder\b|border-rule/);
-    expect(group.getAttribute('style') ?? '').not.toContain('background');
+    expect(group.className).toMatch(/\bborder\b/);
+    expect(group.className).toContain('border-rule');
+    expect(group.getAttribute('style') ?? '').toContain('background');
   });
 
   it('다른 화면에서 로고를 누르면 홈으로 돌아온다', () => {
