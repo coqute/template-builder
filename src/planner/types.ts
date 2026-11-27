@@ -326,3 +326,92 @@ export type NotionRecentResult =
       failed: string[];
     }
   | NotionFailure;
+
+// ── 메일 (읽기만) ────────────────────────────────────────────────────────────
+// 할 일을 일지에 기록할 때 그 사안의 메일을 근거로 쓴다. 먼저 제목만 조회해 고르고, 고른 스레드만 본문을 읽는다.
+// 메일 내용은 파일로 남기지 않는다. 본문은 메일을 거르는 도구(sanitizer)를 거친 것만 main 밖으로 나온다 — 거르지 못하면 읽지 않는다.
+
+export type MailErrorCode = 'credentials-missing' | 'scope-missing' | 'refresh-failed' | 'network' | 'api-error' | 'sanitizer-missing' | 'sanitizer-failed' | 'unknown';
+
+export interface MailFailure {
+  ok: false;
+  code: MailErrorCode;
+  message: string;
+}
+
+/** 토큰의 권한 범위로 본 메일 읽기 가능 여부 */
+export interface MailStatus {
+  /** 메일을 찾고 읽을 수 있다 — 자격증명·권한 범위가 있고, 거르는 도구도 있다 */
+  canRead: boolean;
+  reason?: 'credentials-missing' | 'scope-missing' | 'sanitizer-missing';
+  message?: string;
+}
+
+export interface MailSearchRequest {
+  /** 찾을 사람 — 보낸 사람·받는 사람·참조의 이름이나 주소 (할 일의 요청자). 쉼표로 여럿을 적으면 그중 누구든 */
+  who: string;
+  /** 함께 찾을 낱말 (선택) */
+  words?: string;
+  /** 이 날 이후의 메일 YYYY-MM-DD */
+  since: string;
+  /** 5분 기억을 건너뛰고 다시 찾는다 */
+  force?: boolean;
+}
+
+/** 메일 스레드 한 줄 — 제목·보낸 사람·날짜만 (본문은 읽지 않는다) */
+export interface MailThreadInfo {
+  threadId: string;
+  subject: string;
+  /** 첫 메일을 보낸 사람의 이름 (이름이 없으면 주소) */
+  from: string;
+  /** 마지막 메일의 날짜 YYYY-MM-DD (이 컴퓨터의 시간대) */
+  date: string;
+  /** 메일이 오간 날들 YYYY-MM-DD (겹치지 않게, 오래된 것부터) — 사안이 일지에 적힌 날과 견준다 */
+  days: string[];
+  /** 주고받은 사람들의 이름 (보낸 사람·받는 사람·참조, 이름이 없으면 주소) — 화면에만 쓴다 */
+  people: string[];
+  /** 스레드의 메일 수 */
+  count: number;
+  /** 내가 보낸 메일이 들어 있다 */
+  mine: boolean;
+}
+
+export type MailSearchResult =
+  | {
+      ok: true;
+      threads: MailThreadInfo[];
+      /** 찾은 조건(Gmail 검색식) */
+      query: string;
+      /** 더 있다 (최근 것부터 한도까지만 가져왔다) */
+      more: boolean;
+      readAt: number;
+      fromCache: boolean;
+    }
+  | MailFailure;
+
+/** 스레드의 메일 하나 — 인용된 이전 회신은 걷어 내고, 거르는 도구를 거친 글(IP·주소의 앞부분·전화번호 등은 `[IP주소]` 같은 표식으로 바뀌어 있다) */
+export interface MailMessage {
+  /** 보낸 사람 `이름 <주소>` */
+  from: string;
+  /** 받는 사람·참조 (헤더 그대로, 쉼표로 이음) */
+  to: string;
+  /** 보낸 날 YYYY-MM-DD (이 컴퓨터의 시간대) */
+  date: string;
+  /** 내가 보낸 메일이다 */
+  mine: boolean;
+  body: string;
+}
+
+export type MailThreadResult =
+  | {
+      ok: true;
+      threadId: string;
+      subject: string;
+      /** 오래된 것부터 */
+      messages: MailMessage[];
+      /** 메일이 많거나 길어 일부만 담았다 */
+      truncated: boolean;
+      /** 거르는 도구를 거쳤다 — 이 값이 없는 글은 앱 밖으로 보내지 않는다 */
+      sanitized: true;
+    }
+  | MailFailure;

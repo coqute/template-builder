@@ -81,12 +81,12 @@ export function calendarScopes(scope?: string): CalendarScopes {
 
 // ── 호출 ────────────────────────────────────────────────────────────────────
 
-class FetchNetworkError extends Error {}
+export class FetchNetworkError extends Error {}
 
-type Send = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => Promise<Response>;
+export type Send = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, body?: unknown) => Promise<Response>;
 
 /** 한 작업 동안 토큰을 쥐고 부른다 — 401이면 강제 갱신 뒤 1회 재시도, 갱신한 토큰은 뒤 호출에도 쓴다 */
-function session(deps: CalendarDeps): Send {
+export function session(deps: CalendarDeps): Send {
   const fetchFn = deps.fetchFn ?? fetch;
   let token: string | null = null;
   return async (method, url, body) => {

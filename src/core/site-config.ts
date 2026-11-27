@@ -30,6 +30,12 @@ export interface SiteConfig {
   teamHint: RegExp;
   /** Gmail OAuth 자격증명 폴더 — 홈 폴더 기준 경로(oauth-client.json·token.json을 읽기만 한다) */
   gmailCredDir: string;
+  /**
+   * 메일 본문을 거르는 도구(sanitizer) — 메일을 앱 밖(AI)으로 보내기 전에 반드시 이 도구를 거친다. 없으면 메일 본문을 읽지 않는다.
+   * `root`는 그 도구의 폴더(홈 폴더 기준), `entry`는 그 안의 모듈(`sanitizeDeep`를 내보내는 파일).
+   * 앱은 그 도구가 도는 방식 그대로(node + tsx) 불러 쓴다 — 규칙을 옮겨 적지 않으므로 도구의 규칙이 바뀌면 바로 따라간다.
+   */
+  mailSanitizer: { root: string; entry: string };
 }
 
 /** 예시 값 — 테스트·문서·공개 사본용. 실제 값과 같은 모양을 유지한다 */
@@ -46,6 +52,7 @@ export const EXAMPLE_SITE: SiteConfig = {
   ],
   teamHint: /SRE|NMS|IDC|개발팀$|^현장$/,
   gmailCredDir: '.template-builder/gmail-credentials',
+  mailSanitizer: { root: '.template-builder/mail-sanitizer', entry: 'engine.ts' },
 };
 
 const REAL_SITE: SiteConfig = EXAMPLE_SITE;

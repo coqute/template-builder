@@ -23,6 +23,10 @@ import type {
   CalendarWriteResult,
   EventInput,
   EventRef,
+  MailSearchRequest,
+  MailSearchResult,
+  MailStatus,
+  MailThreadResult,
   NotionRecentRequest,
   NotionRecentResult,
   NotionSourcesResult,
@@ -58,6 +62,10 @@ export interface PlannerApi {
   notionSources(): Promise<NotionSourcesResult>;
   notionResolve(input: string): Promise<NotionSourcesResult>;
   notionRecent(req: NotionRecentRequest): Promise<NotionRecentResult>;
+  /** 메일 — 읽기만. 제목만 조회(main이 5분 기억)한 뒤 고른 스레드만 본문을 읽는다 */
+  mailStatus(): Promise<MailStatus>;
+  mailSearch(req: MailSearchRequest): Promise<MailSearchResult>;
+  mailThread(threadId: string): Promise<MailThreadResult>;
   worklogConfig(): Promise<WorklogConfig>;
   worklogList(): Promise<{ ok: true; files: WorklogEntry[] } | { ok: false; error: string }>;
   worklogRead(ref: WorklogFileRef): Promise<WorklogReadResult>;

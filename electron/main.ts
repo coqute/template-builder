@@ -13,6 +13,7 @@ import { registerWorklogIpc } from './worklog';
 import { registerPlannerIpc } from './planner';
 import { registerCalendarIpc } from './calendar';
 import { registerNotionIpc } from './notion';
+import { registerMailIpc } from './mail';
 import { writeFileAtomic } from './atomic';
 import { kindOf, rememberDir, startDir } from './dialog-dir';
 import { isAllowedExternalUrl } from './external-url';
@@ -416,6 +417,8 @@ registerCalendarIpc();
 // Notion — 워크스페이스에서 최근 바뀐 페이지와 회의록 읽기 (읽기만, 키는 암호화 저장)
 registerNotionIpc();
 
+// 메일 읽기 — 할 일을 일지에 기록할 때 그 사안의 메일을 근거로 (제목만 조회 → 고른 스레드만 읽기, 읽기만)
+registerMailIpc();
 
 
 ipcMain.handle('asset:load-sample', async () => {

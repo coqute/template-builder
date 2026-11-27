@@ -15,6 +15,7 @@ import { EventDialog, eventPatch } from '../planner/components/EventDialog';
 import { DayPreview } from '../planner/components/DayPreview';
 import { ChangeBanner, EmptyBox, SummaryBar, WeekStrip } from '../planner/components/HomeParts';
 import { TaskList, type TaskActions } from '../planner/components/TaskList';
+import { TaskLogDialog } from '../planner/components/TaskLogDialog';
 import type { HomeEvent } from '../planner/classify';
 import { clock, mdw, parseQuickAdd } from '../planner/dates';
 import { DEFAULT_NOTION, eventKey, undoOps } from '../planner/ops';
@@ -69,11 +70,13 @@ function goToRow(root: () => HTMLElement | null, key: string, tries = 25): void 
   }, 60);
 }
 
-function HomeWorkspace(_props: DocTypeWorkspaceProps) {
+function HomeWorkspace({ profile }: DocTypeWorkspaceProps) {
   const { toolbarSlot, navigate, intent, clearIntent } = useDocTypeHost();
   const p = usePlanner();
   const { api, today, state, apply } = p;
   const [draft, setDraft] = useState('');
+  /** 일지에 기록하는 창을 연 할 일 */
+  const [logTask, setLogTask] = useState<{ id: string; note?: string } | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -122,12 +125,21 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
     [p.wl.folders],
   );
 
-  const logDone = async (task: Task) => {
+  /** 그 블록을 오늘 일지 끝에 — 일지 사안에서 온 할 일은 그 사안의 폴더에 */
+  const logBlock = async (task: Task, block: string): Promise<boolean> => {
     const folder = task.origin.kind === 'worklog' ? task.origin.anchor.folder : folderFor(task.client);
-    const r = await appendToWorklog(api, { folder, date: today, title: task.title, block: doneBlock(task, today) });
+    const r = await appendToWorklog(api, { folder, date: today, title: task.title, block });
     if (r.ok) toast.success(r.created ? `오늘 일지를 만들어 기록했습니다: ${r.name}` : `오늘 일지 끝에 기록했습니다: ${r.name}`);
     else toast.error(`일지에 기록하지 못했습니다: ${r.error}`);
+    return r.ok;
   };
+
+  /** 창에 넘길 할 일 — 저장소의 지금 값(끝냄 여부·메모가 그 사이 바뀌었을 수 있다) */
+  const logFound = logTask ? (state?.tasks.find((t) => t.id === logTask.id) ?? null) : null;
+  // 펼친 상자에서 방금 고친 메모는 저장이 끝나기 전일 수 있다 — 넘겨받은 메모를 먼저 쓴다
+  const logTarget = logFound && logTask ? { ...logFound, note: logTask.note ?? logFound.note } : null;
+  /** 가릴 이름 — 할 일과 후보의 요청자 */
+  const knownNames = useMemo(() => [...new Set([...(state?.tasks ?? []).map((t) => t.who), ...p.candidates.map((c) => c.who)].filter(Boolean))], [state?.tasks, p.candidates]);
 
   const taskActions: TaskActions = {
     toggleDone: async (task) => {
@@ -136,9 +148,11 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
       toast.success(`끝냄 — ${task.title}`, {
         duration: UNDO_MS,
         action: { label: '되돌리기', onClick: () => void apply({ type: 'task.done', id: task.id, done: false }) },
-        cancel: p.wl.ready ? { label: '오늘 일지에 기록', onClick: () => void logDone(task) } : undefined,
+        // 메모·이전 기록·메일로 블록을 만드는 창을 연다 — 전에는 "처리 완료" 한 줄을 바로 적었다(창의 [완료만 기록]으로 남아 있다)
+        cancel: p.wl.ready ? { label: '오늘 일지에 기록', onClick: () => setLogTask({ id: task.id }) } : undefined,
       });
     },
+    logToWorklog: p.wl.ready ? (task) => setLogTask({ id: task.id, note: task.note }) : undefined,
     update: (id, patch) => void apply({ type: 'task.update', id, patch }),
     remove: async (task) => {
       if (!(await apply({ type: 'task.remove', id: task.id }))) return;
@@ -329,6 +343,27 @@ function HomeWorkspace(_props: DocTypeWorkspaceProps) {
           onMove={setFocus}
           onAddEvent={canWrite ? () => setEventDialog({ event: null, date: focusDay.date }) : undefined}
           onClose={() => setFocus(null)}
+        />
+      )}
+      {logTarget && (
+        <TaskLogDialog
+          key={logTarget.id}
+          task={logTarget}
+          today={today}
+          api={api}
+          myName={profile.name}
+          knownNames={knownNames}
+          onAppend={(block) => logBlock(logTarget, block)}
+          onPlainDone={
+            logTarget.doneAt
+              ? () => {
+                  setLogTask(null);
+                  void logBlock(logTarget, doneBlock(logTarget, today));
+                }
+              : undefined
+          }
+          onMemo={(note) => void apply({ type: 'task.update', id: logTarget.id, patch: { note } })}
+          onClose={() => setLogTask(null)}
         />
       )}
       {eventDialog && <EventDialog event={eventDialog.event} date={eventDialog.date ?? focus ?? today} busy={writing} onSubmit={(input) => void submitEvent(input)} onClose={() => setEventDialog(null)} />}

@@ -18,6 +18,8 @@ export interface TaskActions {
   ignore(c: Candidate): void;
   /** 기한을 달력에 올린다 (달력에 쓸 수 있을 때만 단추가 나온다) */
   toCalendar?(task: Task): void;
+  /** 메모를 이전 기록·메일과 대조해 오늘 일지에 적는 창을 연다 (작업일지 폴더가 있을 때만 단추가 나온다) */
+  logToWorklog?(task: Task): void;
 }
 
 interface Props {
@@ -143,6 +145,20 @@ function TaskEditor({ task, actions, onClose }: { task: Task; actions: TaskActio
           </button>
         )}
         {task.event && <span className="hm-chip">달력에 올림</span>}
+        {actions.logToWorklog && (
+          <button
+            type="button"
+            className="hm-mini"
+            title="메모를 이 사안의 이전 일지 기록·주고받은 메일과 대조해 오늘 일지에 덧붙일 블록으로 만듭니다"
+            onClick={() => {
+              // 방금 고친 메모가 창에 그대로 가도록 먼저 남긴다
+              commit('note', note);
+              actions.logToWorklog?.({ ...task, note: note.trim() });
+            }}
+          >
+            일지에 기록
+          </button>
+        )}
         <span className="hm-sp" />
         <button type="button" className="hm-mini is-danger" onClick={() => actions.remove(task)}>
           지우기

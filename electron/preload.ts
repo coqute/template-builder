@@ -31,6 +31,10 @@ import type {
   NotionRecentResult,
   NotionSourcesResult,
   NotionStatus,
+  MailSearchRequest,
+  MailSearchResult,
+  MailStatus,
+  MailThreadResult,
 } from '../src/planner/types';
 
 type SaveKind = 'md' | 'html' | 'json';
@@ -147,6 +151,10 @@ const api = {
   notionSources: () => ipcRenderer.invoke('notion:sources') as Promise<NotionSourcesResult>,
   notionResolve: (input: string) => ipcRenderer.invoke('notion:resolve', input) as Promise<NotionSourcesResult>,
   notionRecent: (req: NotionRecentRequest) => ipcRenderer.invoke('notion:recent', req) as Promise<NotionRecentResult>,
+  // 메일 읽기 — 제목만 조회한 뒤 고른 스레드만 읽는다 (읽기만, 내용은 저장하지 않는다)
+  mailStatus: () => ipcRenderer.invoke('mail:status') as Promise<MailStatus>,
+  mailSearch: (req: MailSearchRequest) => ipcRenderer.invoke('mail:search', req) as Promise<MailSearchResult>,
+  mailThread: (threadId: string) => ipcRenderer.invoke('mail:thread', threadId) as Promise<MailThreadResult>,
   onMenu: (handler: (channel: string) => void) => {
     const events = [
       'menu:new',

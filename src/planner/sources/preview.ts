@@ -6,7 +6,7 @@ import type { WorklogFileText } from '../../../electron/worklog-types';
 import type { PlannerApi } from '../api';
 import { addDays, mondayOf, todayIso } from '../dates';
 import { applyOp, emptyState, newTaskId, PlannerError } from '../ops';
-import type { NotionPage, NotionSource, PlannerLogEntry, PlannerState, RawEvent, TaskDraft } from '../types';
+import type { MailMessage, NotionPage, NotionSource, PlannerLogEntry, PlannerState, RawEvent, TaskDraft } from '../types';
 
 const FOLDER = 'AB Z+ 작업';
 /** 동료 달력 — 이름은 메일 주소 모양, 색은 달력마다 다르다(Google 달력에서 달력에 정해 두는 색) */
@@ -133,6 +133,48 @@ function seedNotion(today: string): NotionPage[] {
   ];
 }
 
+/** 합성 메일 스레드 — 제목이 길고 회신이 오간 모양(실제 메일함을 닮게). 주소는 모두 example 도메인이다 */
+function seedMail(today: string): Array<{ threadId: string; subject: string; from: string; date: string; people: string[]; messages: MailMessage[] }> {
+  // 앱에서 받는 글과 같은 모양 — 주소의 앞부분과 IP는 거르는 도구가 표식으로 바꿔 둔 상태다
+  const me = ['박민수 <[사용자]', 'support.example>'].join('@');
+  const hong = ['홍길동 책임 <[사용자]', 'abz.example>'].join('@');
+  const vendor = ['제조사 지원 <[사용자]', 'vendor.example>'].join('@');
+  return [
+    {
+      threadId: 'pv0000000001',
+      subject: '[AB Z+] 수집 서버 지표 누락 원인 문의',
+      from: '홍길동 책임',
+      date: addDays(today, -1),
+      people: ['홍길동', '제조사'],
+      messages: [
+        { from: hong, to: me, date: addDays(today, -5), mine: false, body: '안녕하세요.\n수집 서버 2대([IP주소], [IP주소])에서 어제 02시부터 04시까지 지표가 비어 있습니다.\n원인 확인 부탁드립니다.' },
+        { from: me, to: vendor, date: addDays(today, -5), mine: true, body: '에이전트 로그를 회수해 전달드립니다. 02시 전후로 수집 스레드가 멈춘 기록이 있습니다.\n원인 확인 부탁드립니다.' },
+        { from: vendor, to: me, date: addDays(today, -2), mine: false, body: '확인 결과 에이전트 2.9.4의 알려진 문제입니다.\n2.9.5로 올리시고 agent.conf에 collect_retry=3 을 넣어 주세요.' },
+        { from: me, to: hong, date: addDays(today, -1), mine: true, body: '원인은 에이전트 2.9.4의 수집 스레드 멈춤 문제입니다.\n2.9.5 패치 파일과 설정(collect_retry=3)을 전달드립니다. 적용 후 알려 주세요.' },
+      ],
+    },
+    {
+      threadId: 'pv0000000002',
+      subject: 'RE: [AB Z+] 알림 분류 기준 변경 요청 건 회신 드립니다',
+      from: '홍길동 책임',
+      date: addDays(today, -3),
+      people: ['홍길동'],
+      messages: [
+        { from: hong, to: me, date: addDays(today, -6), mine: false, body: '알림 분류 기준을 서비스별에서 담당 팀별로 바꿀 수 있는지 문의드립니다.' },
+        { from: me, to: hong, date: addDays(today, -3), mine: true, body: '태그 기준으로 수신 그룹을 나누면 가능합니다. 설정 화면 경로를 정리해 전달드립니다.' },
+      ],
+    },
+    {
+      threadId: 'pv0000000003',
+      subject: '11월 정기점검 일정 협의',
+      from: '담당C',
+      date: addDays(today, -9),
+      people: ['담당C'],
+      messages: [{ from: ['담당C <[사용자]', 'ganastore.example>'].join('@'), to: me, date: addDays(today, -9), mine: false, body: '11월 정기점검을 셋째 주로 잡으려 합니다. 가능한 날을 알려 주세요.' }],
+    },
+  ];
+}
+
 function seedState(today: string): PlannerState {
   const mon = mondayOf(today);
   const drafts: TaskDraft[] = [
@@ -247,6 +289,27 @@ export function createPreviewApi(): PlannerApi {
       fromCache: false,
       failed: [],
     }),
+    // 메일 — 합성 스레드 셋. 사람 이름으로 찾으면 제목만 돌려주고, 고르면 그 스레드만 읽힌다
+    mailStatus: async () => ({ canRead: true }),
+    mailSearch: async (req) => ({
+      ok: true,
+      threads: seedMail(todayIso())
+        .filter((t) => {
+          // 앱과 같이 요청자가 여럿이면 누구든 오간 스레드
+          const names = req.who.split(/\s*[,·;]\s*/).map((n) => n.trim()).filter(Boolean);
+          return names.length === 0 || t.people.some((p) => names.some((n) => p.includes(n)));
+        })
+        .map(({ messages, ...t }) => ({ ...t, days: [...new Set(messages.map((m) => m.date))].sort(), count: messages.length, mine: messages.some((m) => m.mine) })),
+      query: `{from:"${req.who}" to:"${req.who}" cc:"${req.who}"}`,
+      more: false,
+      readAt: Date.now(),
+      fromCache: false,
+    }),
+    mailThread: async (threadId) => {
+      const hit = seedMail(todayIso()).find((t) => t.threadId === threadId);
+      // 합성 글이라 거를 값이 없다 — 앱에서는 main이 거르는 도구를 거친 글에만 이 표시를 붙인다
+      return hit ? { ok: true, threadId, subject: hit.subject, messages: hit.messages, truncated: false, sanitized: true } : { ok: false, code: 'api-error', message: '스레드를 찾지 못했습니다.' };
+    },
     openExternal: async () => ({ ok: false, error: '미리보기' }),
   };
 }
