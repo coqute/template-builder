@@ -2,6 +2,8 @@
  * 앱 셸의 머리 줄 — 앱 이름 글자 없이 로고만 두고, 탭 줄에는 홈이 없으며, 로고를 누르면 홈으로 간다(v0.27.1).
  * 화면(워크스페이스)은 가짜로 바꿔 셸의 동작만 본다.
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
@@ -48,6 +50,18 @@ describe('머리 줄 — 로고가 홈 단추다', () => {
     expect(radios().map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'false']);
     expect(logo().getAttribute('aria-current')).toBe('page');
     expect(logo().getAttribute('title')).toBe('홈 — 남은 작업과 정해진 일정');
+  });
+
+  it('로고에는 테두리가 없고, 로고와 탭 줄 사이에 구분선도 없다 (v0.27.2)', () => {
+    render(<App />);
+    // 로고 바로 다음이 탭 줄이다 — 세로 구분선(빈 span)을 두지 않는다
+    expect(logo().nextElementSibling?.getAttribute('role')).toBe('radiogroup');
+    // 스타일: 어느 상태에서도 테두리·바탕을 켜지 않는다(홈에 있을 때 포함)
+    const css = readFileSync(path.join(process.cwd(), 'src/styles/tokens.css'), 'utf8');
+    const rules = css.slice(css.indexOf('.tb-logo {')).split('\n\n')[0];
+    expect(rules).toContain('border: 0;');
+    expect(rules).not.toMatch(/border-color|bg-elevated/);
+    expect(css).not.toContain(".tb-logo[aria-current='page']");
   });
 
   it('다른 화면에서 로고를 누르면 홈으로 돌아온다', () => {

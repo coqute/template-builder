@@ -41,7 +41,7 @@ export function Toolbar({
       className="flex flex-nowrap items-center justify-between gap-2 overflow-hidden border-b border-rule bg-bg px-4"
       style={{ height: 'var(--gap-toolbar, 56px)' }}
     >
-      <div className="flex min-w-0 shrink items-center gap-2">
+      <div className="flex min-w-0 shrink items-center gap-3">
         {onHome ? (
           <button
             type="button"
@@ -57,7 +57,7 @@ export function Toolbar({
         ) : (
           <StampLogo theme={theme} size={28} />
         )}
-        <span className="mx-1 h-5 w-px shrink-0 bg-rule" />
+        {/* 로고와 탭 줄 사이에는 구분선을 두지 않는다 — 틈만 둔다(v0.27.2) */}
         <DocTypeSwitch options={options} docType={docType} onChange={onDocTypeChange} />
       </div>
 
