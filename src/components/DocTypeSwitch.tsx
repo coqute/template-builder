@@ -14,12 +14,8 @@ interface Props {
 /** 화면 전환 스위치(문서 종류) — 옵션은 doctypes 레지스트리에서 주입. 홈은 여기에 없다: 로고가 홈 단추라 홈에서는 아무 칸도 켜지지 않는다 */
 export function DocTypeSwitch({ options, docType, onChange }: Props) {
   return (
-    <div
-      role="radiogroup"
-      aria-label="화면"
-      className="flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-sharp border border-rule p-0.5"
-      style={{ background: 'var(--bg-elevated)' }}
-    >
+    // 탭 묶음에는 테두리 상자를 두지 않는다(v0.27.3) — 상자의 왼쪽 변이 로고와 탭 사이의 세로선으로 읽혔다
+    <div role="radiogroup" aria-label="화면" className="flex shrink-0 items-center gap-1 whitespace-nowrap">
       {options.map((opt) => {
         const active = docType === opt.id;
         return (
