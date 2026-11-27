@@ -8,6 +8,12 @@ interface ToolbarProps {
   options: readonly DocTypeOption[];
   docType: string;
   onDocTypeChange: (id: string) => void;
+  /** 로고를 누르면 홈으로 — 탭 줄에는 홈이 없다(v0.27.1). 홈 화면이 등록되지 않았으면 주지 않는다(로고는 그림으로만 남는다) */
+  onHome?: () => void;
+  /** 지금 홈을 보고 있는가 */
+  atHome?: boolean;
+  /** 로고에 띄울 설명 */
+  homeHint?: string;
   /** 활성 모듈이 버튼을 포털로 렌더할 슬롯 엘리먼트 전달 */
   onToolbarSlot: (el: HTMLDivElement | null) => void;
   onToggleHelp: () => void;
@@ -17,31 +23,40 @@ interface ToolbarProps {
 /**
  * 툴바 셸 — 문서 타입을 모른다. 좌측(로고/스위치)과 우측 공통(도움말·설정)만 소유하고,
  * 모드별 액션 버튼은 슬롯(onToolbarSlot)에 활성 DocType 모듈이 포털로 렌더한다.
+ * 로고는 홈 단추다 — 앱 이름 글자는 두지 않는다(창 제목에 있다).
  */
 export function Toolbar({
   options,
   docType,
   onDocTypeChange,
+  onHome,
+  atHome = false,
+  homeHint,
   onToolbarSlot,
   onToggleHelp,
   theme,
 }: ToolbarProps) {
-  const isMono = theme === 'mono';
   return (
     <header
       className="flex flex-nowrap items-center justify-between gap-2 overflow-hidden border-b border-rule bg-bg px-4"
       style={{ height: 'var(--gap-toolbar, 56px)' }}
     >
       <div className="flex min-w-0 shrink items-center gap-2">
-        <StampLogo theme={theme} size={28} />
-        <h1
-          className={[
-            'hidden whitespace-nowrap text-fg lg:block',
-            isMono ? 'text-sm font-semibold' : 'font-display text-base',
-          ].join(' ')}
-        >
-          {isMono ? '$ template-builder' : 'Template Builder'}
-        </h1>
+        {onHome ? (
+          <button
+            type="button"
+            className="tb-logo"
+            data-testid="home-logo"
+            aria-label="홈"
+            aria-current={atHome ? 'page' : undefined}
+            title={homeHint ? `홈 — ${homeHint}` : '홈'}
+            onClick={onHome}
+          >
+            <StampLogo theme={theme} size={28} />
+          </button>
+        ) : (
+          <StampLogo theme={theme} size={28} />
+        )}
         <span className="mx-1 h-5 w-px shrink-0 bg-rule" />
         <DocTypeSwitch options={options} docType={docType} onChange={onDocTypeChange} />
       </div>

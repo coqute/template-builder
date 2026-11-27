@@ -7,7 +7,8 @@ export type DocType = string;
 const KEY = 'tb:doc-type';
 /** 시작 화면 — 'home'(기본: 켤 때 늘 홈) · 'last'(마지막으로 보던 화면) */
 const START_KEY = 'tb:start:v1';
-const HOME_ID = 'home';
+/** 홈 화면의 id — 탭 줄에는 없고 로고가 이 화면으로 간다 */
+export const HOME_ID = 'home';
 
 export type StartMode = 'home' | 'last';
 

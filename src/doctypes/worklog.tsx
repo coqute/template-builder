@@ -81,7 +81,8 @@ function WorklogWorkspace({ profile }: DocTypeWorkspaceProps) {
     }
     const line = findAnchor(doc, openAnchor)?.startLine ?? openAnchor.line;
     clearIntent();
-    setTimeout(() => editorRef.current?.jumpToLine(line), 40);
+    // 홈에서 넘어온 사안은 편집 영역 맨 위에 놓는다 — 어느 사안인지, 어디까지 진행됐는지가 바로 읽히게
+    setTimeout(() => editorRef.current?.jumpToLine(line, { top: true }), 40);
     // wl.open은 열린 파일이 바뀔 때만 다시 본다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openAnchor, wl.files, wl.current, doc, clearIntent]);

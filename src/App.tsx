@@ -6,7 +6,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import type { ZoomMode } from './components/HtmlPreview';
 import { useUserProfile } from './hooks/useUserProfile';
 import { useTheme } from './hooks/useTheme';
-import { useDocType } from './hooks/useDocType';
+import { HOME_ID, useDocType } from './hooks/useDocType';
 import { useTemplateOverlays } from './email/useTemplateOverlays';
 import { readWithFallback, safeSetItem } from './lib/storage';
 import { DOC_TYPE_MODULES, getDocTypeModule } from './doctypes';
@@ -23,7 +23,10 @@ function loadZoom(): ZoomMode {
 }
 
 const DOC_TYPE_IDS = DOC_TYPE_MODULES.map((m) => m.id);
-const SWITCH_OPTIONS = DOC_TYPE_MODULES.map((m) => ({
+/** 홈 화면 — 등록돼 있으면 로고가 그리로 간다 */
+const HOME = DOC_TYPE_MODULES.find((m) => m.id === HOME_ID);
+/** 탭 줄 — 홈은 넣지 않는다(로고가 홈 단추다, v0.27.1) */
+const SWITCH_OPTIONS = DOC_TYPE_MODULES.filter((m) => m !== HOME).map((m) => ({
   id: m.id,
   label: m.label,
   icon: m.switchIcon,
@@ -119,6 +122,9 @@ export function App() {
           options={SWITCH_OPTIONS}
           docType={active.id}
           onDocTypeChange={(next) => navigate(next)}
+          onHome={HOME ? () => navigate(HOME.id) : undefined}
+          atHome={active === HOME}
+          homeHint={HOME?.switchHint}
           onToolbarSlot={setToolbarSlot}
           onToggleHelp={() => setHelpOpen((v) => !v)}
           theme={theme}

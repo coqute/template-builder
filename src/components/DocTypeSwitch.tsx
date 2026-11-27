@@ -11,7 +11,7 @@ interface Props {
   onChange: (next: string) => void;
 }
 
-/** 화면 전환 스위치(홈 + 문서 종류) — 옵션은 doctypes 레지스트리에서 주입 */
+/** 화면 전환 스위치(문서 종류) — 옵션은 doctypes 레지스트리에서 주입. 홈은 여기에 없다: 로고가 홈 단추라 홈에서는 아무 칸도 켜지지 않는다 */
 export function DocTypeSwitch({ options, docType, onChange }: Props) {
   return (
     <div

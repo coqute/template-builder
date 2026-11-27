@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { EditorState, Prec } from '@codemirror/state';
-import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view';
+import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, scrollPastEnd } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
@@ -31,8 +31,15 @@ interface Props {
   onPin?: (id: string) => void;
 }
 
+/** 맨 위로 올릴 때 그 줄 위에 두는 틈(px) */
+export const JUMP_TOP_GAP = 8;
+
 export interface WorklogEditorHandle {
-  jumpToLine(line: number): void;
+  /**
+   * 그 줄로 간다. `top`이면 그 줄을 편집 영역 **맨 위**에 놓는다 — 홈에서 할 일·일정의 사안을 열 때,
+   * 사안이 화면 아래쪽에 걸리지 않고 처음부터 한눈에 읽히게(기본은 보이기만 하면 되는 최소 이동).
+   */
+  jumpToLine(line: number, opts?: { top?: boolean }): void;
   setMarker(kind: MarkerKind): void;
   /** 커서 자리에 끼워 넣는다 — 줄 중간이면 다음 줄에, 앞뒤 빈 줄 하나씩 */
   insertBlock(text: string): void;
@@ -65,11 +72,12 @@ export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function Wor
   useImperativeHandle(
     ref,
     () => ({
-      jumpToLine(line: number) {
+      jumpToLine(line: number, opts?: { top?: boolean }) {
         const view = viewRef.current;
         if (!view) return;
         const l = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
-        view.dispatch({ selection: { anchor: l.from }, scrollIntoView: true });
+        if (opts?.top) view.dispatch({ selection: { anchor: l.from }, effects: EditorView.scrollIntoView(l.from, { y: 'start', yMargin: JUMP_TOP_GAP }) });
+        else view.dispatch({ selection: { anchor: l.from }, scrollIntoView: true });
         view.focus();
       },
       setMarker(kind: MarkerKind) {
@@ -128,6 +136,8 @@ export const WorklogEditor = forwardRef<WorklogEditorHandle, Props>(function Wor
         // Ctrl+Enter·Ctrl+숫자는 앱·작업일지 단축키 — CodeMirror 기본 동작과 겹치지 않게 뺀다
         keymap.of([...defaultKeymap.filter((b) => b.key !== 'Mod-Enter'), ...historyKeymap]),
         EditorView.lineWrapping,
+        // 끝 줄도 맨 위까지 올라올 수 있게 아래에 여백을 둔다 — 그날의 마지막 사안도 맨 위에 놓을 수 있어야 한다
+        scrollPastEnd(),
         worklogHighlight,
         lintGutter(),
         worklogLinter(

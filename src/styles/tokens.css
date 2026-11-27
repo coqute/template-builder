@@ -1257,3 +1257,27 @@ html[data-theme] {
   .tb-scrim, .tb-pop, .tb-page, .tb-menu, .tb-swap { animation: none !important; }
   .tb-drawer, .tb-drawer-out { transition: none !important; }
 }
+
+/* ── 로고 = 홈 단추 (v0.27.1) ─────────────────────────────────────────────
+   탭 줄에 홈이 없다. 로고를 누르면 홈으로 가고, 홈을 보고 있을 때는 옅은 테로 "여기"를 알린다. */
+.tb-logo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sharp);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+.tb-logo:hover,
+.tb-logo[aria-current='page'] {
+  border-color: var(--rule);
+  background: var(--bg-elevated);
+}
+.tb-logo:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
