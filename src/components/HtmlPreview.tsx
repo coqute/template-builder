@@ -61,6 +61,32 @@ const PREVIEW_SHELL = (body: string, scale: number, width: number) => `<!doctype
 <body><div class="canvas">${body}</div></body>
 </html>`;
 
+/**
+ * 이미 실려 있는 미리보기 문서의 내용만 바꾼다 — 문서를 다시 싣지 않는다.
+ * 다시 실으면(srcdoc 교체) 글자 하나마다 새 문서가 뜨면서 글꼴을 다시 입히고 빈 화면이 끼어 깜빡인다(v0.28.1에서 실측: 30글자에 30번).
+ * 문서가 아직 준비되지 않았으면 false — 부르는 쪽이 문서를 싣는다.
+ */
+export function patchPreview(doc: Document | null | undefined, inner: string, scale: number, width: number): boolean {
+  const canvas = doc?.querySelector<HTMLElement>('.canvas');
+  if (!doc?.body || !canvas) return false;
+  const zoom = String(scale);
+  if (doc.body.style.getPropertyValue('zoom') !== zoom) doc.body.style.setProperty('zoom', zoom);
+  const w = `${width}px`;
+  if (canvas.style.width !== w) canvas.style.width = w;
+  // 같은 내용이면 건드리지 않는다(배율만 바뀐 경우 등) — 바뀐 내용은 한 프레임 안에서 갈아 끼워져 빈 화면이 보이지 않는다
+  if (shown.get(canvas) !== inner) {
+    canvas.innerHTML = inner;
+    shown.set(canvas, inner);
+  }
+  return true;
+}
+
+/** 그 문서에 지금 들어 있는 내용(넣은 원문) — 같은 내용을 다시 쓰지 않으려고 적어 둔다 */
+const shown = new WeakMap<Element, string>();
+
+const emptyBody = (hint?: string) =>
+  `<div style="color:#94a3b8;text-align:center;padding:48px 12px;font-size:13px;">${hint ?? '입력을 시작하면 이곳에 표가 나타납니다.'}</div>`;
+
 export function HtmlPreview({ html, emptyHint, zoom, canvasWidth = CANVAS_WIDTH }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const ref = useRef<HTMLIFrameElement | null>(null);
@@ -93,29 +119,34 @@ export function HtmlPreview({ html, emptyHint, zoom, canvasWidth = CANVAS_WIDTH 
     }
   }, [zoom, fitScale]);
 
+  /** 지금 보여야 할 것 — 문서가 실린 직후(load)에도 이것으로 맞춘다 */
+  const want = useRef({ inner: '', scale: 1, width: canvasWidth });
+  /** 미리보기 문서가 실려 있는가 — 실려 있으면 내용만 바꾼다 */
+  const ready = useRef(false);
+
   useEffect(() => {
     const frame = ref.current;
     if (!frame) return;
-    const body = html
-      ? PREVIEW_SHELL(html, scale, canvasWidth)
-      : PREVIEW_SHELL(
-          `<div style="color:#94a3b8;text-align:center;padding:48px 12px;font-size:13px;">${
-            emptyHint ?? '입력을 시작하면 이곳에 표가 나타납니다.'
-          }</div>`,
-          scale,
-          canvasWidth,
-        );
-    frame.srcdoc = body;
+    const inner = html || emptyBody(emptyHint);
+    want.current = { inner, scale, width: canvasWidth };
+    // 문서가 실려 있으면 그 안의 내용만 바꾼다 — 글자를 넣을 때마다 문서를 다시 싣지 않는다(깜빡임의 원인)
+    if (ready.current && patchPreview(frame.contentDocument, inner, scale, canvasWidth)) return;
+    // 처음이거나 문서에 닿지 못할 때만 문서를 싣는다
+    ready.current = false;
+    frame.srcdoc = PREVIEW_SHELL(inner, scale, canvasWidth);
   }, [html, emptyHint, scale, canvasWidth]);
 
-  // iframe 스크롤 위치 보존 — srcdoc 교체 시마다 contentWindow가 새로 생성되며
-  // scrollY가 0으로 리셋되는 문제를 해결. 사용자 스크롤을 ref에 저장하고 load 직후 복원.
-  // 좌측 편집기 입력마다 미리보기가 맨 위로 점프하지 않도록 함.
+  // 문서가 실릴 때(load) — 처음 한 번, 그리고 문서에 닿지 못해 다시 실은 드문 경우.
+  // 다시 실리면 contentWindow가 새로 생겨 scrollY가 0이 되므로, 사용자 스크롤을 ref에 적어 두었다가 되돌린다.
+  // (v0.28.1부터 글자를 넣는 동안에는 문서를 다시 싣지 않아 스크롤이 그대로 남는다)
   const scrollYRef = useRef(0);
   useEffect(() => {
     const frame = ref.current;
     if (!frame) return;
     const handleLoad = () => {
+      // 문서가 실렸다 — 지금 보여야 할 내용으로 한 번 맞추고(싣는 사이에 바뀌었을 수 있다. 어느 요청의 문서가 실렸는지 믿지 않는다),
+      // 이 뒤로는 내용만 바꾼다
+      ready.current = patchPreview(frame.contentDocument, want.current.inner, want.current.scale, want.current.width);
       const win = frame.contentWindow;
       if (!win) return;
       // 새 contentWindow에 사용자 스크롤 추적 리스너 부착 (이전 contentWindow는 GC됨)
